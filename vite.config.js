@@ -8,6 +8,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   base: './',
   root: 'dev',
+  envDir: resolve(__dirname),
   plugins: [vue()],
   resolve: {
     alias: {

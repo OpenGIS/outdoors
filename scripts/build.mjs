@@ -49,6 +49,7 @@ const CACHE_DIR = resolve(__dirname, "..", ".cache");
 const CACHE_FILE = resolve(CACHE_DIR, "liberty.json");
 const CACHE_META_FILE = resolve(CACHE_DIR, "liberty-etag.txt");
 const CACHE_PROCESSED_FILE = resolve(CACHE_DIR, "liberty-processed.json");
+const DEV_PROCESSED_FILE = resolve(ROOT, "dev", "liberty-processed.json");
 
 const OFM_DOMAIN = "tiles.openfreemap.org";
 
@@ -479,6 +480,14 @@ async function fetchLiberty() {
     `[build] cached resolved liberty style to ${CACHE_PROCESSED_FILE}`,
   );
 
+  // Copy to dev/ so the Vite app can fetch it
+  writeFileSync(
+    DEV_PROCESSED_FILE,
+    `${JSON.stringify(resolved, null, 2)}\n`,
+    "utf8",
+  );
+  console.log(`[build] copied resolved liberty style to ${DEV_PROCESSED_FILE}`);
+
   return JSON.parse(text);
 }
 
@@ -490,11 +499,20 @@ async function build() {
   const liberty = await fetchLiberty();
 
   // Always keep a fresh resolved copy for the dev app
+  const resolvedLiberty = finalizeStyle(liberty);
   writeFileSync(
     CACHE_PROCESSED_FILE,
-    `${JSON.stringify(finalizeStyle(liberty), null, 2)}\n`,
+    `${JSON.stringify(resolvedLiberty, null, 2)}\n`,
     "utf8",
   );
+
+  // Copy to dev/ so the Vite app can fetch it
+  writeFileSync(
+    DEV_PROCESSED_FILE,
+    `${JSON.stringify(resolvedLiberty, null, 2)}\n`,
+    "utf8",
+  );
+  console.log(`[build] copied resolved liberty style to ${DEV_PROCESSED_FILE}`);
 
   const style = JSON.parse(JSON.stringify(liberty));
 

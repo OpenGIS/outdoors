@@ -7,7 +7,7 @@
     "dev": "concurrently --names dev,build --prefix-colors cyan,green \"vite\" \"node scripts/watch.mjs\"",
     "build": "node scripts/build.mjs",
     "watch:build": "node scripts/watch.mjs",
-    "demo:build": "vite build",
+    "demo:build": "vite build && cp dev/liberty-processed.json demo/liberty-processed.json",
     "demo:preview": "vite preview"
   },
   "devDependencies": {

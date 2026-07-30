@@ -1,156 +1,291 @@
 <script setup>
-import { ref, shallowRef, computed, watch, onMounted } from 'vue'
-import { setupContours } from '../scripts/contours.js'
-import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
-import MaplibreCompare from '@maplibre/maplibre-gl-compare'
-import '@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css'
+import { ref, shallowRef, computed, watch, onMounted } from "vue";
+import { setupContours } from "../scripts/contours.js";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import MaplibreCompare from "@maplibre/maplibre-gl-compare";
+import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
 
-import outdoorStyleRaw from '../style.json?raw'
+import outdoorStyleRaw from "../style.json?raw";
+import rawProviders from "./providers.json";
+import ProviderSelect from "./ProviderSelect.vue";
 
-// Comparison entries — add or remove entries to control the left-map dropdown.
-// Each entry needs a unique `key`, a `label`, and a MapLibre style object.
-const comparisonEntries = shallowRef([
-  {
-    key: 'opentopomap',
-    label: 'OpenTopoMap',
-    style: {
-      version: 8,
-      name: 'OpenTopoMap',
-      sources: {
-        opentopomap: {
-          type: 'raster',
-          tiles: ['https://tile.opentopomap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution:
-            '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
-        },
-      },
-      layers: [
-        {
-          id: 'opentopomap-raster',
-          type: 'raster',
-          source: 'opentopomap',
-          minzoom: 0,
-          maxzoom: 18,
-        },
-      ],
-    },
-  },
-  {
-    key: 'thunderforestoutdoors',
-    label: 'Thunderforest Outdoors',
-    style: {
-      version: 8,
-      name: 'Thunderforest Outdoors',
-      sources: {
-        thunderforestoutdoors: {
-          type: 'raster',
-          tiles: [`https://api.thunderforest.com/outdoors/{z}/{x}/{y}@2x.png?apikey=${import.meta.env.VITE_THUNDERFOREST_API_KEY}`],
-          tileSize: 256,
-          attribution:
-            '&copy; <a href="https://www.thunderforest.com">Thunderforest</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OSM Contributors</a>',
-        },
-      },
-      layers: [
-        {
-          id: 'thunderforestoutdoors-raster',
-          type: 'raster',
-          source: 'thunderforestoutdoors',
-          minzoom: 0,
-          maxzoom: 18,
-        },
-      ],
-    },
-  },
-])
+// ── Constants ──
+const API_KEYS_STORAGE = "outdoors_dev_apiKeys";
+const SELECTED_STORAGE = "outdoors_dev_selected";
 
-// Try to load cached Liberty style (downloaded by build script).
-// The .cache/ dir is gitignored, so this is a no-op if not present.
-// Using fetch() instead of dynamic import() because the Vue SFC compiler
-// treats top-level import() inside a script setup block as a static import statement.
-fetch('../.cache/liberty-processed.json')
+// ── Provider configuration from JSON ──
+const providerConfig = ref(rawProviders);
+
+// ── Liberty style (loaded async from dev cache) ──
+const libertyStyle = shallowRef(null);
+
+fetch("./liberty-processed.json")
   .then((r) => r.json())
   .then((style) => {
-    comparisonEntries.value.unshift({
-      key: 'liberty',
-      label: 'Liberty',
-      style,
-    })
+    libertyStyle.value = style;
   })
   .catch(() => {
-    // Liberty cache not available — skip entry
-  })
+    // Liberty cache not available — skip
+  });
 
-const selectedKey = ref(comparisonEntries.value[0]?.key ?? '')
-const selectedEntry = computed(() =>
-  comparisonEntries.value.find((e) => e.key === selectedKey.value),
-)
+// ── Build sections from available providers ──
+const sections = computed(() => {
+  const result = [];
 
-const compareEl = ref(null)
-let leftMap = null
-let rightMap = null
+  if (libertyStyle.value) {
+    result.push({
+      label: "Local Vector",
+      providers: [
+        { key: "liberty", label: "Liberty", style: libertyStyle.value },
+      ],
+    });
+  }
 
-function applyLeftStyle(style) {
-  if (leftMap) {
-    leftMap.setStyle(style, { diff: false })
+  if (providerConfig.value.remoteVector?.length) {
+    result.push({
+      label: "Remote Vector",
+      providers: providerConfig.value.remoteVector,
+    });
+  }
+
+  if (providerConfig.value.remoteRaster?.length) {
+    result.push({
+      label: "Remote Raster",
+      providers: providerConfig.value.remoteRaster,
+    });
+  }
+
+  return result;
+});
+
+// ── Flat list for quick provider lookup ──
+const allProviders = computed(() =>
+  sections.value.flatMap((s) => s.providers),
+);
+
+// ── API key management ──
+function getStoredApiKeys() {
+  try {
+    return JSON.parse(localStorage.getItem(API_KEYS_STORAGE) || "{}");
+  } catch {
+    return {};
   }
 }
 
-watch(selectedKey, async (key) => {
-  if (!leftMap) return
-  const entry = comparisonEntries.value.find((e) => e.key === key)
-  if (!entry?.style) return
-  applyLeftStyle(entry.style)
-})
+function setStoredApiKey(key, value) {
+  const keys = getStoredApiKeys();
+  keys[key] = value;
+  localStorage.setItem(API_KEYS_STORAGE, JSON.stringify(keys));
+}
 
+/**
+ * Walk all string values in an object tree and replace {apiKey} tokens.
+ */
+function replaceApiKeyTokens(obj, apiKey) {
+  return JSON.parse(JSON.stringify(obj), (k, v) =>
+    typeof v === "string" ? v.replace(/\{apiKey\}/g, apiKey) : v,
+  );
+}
+
+/**
+ * Ensure a provider has its API key available.
+ * Returns a resolved copy with {apiKey} replaced, or null if cancelled.
+ */
+async function ensureApiKey(provider) {
+  if (!provider.apiKey) return provider;
+
+  const keys = getStoredApiKeys();
+  let apiKey = keys[provider.key];
+
+  if (!apiKey) {
+    apiKey = window.prompt(`Enter API key for "${provider.label}":`);
+    if (!apiKey) return null; // user cancelled
+    setStoredApiKey(provider.key, apiKey);
+  }
+
+  return replaceApiKeyTokens(provider, apiKey);
+}
+
+// ── Selected provider ──
+const selectedKey = ref(localStorage.getItem(SELECTED_STORAGE) || "");
+
+// Validate / initialise selection when providers become available
+watch(
+  allProviders,
+  (providers) => {
+    if (!providers.length || selectedKey.value) return;
+    const saved = localStorage.getItem(SELECTED_STORAGE);
+    if (saved && providers.find((p) => p.key === saved)) {
+      selectedKey.value = saved;
+    } else {
+      // Default to first provider that doesn't require an API key
+      // (e.g. Liberty or OpenTopoMap) to avoid key prompts on page load.
+      const noKeyProvider = providers.find((p) => !p.apiKey);
+      selectedKey.value = noKeyProvider?.key ?? providers[0].key;
+    }
+  },
+  { immediate: true },
+);
+
+// Persist selection
+watch(selectedKey, (key) => {
+  if (key) localStorage.setItem(SELECTED_STORAGE, key);
+});
+
+const selectedEntry = computed(() =>
+  allProviders.value.find((p) => p.key === selectedKey.value),
+);
+
+// ── Cache for fetched remote style JSONs ──
+const styleCache = shallowRef({});
+
+// ── Map state ──
+const compareEl = ref(null);
+let leftMap = null;
+let rightMap = null;
+
+function applyLeftStyle(style) {
+  if (leftMap) {
+    leftMap.setStyle(style, { diff: false });
+  }
+}
+
+function tileJsonToStyle(tj) {
+  // Convert a TileJSON response into a minimal MapLibre style
+  const sourceId = `remote-${tj.id || "source"}`;
+  const sourceType = tj.format === "pbf" ? "vector" : tj.type || "vector";
+  const layers = (tj.vector_layers || []).map((vl) => {
+    const id = vl.id || "";
+    let type = "line";
+    if (
+      /-area$/.test(id) ||
+      /^(landcover|landuse|park|water|ocean|glacier|wetland|building|golf|pitch|protected-area|railway-platform|road-area)/.test(
+        id,
+      )
+    ) {
+      type = "fill";
+    } else if (/-label$/.test(id)) {
+      type = "symbol";
+    } else if (/-(lowzoom|line)$/.test(id)) {
+      type = "line";
+    }
+    const layer = {
+      id,
+      type,
+      source: sourceId,
+      "source-layer": id,
+    };
+    if (type === "symbol") {
+      layer.layout = {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Regular"],
+        "text-size": 10,
+      };
+      layer.paint = { "text-color": "#333" };
+    }
+    if (type === "fill") {
+      layer.paint = { "fill-color": "#ccc", "fill-opacity": 0.3 };
+    }
+    if (type === "line") {
+      layer.paint = { "line-color": "#888", "line-width": 1 };
+    }
+    return layer;
+  });
+
+  return {
+    version: 8,
+    name: tj.name || "Remote TileJSON",
+    sources: {
+      [sourceId]: {
+        type: sourceType,
+        tiles: tj.tiles,
+        minzoom: tj.minzoom,
+        maxzoom: tj.maxzoom,
+        attribution: tj.attribution,
+      },
+    },
+    layers,
+  };
+}
+
+async function resolveStyle(entry) {
+  if (entry?.style) return entry.style;
+  if (entry?.styleUrl) {
+    const cached = styleCache.value[entry.key];
+    if (cached) return cached;
+    try {
+      const res = await fetch(entry.styleUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      // Detect TileJSON vs MapLibre Style JSON
+      const style = json.tilejson ? tileJsonToStyle(json) : json;
+      styleCache.value[entry.key] = style;
+      return style;
+    } catch (e) {
+      console.warn(`[App] Failed to fetch "${entry.label}":`, e);
+      return null;
+    }
+  }
+  return null;
+}
+
+// ── Apply style when selection changes ──
+watch(selectedKey, async (key) => {
+  if (!leftMap) return;
+  const provider = allProviders.value.find((p) => p.key === key);
+  if (!provider) return;
+
+  const resolved = await ensureApiKey(provider);
+  if (!resolved) return;
+
+  const style = await resolveStyle(resolved);
+  if (style) applyLeftStyle(style);
+});
+
+// ── Initialise maps ──
 onMounted(async () => {
-  const rightStyle = JSON.parse(outdoorStyleRaw)
+  const rightStyle = JSON.parse(outdoorStyleRaw);
 
   // Register contour plugin & patch for imperial units BEFORE the map parses
-  setupContours(rightStyle, 'imperial')
+  setupContours(rightStyle, "imperial");
 
-  const leftStyle = selectedEntry.value?.style
+  // Resolve initial left-map style (with API key prompt if needed)
+  const entry = selectedEntry.value;
+  const resolvedEntry = entry ? await ensureApiKey(entry) : null;
+  const leftStyle = resolvedEntry ? await resolveStyle(resolvedEntry) : null;
 
   leftMap = new maplibregl.Map({
-    container: 'left',
+    container: "left",
     style: leftStyle,
     center: [9, 48],
     zoom: 3,
     hash: true,
-  })
+  });
 
   rightMap = new maplibregl.Map({
-    container: 'right',
+    container: "right",
     style: rightStyle,
     center: [9, 48],
     zoom: 3,
-  })
+  });
 
-  new MaplibreCompare(leftMap, rightMap, compareEl.value, {})
+  new MaplibreCompare(leftMap, rightMap, compareEl.value, {});
 
-  leftMap.once('idle', () => {
+  leftMap.once("idle", () => {
     rightMap.jumpTo({
       center: leftMap.getCenter(),
       zoom: leftMap.getZoom(),
-    })
-  })
-})
+    });
+  });
+});
 </script>
 
 <template>
   <div ref="compareEl" id="compare">
     <div id="left" class="map">
       <div class="style-selector">
-        <select v-model="selectedKey">
-          <option
-            v-for="entry in comparisonEntries"
-            :key="entry.key"
-            :value="entry.key"
-          >
-            {{ entry.label }}
-          </option>
-        </select>
+        <ProviderSelect v-model="selectedKey" :sections="sections" />
       </div>
     </div>
     <div id="right" class="map"></div>
@@ -158,6 +293,6 @@ onMounted(async () => {
 </template>
 
 <style>
-@import './reset.css';
-@import './style.css';
+@import "./reset.css";
+@import "./style.css";
 </style>

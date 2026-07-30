@@ -1,0 +1,69 @@
+{
+  "remoteVector": [
+    {
+      "key": "thunderforest-atlas",
+      "label": "Thunderforest Atlas",
+      "apiKey": true,
+      "styleUrl": "https://api.thunderforest.com/styles/atlas/style.json?apikey={apiKey}"
+    },
+    {
+      "key": "maptiler",
+      "label": "MapTiler Outdoor",
+      "apiKey": true,
+      "styleUrl": "https://api.maptiler.com/maps/outdoor-v4/style.json?key={apiKey}"
+    }
+  ],
+  "remoteRaster": [
+    {
+      "key": "opentopomap",
+      "label": "OpenTopoMap",
+      "style": {
+        "version": 8,
+        "name": "OpenTopoMap",
+        "sources": {
+          "opentopomap": {
+            "type": "raster",
+            "tiles": ["https://tile.opentopomap.org/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "&copy; <a href=\"https://opentopomap.org\">OpenTopoMap</a> contributors (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "opentopomap-raster",
+            "type": "raster",
+            "source": "opentopomap",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "thunderforestoutdoors",
+      "label": "Thunderforest Outdoors",
+      "apiKey": true,
+      "style": {
+        "version": 8,
+        "name": "Thunderforest Outdoors",
+        "sources": {
+          "thunderforestoutdoors": {
+            "type": "raster",
+            "tiles": ["https://api.thunderforest.com/outdoors/{z}/{x}/{y}@2x.png?apikey={apiKey}"],
+            "tileSize": 256,
+            "attribution": "&copy; <a href=\"https://www.thunderforest.com\">Thunderforest</a> | &copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM Contributors</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "thunderforestoutdoors-raster",
+            "type": "raster",
+            "source": "thunderforestoutdoors",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    }
+  ]
+}
