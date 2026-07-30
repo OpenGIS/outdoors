@@ -8,7 +8,7 @@ import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
 
 import outdoorStyleRaw from "../style.json?raw";
 import rawProviders from "./providers.json";
-import ProviderSelect from "./ProviderSelect.vue";
+import ProviderSelect from "./components/ProviderSelect.vue";
 
 // ── Constants ──
 const API_KEYS_STORAGE = "outdoors_dev_apiKeys";
@@ -293,6 +293,6 @@ onMounted(async () => {
 </template>
 
 <style>
-@import "./reset.css";
-@import "./style.css";
+@import "./styles/reset.css";
+@import "./styles/style.css";
 </style>
