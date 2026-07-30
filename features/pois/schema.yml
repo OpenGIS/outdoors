@@ -1,0 +1,223 @@
+schema_name: Outdoor POIs
+schema_description: Outdoor points of interest (huts, shelters, water, parking, viewpoints, passes) for the outdoors style
+attribution: <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>
+version: 1.0.0
+is_overlay: true
+
+sources:
+  osm:
+    type: osm
+    url: geofabrik:italy
+
+layers:
+  - id: outdoor_pois
+    features:
+      # ── Alpine / wilderness huts ─────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 8
+        include_when:
+          tourism: [alpine_hut, wilderness_hut]
+        attributes:
+          - key: kind
+            value: hut
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Drinking water ───────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          amenity: drinking_water
+        attributes:
+          - key: kind
+            value: water
+          - key: name
+            tag_value: name
+
+      # ── Shelter ──────────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          amenity: shelter
+        attributes:
+          - key: kind
+            value: shelter
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Parking ──────────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          amenity: parking
+        attributes:
+          - key: kind
+            value: parking
+          - key: name
+            tag_value: name
+
+      # ── Viewpoint ────────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          tourism: viewpoint
+        attributes:
+          - key: kind
+            value: viewpoint
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Mountain pass ────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 8
+        include_when:
+          natural: saddle
+        attributes:
+          - key: kind
+            value: pass
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Picnic site ──────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 12
+        include_when:
+          tourism: picnic_site
+        attributes:
+          - key: kind
+            value: picnic_site
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Information / visitor info ──────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 12
+        include_when:
+          tourism: information
+        attributes:
+          - key: kind
+            value: information
+          - key: name
+            tag_value: name
+
+      # ── Public toilets ──────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 13
+        include_when:
+          amenity: toilets
+        attributes:
+          - key: kind
+            value: toilets
+          - key: name
+            tag_value: name
+
+      # ── Ranger station ──────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 12
+        include_when:
+          amenity: ranger_station
+        attributes:
+          - key: kind
+            value: ranger_station
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Campground ──────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          tourism: [camp_site, camp_pitch]
+        attributes:
+          - key: kind
+            value: campsite
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Playground ──────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 13
+        include_when:
+          leisure: playground
+        attributes:
+          - key: kind
+            value: playground
+          - key: name
+            tag_value: name
+
+      # ── Ski resort ──────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          leisure: ski_resort
+        attributes:
+          - key: kind
+            value: skiing
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele
+
+      # ── Ferry terminal ──────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 12
+        include_when:
+          amenity: ferry_terminal
+        attributes:
+          - key: kind
+            value: ferry
+          - key: name
+            tag_value: name
+
+      # ── Bicycle rental ──────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 13
+        include_when:
+          amenity: bicycle_rental
+        attributes:
+          - key: kind
+            value: bicycle
+          - key: name
+            tag_value: name
+
+      # ── Trailhead ──────────────────────────────────────────────
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          highway: trailhead
+        attributes:
+          - key: kind
+            value: trailhead
+          - key: name
+            tag_value: name
+          - key: ele
+            tag_value: ele

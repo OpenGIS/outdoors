@@ -1,0 +1,12 @@
+{
+  "name": "outdoors-contours",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Self-hosted contour vector tile server for outdoors style",
+  "scripts": {
+    "dev": "contour-mvt-server config.json"
+  },
+  "dependencies": {
+    "contour-mvt-server": "^1.1.1"
+  }
+}

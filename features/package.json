@@ -1,0 +1,18 @@
+{
+  "name": "outdoors-features",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Planetiler-based outdoor feature vector tiles (POIs, routes, etc.) for outdoors style",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:pois": "node scripts/build.mjs --feature=pois",
+    "build:routes": "node scripts/build.mjs --feature=routes",
+    "dev": "node scripts/server.mjs"
+  },
+  "dependencies": {
+    "pmtiles": "^4.3.0"
+  },
+  "devDependencies": {
+    "@mapbox/vector-tile": "^3.0.0"
+  }
+}

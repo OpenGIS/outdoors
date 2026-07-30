@@ -1,0 +1,28 @@
+{
+  "//": "Mapterhorn (Terrarium, 512px, maxzoom 15). For AWS Terrarium (256px, maxzoom 15) swap tiles to: https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+  "server": {
+    "port": 11001
+  },
+  "sources": {
+    "terrain": {
+      "contours": {
+        "buffer": 1,
+        "contourLayer": "contours",
+        "elevationKey": "ele",
+        "extent": 4096,
+        "levelKey": "level",
+        "multiplier": 1,
+        "thresholds": {
+          "10": [20, 100],
+          "11": [20, 100],
+          "12": [20, 100],
+          "13": [10, 50],
+          "14": [5, 25]
+        }
+      },
+      "encoding": "terrarium",
+      "maxzoom": 15,
+      "tiles": "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"
+    }
+  }
+}
