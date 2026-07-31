@@ -119,6 +119,9 @@ watch(
         providers.find((p) => !p.apiKey) ??
         providers[0];
       selectedKey.value = defaultProvider?.key ?? "";
+      // Persist immediately — the persist watcher below is registered too late
+      // to observe this correction (this watch runs at setup, with immediate).
+      localStorage.setItem(SELECTED_STORAGE, selectedKey.value);
     }
   },
   { immediate: true },

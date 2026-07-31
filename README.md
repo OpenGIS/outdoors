@@ -192,6 +192,6 @@ Providers that require an API key have `"apiKey": true` in their config. Their U
 - `ensureApiKey()` in `App.vue` checks `localStorage` (key `outdoors_dev_apiKeys`) for a stored key
 - If no key is found when the user **selects** a key-protected provider, a `window.prompt()` asks for one
 - The key is then stored in `localStorage` and injected into the provider config via `replaceApiKeyTokens()`
-- **No prompt appears on page load** — the default selection always prefers providers without `apiKey` (e.g. OpenFreeMap Liberty or OpenTopoMap)
+- **No prompt appears on page load** — the default selection is explicitly OpenFreeMap Liberty (constant `DEFAULT_PROVIDER_KEY` in `App.vue`), falling back to the first provider without `apiKey` if Liberty is unavailable. Stale or invalid saved selections are corrected to the default on load.
 
 

@@ -1,8 +1,11 @@
 .env
 .DS_Store
 node_modules
-package-lock.json
 .opencode
+
+# Root lock file for only
+package-lock.json
+!/package-lock.json
 
 # Liberty style cache (downloaded from GitHub)
 .cache/
