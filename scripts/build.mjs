@@ -13,12 +13,15 @@
  *
  * Cache: the downloaded liberty style is cached in .cache/liberty.json.
  *
- * Feature flags at the top enable/disable each section. Data source
- * URLs are constants that can be swapped to change providers without
- * changing any section logic — see the commented alternatives.
+ * Feature toggles at the top enable/disable each section. Per-feature
+ * config blocks follow in the same render order. Data source URL
+ * selectors (e.g. ROUTE_SOURCE = "trailsplits" | "local") swap
+ * providers without changing any section logic.
  *
  * Sections are ordered from bottom to top in the render stack:
- *   terrain → contours → waymarked trails → trailsplits hiking network → promoted liberty pois → outdoor pois → outdoor routes → mtb/bicycle → path styling
+ *   satellite → terrain → contours → waymarked trails →
+ *   trailsplits hiking network → promoted liberty pois →
+ *   outdoor pois → outdoor routes → mtb/bicycle → path styling
  *
  * Dependencies:
  *   - OSM Liberty (OpenFreeMap fork): https://raw.githubusercontent.com/hyperknot/openfreemap-styles/main/styles/liberty/style.json
@@ -35,13 +38,31 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const OUTDOOR_STYLE = resolve(ROOT, "style.json");
 
-// ── Liberty base style (OpenFreeMap fork) ───────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════
+// FEATURE TOGGLES (in rendering order, bottom→top)
+// ═════════════════════════════════════════════════════════════════════════
+// Flip these to enable/disable each feature section.
+
+const SATELLITE = false; // ESRI World Satellite raster base layer
+const TERRAIN = true; // 3D terrain hillshading (raster DEM)
+const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
+const TRAILSPLITS_HIKING_TRAILS = false; // TrailSplits hiking network overlay (vector tiles)
+const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
+const OUTDOOR_POI = true; // Outdoor POIs overlay (vector tiles)
+const OUTDOOR_ROUTE = true; // Hiking route overlay (vector tiles)
+const MTB_SCALE = false; // MTB difficulty + bicycle access overlays
+const PROMOTE_PATHS = true; // Paths/trails visible at all zoom levels
+
+// ═════════════════════════════════════════════════════════════════════════
+// LIBERTY BASE STYLE — source URL, local caching, and domain replacement
+// ═════════════════════════════════════════════════════════════════════════
 // The outdoor style builds on top of OSM Liberty via the OpenFreeMap fork.
 // The liberty style is fetched from GitHub and cached locally — see
 // fetchLiberty() below for the download-and-cache logic.
 //
 // The URL tracks the `main` branch. Cache invalidation uses the HTTP ETag
 // from the response — a new version is auto-detected on the next build.
+
 const LIBERTY_URL =
   "https://raw.githubusercontent.com/hyperknot/openfreemap-styles/refs/heads/main/styles/liberty/style.json";
 
@@ -53,229 +74,8 @@ const DEV_PROCESSED_FILE = resolve(ROOT, "dev", "liberty-processed.json");
 
 const OFM_DOMAIN = "tiles.openfreemap.org";
 
-/**
- * Replace __TILEJSON_DOMAIN__ placeholders with the real tile domain.
- */
-function finalizeStyle(style) {
-  const text = JSON.stringify(style);
-  const modified = text.replace(/__TILEJSON_DOMAIN__/g, OFM_DOMAIN);
-  return JSON.parse(modified);
-}
-
 // ═════════════════════════════════════════════════════════════════════════
-// Feature toggles
-// ═════════════════════════════════════════════════════════════════════════
-// Flip these to enable/disable each feature section.
-
-const TERRAIN = true; // 3D terrain hillshading (raster DEM)
-const CONTOURS_USE_PLUGIN = true; // true = maplibre-contour plugin (GPU, client-side), false = PBF vector tiles (server)
-const PROMOTE_PATHS = true; // Paths/trails visible at all zoom levels
-const MTB_SCALE = false; // MTB difficulty + bicycle access overlays
-const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
-const TRAILSPLITS_HIKING_TRAILS = false; // TrailSplits hiking network overlay (vector tiles)
-const OUTDOOR_POI = true; // Outdoor POIs overlay (vector tiles)
-const PROMOTE_LIBERTY_POI = true; // Promote selected liberty POIs to lower zoom
-const TRAILSPLITS_HIKING_MINZOOM = 8; // Minzoom for all TrailSplits hiking trail layers
-const CONTOUR_PBF_USE_LOCAL = true; // true = self-hosted contour-mvt-server, false = TrailSplits API
-const POI_USE_LOCAL = true; // true = self-hosted Planetiler tiles, false = TrailSplits API
-
-// ═════════════════════════════════════════════════════════════════════════
-// Data source URLs
-// ═════════════════════════════════════════════════════════════════════════
-// Change a URL constant to swap providers — no section code changes needed.
-
-// ── Terrain DEM (raster-elevation) ───────────────────────────────────
-// Mapterhorn (Terrarium, 512px, maxzoom 15):
-//   https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
-// AWS Terrarium (Terrarium, 256px, maxzoom 15):
-//   https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
-// TrailSplits TerrainRGB (Mapbox, 256px, maxzoom 12):
-//   https://api.trailsplits.com/tiles/v1/terrainrgb/current/{z}/{x}/{y}.png
-const TERRAIN_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
-const TERRAIN_SOURCE_ENCODING = "terrarium";
-const TERRAIN_SOURCE_TILESIZE = 512;
-const TERRAIN_SOURCE_MAXZOOM = 15;
-
-// ── Contours ──
-// Contour source zoom range. The plugin starts generating coarse
-// contours at source minzoom and gets more detailed at higher zooms.
-// maxzoom should match the DEM maxzoom for best fidelity.
-const CONTOUR_PLUGIN_SOURCE_MINZOOM = 9;
-const CONTOUR_PLUGIN_SOURCE_MAXZOOM = 20;
-//
-// Thresholds define contour intervals: [minor_interval, major_interval]
-// in metres at each zoom level. Minor = regular contour line, major =
-// index (thicker, labelled) contour line.
-const CONTOUR_PLUGIN_THRESHOLDS = {
-  9: [500, 2500],
-  11: [200, 1000],
-  12: [100, 500],
-  14: [50, 200],
-  15: [20, 100],
-};
-//
-// Extra options passed as query parameters in the dem-contour:// URL.
-// These tell the plugin how to encode the generated vector tiles.
-// See the maplibre-contour README for all available options.
-const CONTOUR_PLUGIN_EXTRA_OPTIONS = {
-  contourLayer: "contours",
-  elevationKey: "ele",
-  levelKey: "level",
-  extent: 4096,
-  buffer: 1,
-  overzoom: 1, // Allow overzoom beyond DEM maxzoom
-};
-const CONTOUR_PLUGIN_PROTOCOL_ID = "dem"; // Must match DemSource.setupMaplibre() id at runtime
-
-// ── PBF contours (server-generated vector tiles, no plugin) ───────────
-// Direct PBF vector tiles from a server that pre-generates contour
-// lines from DEM data. No client-side processing — standard
-// Mapbox Vector Tiles (application/x-protobuf).
-//
-// Only used when CONTOURS_USE_PLUGIN = false.
-// Reference: https://trailsplits.com/api#contours
-//
-// Each feature has 'ele' (elevation in metres) and 'level' fields.
-// Source-layer: 'contours'.
-//
-// Switched via CONTOUR_PBF_USE_LOCAL toggle:
-//   true  → self-hosted contour-mvt-server (goes to z14)
-//   false → TrailSplits API (free, no key — caps at z12)
-const CONTOUR_PBF_TILE_URL = CONTOUR_PBF_USE_LOCAL
-  ? "http://localhost:11001/contours/terrain/{z}/{x}/{y}.pbf"
-  : "https://api.trailsplits.com/tiles/v1/contours/current/{z}/{x}/{y}.pbf";
-
-const CONTOUR_PBF_SOURCE_MINZOOM = 9;
-const CONTOUR_PBF_SOURCE_MAXZOOM = CONTOUR_PBF_USE_LOCAL ? 14 : 12;
-
-// PBF labels always use metric at build time. For imperial units, the
-// runtime scripts/contours.js patches the label expression before the
-// map loads the style (both plugin and PBF modes are handled there).
-
-// ── Outdoor POI tiles ───────────────────────────────────────────────────
-// Vector tiles with outdoor points of interest (POIs) — huts, shelters,
-// water, parking, viewpoints, mountain passes, campsites, etc.
-// Source-layer: 'outdoor_pois'.
-//
-// Switched via POI_USE_LOCAL toggle:
-//   true  → self-hosted Planetiler tiles (z8–16, wider zoom range)
-//   false → TrailSplits API (free, no key — z12–14)
-const POI_LOCAL_URL = "http://localhost:11002/pois/{z}/{x}/{y}.pbf";
-const POI_REMOTE_URL =
-  "https://api.trailsplits.com/tiles/v1/outdoor-pois/current/{z}/{x}/{y}.pbf";
-
-const POI_TILE_URL = POI_USE_LOCAL ? POI_LOCAL_URL : POI_REMOTE_URL;
-
-const POI_SOURCE_MINZOOM = POI_USE_LOCAL ? 12 : 12;
-const POI_SOURCE_MAXZOOM = POI_USE_LOCAL ? 18 : 14;
-
-// ── Outdoor route tiles ──────────────────────────────────────────────────
-// Vector tiles with hiking route relations from OSM — line geometry
-// with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
-// Source-layer: 'outdoor_routes'.
-//
-// Switched via ROUTE_USE_LOCAL toggle:
-//   true  → self-hosted Planetiler tiles (z8–14, wider zoom range)
-//   false → TrailSplits API (free, no key — z8–12)
-const OUTDOOR_ROUTE = true; // Hiking route overlay (vector tiles)
-const ROUTE_USE_LOCAL = true; // true = self-hosted Planetiler tiles, false = TrailSplits API
-const ROUTE_LOCAL_URL = "http://localhost:11002/routes/{z}/{x}/{y}.pbf";
-const ROUTE_REMOTE_URL =
-  "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
-
-const ROUTE_TILE_URL = ROUTE_USE_LOCAL ? ROUTE_LOCAL_URL : ROUTE_REMOTE_URL;
-
-const ROUTE_SOURCE_MINZOOM = 8;
-const ROUTE_SOURCE_MAXZOOM = ROUTE_USE_LOCAL ? 14 : 12;
-
-// ── Promoted liberty POIs — display selected base-map POIs at lower zooms ──
-// Outdoor-relevant POI classes from the OpenMapTiles `poi` source-layer
-// that should become visible earlier (z12–14) rather than waiting for z15.
-const PROMOTED_POI_MINZOOM = 12;
-const PROMOTED_POI_MAXZOOM = 15; // stops where regular poi_r1 begins
-const PROMOTED_POI_CLASSES = [
-  "restaurant",
-  "cafe",
-  "fast_food",
-  "pub",
-  "bar",
-  "grocery",
-  "ice_cream",
-  "toilets",
-  "drinking_water",
-  "information",
-  "shelter",
-  "picnic_site",
-  "parking",
-  "bus",
-  "ferry",
-  "fuel",
-  "pharmacy",
-  "hospital",
-  "doctors",
-  "bank",
-  "atm",
-  "post",
-  "lodging",
-  "campsite",
-];
-
-// ── Shared contour styling ― line widths ──────────────────────────────
-// Defined once and used by both plugin and PBF implementations below.
-// Tune zoom interpolation here rather than in each section separately.
-const CONTOUR_WIDTH_MINOR = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  0.5,
-  14,
-  1.0,
-];
-const CONTOUR_WIDTH_INDEX = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  0.7,
-  14,
-  1.1,
-];
-
-// Opacity — same zoom interpolation for both implementations
-const CONTOUR_OPACITY_MINOR = [
-  "interpolate",
-  ["linear"],
-  ["zoom"],
-  12,
-  0.4,
-  14,
-  0.5,
-];
-const CONTOUR_OPACITY_INDEX = [
-  "interpolate",
-  ["linear"],
-  ["zoom"],
-  12,
-  0.55,
-  14,
-  0.7,
-];
-
-// ── Shared layer zoom limit ───────────────────────────────────────────
-// All contour layers stop rendering at this zoom. Kept independent of
-// the source maxzoom so the layer ceiling can be tuned for visual density
-// without affecting tile requests.
-const CONTOUR_LAYER_MAXZOOM = 20;
-
-// ── TrailSplits hiking network ─────────────────────────────────────────
-// Vector tile overlay from the free TrailSplits API (no key required).
-// Reference: https://trailsplits.com/api
-const TRAILSPLITS_HIKING_URL =
-  "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
-
-// ═════════════════════════════════════════════════════════════════════════
-// Colours
+// COLOURS
 // ═════════════════════════════════════════════════════════════════════════
 
 const COLOURS = {
@@ -296,7 +96,7 @@ const COLOURS = {
   CONTOUR_LABEL: "#4a4a4a",
   CONTOUR_HALO: "rgba(255, 255, 255, 0.85)",
 
-  // Hiking route network tiers (Waymarked Trails colour scheme)
+  // Hiking route network tiers
   ROUTE_IWN: "#b20303",
   ROUTE_NWN: "#152eec",
   ROUTE_RWN: "#ffa304",
@@ -309,13 +109,6 @@ const COLOURS = {
 // ── Route network tier paint configs ──────────────────────────────────
 // Shared by both outdoor-route-* and trailsplits-hiking-* sections.
 // Each tier has colour, opacity, width, and minzoom.
-//
-// Colours and line styles matching the Waymarked Trails hiking rendering:
-// https://github.com/waymarkedtrails/waymarked-trails-site/blob/master/maps/styles/inc/route_styles.inc
-
-// Core line config per network tier — matching Waymarked Trails colours, opacities,
-// and zoom-dependent widths. Networks with a casing/halo get an additional layer
-// rendered behind the core line.
 
 const ROUTE_TIERS = {
   iwn: {
@@ -363,16 +156,311 @@ const ROUTE_TIER_DEFAULT = {
 };
 
 // ═════════════════════════════════════════════════════════════════════════
+// PER-FEATURE CONFIG (in rendering order, bottom→top)
+// ═════════════════════════════════════════════════════════════════════════
+// Each feature's constants are grouped before its build logic below.
+// Data source selectors like POI_SOURCE accept "local" (self-hosted) or
+// "trailsplits" (free API, no key required).
+
+// ── Satellite imagery ──────────────────────────────────────────────────
+// ESRI World Satellite (ArcGIS Online) — CORS-permissive, no API key.
+
+const SATELLITE_OPACITY = 0.3;
+const SATELLITE_LANDCOVER_OPACITY = 1;
+const SATELLITE_SOURCE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_SOURCE_TILESIZE = 256;
+const SATELLITE_SOURCE_MAXZOOM = 19;
+const SATELLITE_SOURCE_ATTRIBUTION =
+  "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community";
+
+// ── Terrain DEM (raster-elevation) ────────────────────────────────────
+// Mapterhorn (Terrarium, 512px, maxzoom 15):
+//   https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
+
+const TERRAIN_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
+const TERRAIN_SOURCE_ENCODING = "terrarium";
+const TERRAIN_SOURCE_TILESIZE = 512;
+const TERRAIN_SOURCE_MAXZOOM = 15;
+
+// ── Contours ─────────────────────────────────────────────────────────
+// Mode: true = maplibre-contour plugin (GPU-generated, client-side via Web Worker)
+//       false = PBF vector tiles (server-generated, standard MVT)
+
+const CONTOURS_USE_PLUGIN = false;
+
+// Shared styling — used by both plugin and PBF modes
+const CONTOUR_WIDTH_MINOR = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  12,
+  0.5,
+  14,
+  1.0,
+];
+const CONTOUR_WIDTH_INDEX = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  12,
+  0.7,
+  14,
+  1.1,
+];
+const CONTOUR_OPACITY_MINOR = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  12,
+  0.4,
+  14,
+  0.5,
+];
+const CONTOUR_OPACITY_INDEX = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  12,
+  0.55,
+  14,
+  0.7,
+];
+const CONTOUR_LAYER_MAXZOOM = 20;
+
+// Label expression — always metric at build time.
+// Runtime scripts/contours.js patches "m" → "ft" for imperial units.
+const CONTOUR_LABEL_EXPR = [
+  "concat",
+  ["number-format", ["round", ["get", "ele"]], {}],
+  "m",
+];
+
+// PBF mode — only used when CONTOURS_USE_PLUGIN = false
+// "local" = self-hosted contour-mvt-server (goes to z14)
+// "trailsplits" = TrailSplits API (free, no key — caps at z12)
+const CONTOUR_PBF_SOURCE = "trailsplits";
+const CONTOUR_PBF_TILE_URL =
+  CONTOUR_PBF_SOURCE === "local"
+    ? "http://localhost:11001/contours/terrain/{z}/{x}/{y}.pbf"
+    : "https://api.trailsplits.com/tiles/v1/contours/current/{z}/{x}/{y}.pbf";
+const CONTOUR_PBF_SOURCE_MINZOOM = 9;
+const CONTOUR_PBF_SOURCE_MAXZOOM = CONTOUR_PBF_SOURCE === "local" ? 14 : 12;
+
+// Plugin mode — only used when CONTOURS_USE_PLUGIN = true
+// Thresholds define contour intervals: [minor_interval, major_interval]
+// in metres at each zoom level.
+const CONTOUR_PLUGIN_SOURCE_MINZOOM = 9;
+const CONTOUR_PLUGIN_SOURCE_MAXZOOM = 20;
+const CONTOUR_PLUGIN_THRESHOLDS = {
+  9: [500, 2500],
+  11: [200, 1000],
+  12: [100, 500],
+  14: [50, 200],
+  15: [20, 100],
+};
+const CONTOUR_PLUGIN_EXTRA_OPTIONS = {
+  contourLayer: "contours",
+  elevationKey: "ele",
+  levelKey: "level",
+  extent: 4096,
+  buffer: 1,
+  overzoom: 1,
+};
+const CONTOUR_PLUGIN_PROTOCOL_ID = "dem"; // Must match DemSource.setupMaplibre() id at runtime
+
+// ── TrailSplits hiking network ───────────────────────────────────────
+// Vector tile overlay from the free TrailSplits API (no key required).
+// Reference: https://trailsplits.com/api
+
+const TRAILSPLITS_HIKING_URL =
+  "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
+const TRAILSPLITS_HIKING_MINZOOM = 8;
+
+// ── Promoted liberty POIs ────────────────────────────────────────────
+// Display selected base-map POIs at lower zooms (z12–14) rather than
+// waiting for the regular poi layer at z15.
+
+const PROMOTED_POI_MINZOOM = 12;
+const PROMOTED_POI_MAXZOOM = 15;
+const PROMOTED_POI_CLASSES = [
+  "restaurant",
+  "cafe",
+  "fast_food",
+  "pub",
+  "bar",
+  "grocery",
+  "ice_cream",
+  "toilets",
+  "drinking_water",
+  "information",
+  "shelter",
+  "picnic_site",
+  "parking",
+  "bus",
+  "ferry",
+  "fuel",
+  "pharmacy",
+  "hospital",
+  "doctors",
+  "bank",
+  "atm",
+  "post",
+  "lodging",
+  "campsite",
+];
+
+// ── Outdoor POI ──────────────────────────────────────────────────────
+// Vector tiles with outdoor points of interest — huts, shelters, water,
+// parking, viewpoints, mountain passes, campsites, etc.
+// Source-layer: 'outdoor_pois'.
+// "local" = self-hosted Planetiler tiles (z8–16, wider zoom range)
+// "trailsplits" = TrailSplits API (free, no key — z12–14)
+
+const POI_SOURCE = "trailsplits";
+const POI_LOCAL_URL = "http://localhost:11002/pois/{z}/{x}/{y}.pbf";
+const POI_REMOTE_URL =
+  "https://api.trailsplits.com/tiles/v1/outdoor-pois/current/{z}/{x}/{y}.pbf";
+const POI_TILE_URL = POI_SOURCE === "local" ? POI_LOCAL_URL : POI_REMOTE_URL;
+const POI_SOURCE_MINZOOM = 12;
+const POI_SOURCE_MAXZOOM = POI_SOURCE === "local" ? 18 : 14;
+
+// ── Outdoor routes (hiking route relations) ──────────────────────────
+// Vector tiles with hiking route relations from OSM — line geometry
+// with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
+// Source-layer: 'outdoor_routes' (local) or 'hiking_network' (TrailSplits).
+// "local" = self-hosted Planetiler tiles (z8–14, wider zoom range)
+// "trailsplits" = TrailSplits API (free, no key — z8–12)
+
+const ROUTE_SOURCE = "trailsplits";
+const ROUTE_LOCAL_URL = "http://localhost:11002/routes/{z}/{x}/{y}.pbf";
+const ROUTE_REMOTE_URL =
+  "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
+const ROUTE_TILE_URL =
+  ROUTE_SOURCE === "local" ? ROUTE_LOCAL_URL : ROUTE_REMOTE_URL;
+const ROUTE_SOURCE_MINZOOM = 8;
+const ROUTE_SOURCE_MAXZOOM = ROUTE_SOURCE === "local" ? 14 : 12;
+
+// ═════════════════════════════════════════════════════════════════════════
 // Helpers
 // ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * Replace __TILEJSON_DOMAIN__ placeholders with the real tile domain.
+ */
+function finalizeStyle(style) {
+  const text = JSON.stringify(style);
+  const modified = text.replace(/__TILEJSON_DOMAIN__/g, OFM_DOMAIN);
+  return JSON.parse(modified);
+}
+
+/**
+ * Create a core route line layer for a network tier.
+ * Shared by outdoor-route and trailsplits-hiking sections.
+ */
+function createRouteLayer(
+  sourceId,
+  sourceLayer,
+  network,
+  tier,
+  minzoomOverride,
+) {
+  return {
+    id: `${sourceId}-${network}`,
+    type: "line",
+    source: sourceId,
+    "source-layer": sourceLayer,
+    minzoom: minzoomOverride
+      ? Math.max(minzoomOverride, tier.minzoom || 0)
+      : tier.minzoom,
+    filter: ["==", ["get", "network"], network],
+    paint: {
+      "line-color": tier.color,
+      "line-opacity": tier.opacity,
+      "line-width": tier.width,
+    },
+  };
+}
+
+/**
+ * Create a casing/halo background layer for a network tier.
+ * Shared by outdoor-route and trailsplits-hiking sections.
+ * Returns null if the tier has no casing or halo.
+ */
+function createRouteCasing(
+  sourceId,
+  sourceLayer,
+  network,
+  tier,
+  minzoomOverride,
+) {
+  if (!tier.casing && !tier.halo) return null;
+  const bg = tier.casing || tier.halo;
+  return {
+    id: `${sourceId}-${network}-${tier.casing ? "casing" : "halo"}`,
+    type: "line",
+    source: sourceId,
+    "source-layer": sourceLayer,
+    minzoom: minzoomOverride
+      ? Math.max(minzoomOverride, bg.minzoom || tier.minzoom || 0)
+      : bg.minzoom || tier.minzoom,
+    filter: ["==", ["get", "network"], network],
+    paint: {
+      "line-color": bg.color,
+      "line-opacity": bg.opacity,
+      "line-width": bg.width,
+    },
+  };
+}
+
+/**
+ * Build all route layers (casing + core + default) for a given source.
+ * Returns an array of layer objects ready to push into the style.
+ */
+function createAllRouteLayers(
+  sourceId,
+  sourceLayer,
+  tiers,
+  defaultTier,
+  minzoomOverride,
+) {
+  const layers = [];
+
+  for (const [network, tier] of Object.entries(tiers)) {
+    const casing = createRouteCasing(
+      sourceId,
+      sourceLayer,
+      network,
+      tier,
+      minzoomOverride,
+    );
+    if (casing) layers.push(casing);
+    layers.push(
+      createRouteLayer(sourceId, sourceLayer, network, tier, minzoomOverride),
+    );
+  }
+
+  layers.push({
+    id: `${sourceId}-default`,
+    type: "line",
+    source: sourceId,
+    "source-layer": sourceLayer,
+    minzoom: minzoomOverride || defaultTier.minzoom,
+    filter: ["!", ["has", "network"]],
+    paint: {
+      "line-color": defaultTier.color,
+      "line-opacity": defaultTier.opacity,
+      "line-width": defaultTier.width,
+    },
+  });
+
+  return layers;
+}
 
 /**
  * Build the full maplibre-contour plugin tile URL with encoded thresholds
  * and options baked into the query string. Produces URLs like:
  *   dem-contour://{z}/{x}/{y}?buffer=1&contourLayer=contours&...&thresholds=0*100*500~...
- *
- * This replicates the private encodeOptions() from the maplibre-contour
- * package so we don't need to import DemSource at build time.
  */
 function buildContourTileUrl(id, thresholds, extraOptions) {
   const thresholdStr = Object.entries(thresholds)
@@ -412,7 +500,6 @@ function buildContourTileUrl(id, thresholds, extraOptions) {
  * offline (when cached), and requires no manual version management.
  */
 async function fetchLiberty() {
-  // ── Conditional GET — send cached ETag if we have one ──
   const headers = {};
   const cachedEtag = existsSync(CACHE_META_FILE)
     ? readFileSync(CACHE_META_FILE, "utf8").trim()
@@ -426,7 +513,6 @@ async function fetchLiberty() {
   try {
     res = await fetch(LIBERTY_URL, { headers });
   } catch (err) {
-    // Network error — fall back to cache
     if (existsSync(CACHE_FILE)) {
       console.warn(
         `[build] network error, using cached liberty style: ${err.message}`,
@@ -438,13 +524,11 @@ async function fetchLiberty() {
     );
   }
 
-  // ── 304 Not Modified — cache is fresh ──
   if (res.status === 304 && existsSync(CACHE_FILE)) {
     console.log("[build] liberty style unchanged (304), using cache");
     return JSON.parse(readFileSync(CACHE_FILE, "utf8"));
   }
 
-  // ── Other errors — fall back to cache if possible ──
   if (!res.ok) {
     if (existsSync(CACHE_FILE)) {
       console.warn(
@@ -457,7 +541,6 @@ async function fetchLiberty() {
     );
   }
 
-  // ── 200 OK — new content ──
   console.log("[build] liberty style updated, fetching from GitHub");
   const text = await res.text();
   const etag = res.headers.get("etag") || "";
@@ -465,11 +548,8 @@ async function fetchLiberty() {
   mkdirSync(CACHE_DIR, { recursive: true });
   writeFileSync(CACHE_FILE, text, "utf8");
   writeFileSync(CACHE_META_FILE, etag, "utf8");
-
   console.log(`[build] cached liberty style to ${CACHE_FILE}`);
 
-  // Write a resolved copy (domain replacement baked in) for the
-  // dev app to load directly without runtime substitution.
   const resolved = finalizeStyle(JSON.parse(text));
   writeFileSync(
     CACHE_PROCESSED_FILE,
@@ -480,7 +560,6 @@ async function fetchLiberty() {
     `[build] cached resolved liberty style to ${CACHE_PROCESSED_FILE}`,
   );
 
-  // Copy to dev/ so the Vite app can fetch it
   writeFileSync(
     DEV_PROCESSED_FILE,
     `${JSON.stringify(resolved, null, 2)}\n`,
@@ -492,8 +571,10 @@ async function fetchLiberty() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Setup — read & deep-clone the base style
+// Build — read & deep-clone the base style, apply outdoor modifications
 // ═════════════════════════════════════════════════════════════════════════
+// Sections are ordered bottom→top in the render stack, matching the
+// order of the feature toggles and per-feature config blocks above.
 
 async function build() {
   const liberty = await fetchLiberty();
@@ -506,7 +587,6 @@ async function build() {
     "utf8",
   );
 
-  // Copy to dev/ so the Vite app can fetch it
   writeFileSync(
     DEV_PROCESSED_FILE,
     `${JSON.stringify(resolvedLiberty, null, 2)}\n`,
@@ -516,9 +596,69 @@ async function build() {
 
   const style = JSON.parse(JSON.stringify(liberty));
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 1. Terrain & hillshade  — bottom of render stack
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
+  // 1. Satellite imagery — ESRI World Satellite raster base layer
+  // ═════════════════════════════════════════════════════════════════════
+  // Adds a semi-transparent satellite raster overlay at the bottom of the
+  // render stack (between the background / Natural Earth and everything
+  // else). When enabled, landcover and water fill opacities are reduced
+  // by SATELLITE_LANDCOVER_OPACITY to let the satellite show through.
+
+  if (SATELLITE) {
+    style.sources.satellite = {
+      type: "raster",
+      tiles: [SATELLITE_SOURCE_URL],
+      tileSize: SATELLITE_SOURCE_TILESIZE,
+      maxzoom: SATELLITE_SOURCE_MAXZOOM,
+      attribution: SATELLITE_SOURCE_ATTRIBUTION,
+    };
+
+    const neIdx = style.layers.findIndex((l) => l.id === "natural_earth");
+    const insertAt = neIdx !== -1 ? neIdx + 1 : 1;
+    style.layers.splice(insertAt, 0, {
+      id: "satellite",
+      type: "raster",
+      source: "satellite",
+      paint: {
+        "raster-opacity": SATELLITE_OPACITY,
+      },
+    });
+
+    for (const layer of style.layers) {
+      if (layer.source !== "openmaptiles") continue;
+
+      const isLandWaterLayer =
+        layer.id.startsWith("landcover_") ||
+        layer.id.startsWith("landuse_") ||
+        layer.id.startsWith("water") ||
+        layer.id.startsWith("park") ||
+        layer.id === "landcover_sand" ||
+        layer.id.startsWith("aeroway_");
+
+      if (!isLandWaterLayer) continue;
+
+      if (layer.type === "fill") {
+        const existing = layer.paint && layer.paint["fill-opacity"];
+        layer.paint = layer.paint || {};
+        layer.paint["fill-opacity"] =
+          existing !== undefined
+            ? ["*", existing, SATELLITE_LANDCOVER_OPACITY]
+            : SATELLITE_LANDCOVER_OPACITY;
+      } else if (layer.type === "line") {
+        const existing = layer.paint && layer.paint["line-opacity"];
+        layer.paint = layer.paint || {};
+        layer.paint["line-opacity"] =
+          existing !== undefined
+            ? ["*", existing, SATELLITE_LANDCOVER_OPACITY]
+            : SATELLITE_LANDCOVER_OPACITY;
+      }
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 2. Terrain & hillshade
+  // ═════════════════════════════════════════════════════════════════════
+
   if (TERRAIN) {
     style.sources.terrainSource = {
       type: "raster-dem",
@@ -536,17 +676,18 @@ async function build() {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 2. Contours — maplibre-contour plugin (GPU-generated, client-side)
-  // ═══════════════════════════════════════════════════════════════════════
-  // The plugin is registered at runtime by scripts/contours.js's
-  // setupContours(). It intercepts dem-contour:// tile requests and
-  // generates contour vector tiles from raw DEM data in a Web Worker.
+  // ═════════════════════════════════════════════════════════════════════
+  // 3. Contours
+  // ═════════════════════════════════════════════════════════════════════
+  // Two modes selected by CONTOURS_USE_PLUGIN:
   //
-  // Labels always use metric suffix ('m') at build time. For imperial
-  // units, setupContours(style, 'imperial') patches the style at
-  // runtime (both the multiplier in the URL and the label suffix).
-  // ═══════════════════════════════════════════════════════════════════════
+  // Plugin mode (true) — maplibre-contour plugin (GPU-generated, client-side).
+  //   The plugin is registered at runtime by scripts/contours.js. It
+  //   intercepts dem-contour:// tile requests and generates contour vector
+  //   tiles from raw DEM data in a Web Worker.
+  //
+  // PBF mode (false) — standard Mapbox Vector Tiles served as
+  //   application/x-protobuf. No client-side contour generation.
 
   if (CONTOURS_USE_PLUGIN) {
     const url = buildContourTileUrl(
@@ -564,7 +705,6 @@ async function build() {
 
     style.layers.push(
       {
-        // Minor contour lines (level = 0)
         id: "contour-lines",
         type: "line",
         source: "contour-source",
@@ -579,7 +719,6 @@ async function build() {
         },
       },
       {
-        // Index contour lines (level > 0) — thicker, darker, labelled
         id: "contour-lines-index",
         type: "line",
         source: "contour-source",
@@ -594,8 +733,6 @@ async function build() {
         },
       },
       {
-        // Contour labels — on index lines only
-        // Runtime: setupContours(style, 'imperial') patches 'm' → 'ft'
         id: "contour-labels",
         type: "symbol",
         source: "contour-source",
@@ -608,11 +745,7 @@ async function build() {
           "symbol-avoid-edges": true,
           "text-rotation-alignment": "map",
           "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 14, 12],
-          "text-field": [
-            "concat",
-            ["number-format", ["get", "ele"], { "max-fraction-digits": 0 }],
-            "m",
-          ],
+          "text-field": CONTOUR_LABEL_EXPR,
           "text-font": ["Noto Sans Regular"],
           "text-padding": 0,
         },
@@ -625,27 +758,7 @@ async function build() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 3. Contours — PBF vector tiles (server-generated)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Standard Mapbox Vector Tiles served as application/x-protobuf.
-  // No client-side contour generation — the server pre-generates
-  // contour lines from DEM data.
-  //
-  // Labels always use metric at build time. For imperial units, the
-  // runtime scripts/contours.js patches the expression before the map
-  // loads the style (same pattern as the plugin mode).
-  // ═══════════════════════════════════════════════════════════════════════
-
   if (!CONTOURS_USE_PLUGIN) {
-    // Label expression — always metric at build time. Runtime
-    // scripts/contours.js patches to imperial when needed.
-    const labelExpr = [
-      "concat",
-      ["number-format", ["round", ["get", "ele"]], {}],
-      "m",
-    ];
-
     style.sources["contour-source"] = {
       type: "vector",
       minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
@@ -655,7 +768,6 @@ async function build() {
 
     style.layers.push(
       {
-        // Minor contour lines (ele not divisible by 100)
         id: "contour-lines",
         type: "line",
         source: "contour-source",
@@ -670,7 +782,6 @@ async function build() {
         },
       },
       {
-        // Index contour lines (ele divisible by 100) — thicker, darker, labelled
         id: "contour-lines-index",
         type: "line",
         source: "contour-source",
@@ -685,9 +796,6 @@ async function build() {
         },
       },
       {
-        // Contour labels — on index lines only
-        // Labels always metric at build time. scripts/contours.js
-        // patches to imperial at runtime when needed.
         id: "contour-labels",
         type: "symbol",
         source: "contour-source",
@@ -700,7 +808,7 @@ async function build() {
           "symbol-avoid-edges": true,
           "text-rotation-alignment": "map",
           "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 14, 12],
-          "text-field": labelExpr,
+          "text-field": CONTOUR_LABEL_EXPR,
           "text-font": ["Noto Sans Regular"],
           "text-padding": 0,
         },
@@ -713,9 +821,10 @@ async function build() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // 4. Waymarked Trails
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
+
   for (const activity of WAYMARKED_ACTIVITIES) {
     const sourceId = `waymarked-${activity}`;
     style.sources[sourceId] = {
@@ -732,12 +841,9 @@ async function build() {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // 5. TrailSplits hiking network
-  // ═══════════════════════════════════════════════════════════════════════
-  // Vector tile overlay from the free TrailSplits API — hiking/cycling
-  // trail networks.
-  // Reference: https://trailsplits.com/api
+  // ═════════════════════════════════════════════════════════════════════
 
   if (TRAILSPLITS_HIKING_TRAILS) {
     style.sources["trailsplits-hiking"] = {
@@ -748,81 +854,23 @@ async function build() {
       attribution: "© TrailSplits",
     };
 
-    function makeTSLayer(network, tier) {
-      return {
-        id: `trailsplits-hiking-${network}`,
-        type: "line",
-        source: "trailsplits-hiking",
-        "source-layer": "hiking_network",
-        minzoom: Math.max(TRAILSPLITS_HIKING_MINZOOM, tier.minzoom || 0),
-        filter: ["==", ["get", "network"], network],
-        paint: {
-          "line-color": tier.color,
-          "line-opacity": tier.opacity,
-          "line-width": tier.width,
-        },
-      };
-    }
-
-    function makeTSCasing(network, tier) {
-      if (!tier.casing && !tier.halo) return null;
-      const bg = tier.casing || tier.halo;
-      return {
-        id: `trailsplits-hiking-${network}-${tier.casing ? "casing" : "halo"}`,
-        type: "line",
-        source: "trailsplits-hiking",
-        "source-layer": "hiking_network",
-        minzoom: Math.max(
-          TRAILSPLITS_HIKING_MINZOOM,
-          bg.minzoom || tier.minzoom || 0,
-        ),
-        filter: ["==", ["get", "network"], network],
-        paint: {
-          "line-color": bg.color,
-          "line-opacity": bg.opacity,
-          "line-width": bg.width,
-        },
-      };
-    }
-
-    const tsLayers = [];
-
-    for (const [network, tier] of Object.entries(ROUTE_TIERS)) {
-      const casing = makeTSCasing(network, tier);
-      if (casing) tsLayers.push(casing);
-      tsLayers.push(makeTSLayer(network, tier));
-    }
-
-    tsLayers.push({
-      id: "trailsplits-hiking-default",
-      type: "line",
-      source: "trailsplits-hiking",
-      "source-layer": "hiking_network",
-      minzoom: TRAILSPLITS_HIKING_MINZOOM,
-      filter: ["!", ["has", "network"]],
-      paint: {
-        "line-color": ROUTE_TIER_DEFAULT.color,
-        "line-opacity": ROUTE_TIER_DEFAULT.opacity,
-        "line-width": ROUTE_TIER_DEFAULT.width,
-      },
-    });
+    const tsLayers = createAllRouteLayers(
+      "trailsplits-hiking",
+      "hiking_network",
+      ROUTE_TIERS,
+      ROUTE_TIER_DEFAULT,
+      TRAILSPLITS_HIKING_MINZOOM,
+    );
 
     style.layers.push(...tsLayers);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // 6. Promoted liberty POIs — outdoor-relevant POIs at lower zoom
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Promotes selected POI classes from the OpenMapTiles `poi` source-layer
   // (toilets, restaurants, pubs, grocery stores, etc.) so they appear at
   // z12–14 instead of waiting for the regular poi_r1 layer at z15.
-  //
-  // Uses the same dynamic icon mapping as the base style — the POI `class`
-  // value determines the sprite icon. Only outdoor-relevant classes are
-  // included to keep the map readable at low zoom.
-  //
-  // Splice-inserted near the existing POI layers so it renders in the same
-  // stack position as the original POI layers.
 
   if (PROMOTE_LIBERTY_POI) {
     const promotedLayer = {
@@ -846,7 +894,7 @@ async function build() {
           ["get", "class"],
         ],
         "icon-size": 1,
-        "text-field": "", // no labels at low zoom to avoid clutter
+        "text-field": "",
       },
       paint: {
         "icon-opacity": 0.85,
@@ -861,16 +909,12 @@ async function build() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // 7. Outdoor POIs (external vector tiles)
-  // ═══════════════════════════════════════════════════════════════════════
-  // Vector tiles with outdoor points of interest (POIs) — huts,
-  // shelters, water, parking, viewpoints, mountain passes, etc.
+  // ═════════════════════════════════════════════════════════════════════
+  // Vector tiles with outdoor points of interest — huts, shelters, water,
+  // parking, viewpoints, mountain passes, campsites, etc.
   // Source-layer: 'outdoor_pois'.
-  //
-  // Switched via OUTDOOR_POI toggle. Source controlled by POI_USE_LOCAL:
-  //   true  → self-hosted Planetiler tiles (z8–16)
-  //   false → TrailSplits API (z12–14)
 
   if (OUTDOOR_POI) {
     style.sources["outdoor-poi"] = {
@@ -878,9 +922,10 @@ async function build() {
       tiles: [POI_TILE_URL],
       minzoom: POI_SOURCE_MINZOOM,
       maxzoom: POI_SOURCE_MAXZOOM,
-      attribution: POI_USE_LOCAL
-        ? "© OpenStreetMap contributors"
-        : "© TrailSplits",
+      attribution:
+        POI_SOURCE === "local"
+          ? "© OpenStreetMap contributors"
+          : "© TrailSplits",
     };
 
     style.layers.push({
@@ -964,95 +1009,42 @@ async function build() {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // 8. Outdoor routes (hiking route relations)
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with hiking route relations from OSM — line geometry
   // with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
-  //
-  // Switched via OUTDOOR_ROUTE toggle. Source controlled by ROUTE_USE_LOCAL:
-  //   true  → self-hosted Planetiler tiles (z8–14, source-layer: outdoor_routes)
-  //   false → TrailSplits API (z8–12, source-layer: hiking_network)
 
   if (OUTDOOR_ROUTE) {
-    const routeSourceLayer = ROUTE_USE_LOCAL
-      ? "outdoor_routes"
-      : "hiking_network";
+    const routeSourceLayer =
+      ROUTE_SOURCE === "local" ? "outdoor_routes" : "hiking_network";
 
     style.sources["outdoor-route"] = {
       type: "vector",
       tiles: [ROUTE_TILE_URL],
       minzoom: ROUTE_SOURCE_MINZOOM,
       maxzoom: ROUTE_SOURCE_MAXZOOM,
-      attribution: ROUTE_USE_LOCAL
-        ? "© OpenStreetMap contributors"
-        : "© TrailSplits",
+      attribution:
+        ROUTE_SOURCE === "local"
+          ? "© OpenStreetMap contributors"
+          : "© TrailSplits",
     };
 
-    // Helper: create a core line layer for a network tier
-    function makeRouteLayer(network, tier) {
-      return {
-        id: `outdoor-route-${network}`,
-        type: "line",
-        source: "outdoor-route",
-        "source-layer": routeSourceLayer,
-        minzoom: tier.minzoom,
-        filter: ["==", ["get", "network"], network],
-        paint: {
-          "line-color": tier.color,
-          "line-opacity": tier.opacity,
-          "line-width": tier.width,
-        },
-      };
-    }
-
-    // Helper: create a casing/halo background layer for a network tier
-    function makeRouteCasing(network, tier) {
-      if (!tier.casing && !tier.halo) return null;
-      const bg = tier.casing || tier.halo;
-      return {
-        id: `outdoor-route-${network}-${tier.casing ? "casing" : "halo"}`,
-        type: "line",
-        source: "outdoor-route",
-        "source-layer": routeSourceLayer,
-        minzoom: bg.minzoom || tier.minzoom,
-        filter: ["==", ["get", "network"], network],
-        paint: {
-          "line-color": bg.color,
-          "line-opacity": bg.opacity,
-          "line-width": bg.width,
-        },
-      };
-    }
-
-    const routeLayers = [];
-
-    for (const [network, tier] of Object.entries(ROUTE_TIERS)) {
-      const casing = makeRouteCasing(network, tier);
-      if (casing) routeLayers.push(casing);
-      routeLayers.push(makeRouteLayer(network, tier));
-    }
-
-    routeLayers.push({
-      id: "outdoor-route-default",
-      type: "line",
-      source: "outdoor-route",
-      "source-layer": routeSourceLayer,
-      minzoom: ROUTE_TIER_DEFAULT.minzoom,
-      filter: ["!", ["has", "network"]],
-      paint: {
-        "line-color": ROUTE_TIER_DEFAULT.color,
-        "line-opacity": ROUTE_TIER_DEFAULT.opacity,
-        "line-width": ROUTE_TIER_DEFAULT.width,
-      },
-    });
+    const routeLayers = createAllRouteLayers(
+      "outdoor-route",
+      routeSourceLayer,
+      ROUTE_TIERS,
+      ROUTE_TIER_DEFAULT,
+    );
 
     style.layers.push(...routeLayers);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 9. Activity overlays (inserted before poi_r20)
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
+  // 9. Activity overlays (MTB / bicycle)
+  // ═════════════════════════════════════════════════════════════════════
+  // Inserted before poi_r20 in the layer stack.
+
   if (MTB_SCALE) {
     const mtbLayer = {
       id: "mtb_scale-casing",
@@ -1119,9 +1111,10 @@ async function build() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // 9. Path & trail styling
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
+  // 10. Path & trail styling
+  // ═════════════════════════════════════════════════════════════════════
+
   if (PROMOTE_PATHS) {
     const pathLayer = style.layers.find((l) => l.id === "road_path_pedestrian");
     if (pathLayer) {
@@ -1154,10 +1147,11 @@ async function build() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
   // Write — substitute tile domain placeholders at build time so the
   // runtime app doesn't need to.
-  // ═══════════════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════════════
+
   const builtStyle = finalizeStyle(style);
   writeFileSync(
     OUTDOOR_STYLE,

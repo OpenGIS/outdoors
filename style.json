@@ -26,27 +26,27 @@
       "type": "vector",
       "minzoom": 9,
       "tiles": [
-        "dem-contour://{z}/{x}/{y}?buffer=1&contourLayer=contours&elevationKey=ele&extent=4096&levelKey=level&overzoom=1&thresholds=9*500*2500~11*200*1000~12*100*500~14*50*200~15*20*100"
+        "https://api.trailsplits.com/tiles/v1/contours/current/{z}/{x}/{y}.pbf"
       ],
-      "maxzoom": 20
+      "maxzoom": 12
     },
     "outdoor-poi": {
       "type": "vector",
       "tiles": [
-        "http://localhost:11002/pois/{z}/{x}/{y}.pbf"
+        "https://api.trailsplits.com/tiles/v1/outdoor-pois/current/{z}/{x}/{y}.pbf"
       ],
       "minzoom": 12,
-      "maxzoom": 18,
-      "attribution": "© OpenStreetMap contributors"
+      "maxzoom": 14,
+      "attribution": "© TrailSplits"
     },
     "outdoor-route": {
       "type": "vector",
       "tiles": [
-        "http://localhost:11002/routes/{z}/{x}/{y}.pbf"
+        "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf"
       ],
       "minzoom": 8,
-      "maxzoom": 14,
-      "attribution": "© OpenStreetMap contributors"
+      "maxzoom": 12,
+      "attribution": "© TrailSplits"
     }
   },
   "sprite": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
@@ -6180,10 +6180,14 @@
       "minzoom": 9,
       "maxzoom": 20,
       "filter": [
-        "==",
+        "!=",
         [
-          "get",
-          "level"
+          "%",
+          [
+            "get",
+            "ele"
+          ],
+          100
         ],
         0
       ],
@@ -6226,10 +6230,14 @@
       "minzoom": 9,
       "maxzoom": 20,
       "filter": [
-        ">",
+        "==",
         [
-          "get",
-          "level"
+          "%",
+          [
+            "get",
+            "ele"
+          ],
+          100
         ],
         0
       ],
@@ -6272,10 +6280,14 @@
       "minzoom": 9,
       "maxzoom": 20,
       "filter": [
-        ">",
+        "==",
         [
-          "get",
-          "level"
+          "%",
+          [
+            "get",
+            "ele"
+          ],
+          100
         ],
         0
       ],
@@ -6301,12 +6313,13 @@
           [
             "number-format",
             [
-              "get",
-              "ele"
+              "round",
+              [
+                "get",
+                "ele"
+              ]
             ],
-            {
-              "max-fraction-digits": 0
-            }
+            {}
           ],
           "m"
         ],
@@ -6415,7 +6428,7 @@
       "id": "outdoor-route-iwn",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 8,
       "filter": [
         "==",
@@ -6449,7 +6462,7 @@
       "id": "outdoor-route-nwn",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 8,
       "filter": [
         "==",
@@ -6483,7 +6496,7 @@
       "id": "outdoor-route-rwn-casing",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 10,
       "filter": [
         "==",
@@ -6515,7 +6528,7 @@
       "id": "outdoor-route-rwn",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 10,
       "filter": [
         "==",
@@ -6547,7 +6560,7 @@
       "id": "outdoor-route-lwn-halo",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 12,
       "filter": [
         "==",
@@ -6567,7 +6580,7 @@
       "id": "outdoor-route-lwn",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 12,
       "filter": [
         "==",
@@ -6587,7 +6600,7 @@
       "id": "outdoor-route-default",
       "type": "line",
       "source": "outdoor-route",
-      "source-layer": "outdoor_routes",
+      "source-layer": "hiking_network",
       "minzoom": 12,
       "filter": [
         "!",

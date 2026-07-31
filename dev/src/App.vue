@@ -1,12 +1,12 @@
 <script setup>
 import { ref, shallowRef, computed, watch, onMounted } from "vue";
-import { setupContours } from "../scripts/contours.js";
+import { setupContours } from "../../scripts/contours.js";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MaplibreCompare from "@maplibre/maplibre-gl-compare";
 import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
 
-import outdoorStyleRaw from "../style.json?raw";
+import outdoorStyleRaw from "../../style.json?raw";
 import rawProviders from "./providers.json";
 import ProviderSelect from "./components/ProviderSelect.vue";
 
@@ -35,25 +35,37 @@ const sections = computed(() => {
 
   if (libertyStyle.value) {
     result.push({
-      label: "Local Vector",
+      label: "Local",
       providers: [
         { key: "liberty", label: "Liberty", style: libertyStyle.value },
       ],
     });
   }
 
-  if (providerConfig.value.remoteVector?.length) {
-    result.push({
-      label: "Remote Vector",
-      providers: providerConfig.value.remoteVector,
-    });
+  // Merge remote vectors and rasters, group by category
+  const allRemote = [];
+  for (const p of providerConfig.value.remoteVector || []) {
+    allRemote.push({ ...p });
+  }
+  for (const p of providerConfig.value.remoteRaster || []) {
+    allRemote.push({ ...p });
   }
 
-  if (providerConfig.value.remoteRaster?.length) {
-    result.push({
-      label: "Remote Raster",
-      providers: providerConfig.value.remoteRaster,
-    });
+  // Group by category
+  const grouped = {};
+  for (const p of allRemote) {
+    const cat = p.category || "Other";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(p);
+  }
+
+  // Sort categories alphabetically, then providers by label
+  const sortedCats = Object.keys(grouped).sort((a, b) =>
+    a.localeCompare(b),
+  );
+  for (const cat of sortedCats) {
+    grouped[cat].sort((a, b) => a.label.localeCompare(b.label));
+    result.push({ label: cat, providers: grouped[cat] });
   }
 
   return result;

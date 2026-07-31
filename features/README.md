@@ -102,7 +102,7 @@ java -cp .planetiler/planetiler.jar scripts/HikingRouteOverlay.java \
 
 ## Usage in style
 
-The outdoor build script (`scripts/build.mjs`) uses local URLs when `POI_USE_LOCAL` / `OUTDOOR_ROUTE` are `true`:
+The outdoor build script (`scripts/build.mjs`) uses local URLs when `POI_SOURCE === "local"` and `OUTDOOR_ROUTE` is `true`:
 
 ```js
 const POI_LOCAL_URL = 'http://localhost:11002/pois/{z}/{x}/{y}.pbf'

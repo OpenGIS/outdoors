@@ -37,9 +37,9 @@ Two mutually exclusive implementations, toggled by `CONTOURS_USE_PLUGIN`:
   - Labels are metric at build time; runtime `setupContours(style, 'imperial')` in [`scripts/contours.js`](scripts/contours.js) patches to imperial
   - Registered at runtime by `registerContourPlugin()` before the map parses the style
 
-- **PBF mode** (`CONTOURS_USE_PLUGIN = false`) — server-generated PBF vector tiles served as standard Mapbox Vector Tiles. Source controlled by `CONTOUR_PBF_USE_LOCAL`:
-  - `true` (default) — self-hosted **[contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)** (see [`contours/`](contours/README.md)), serves up to z14
-  - `false` — **[TrailSplits contour API](https://trailsplits.com/api)** (free, no key, caps at z12)
+- **PBF mode** (`CONTOURS_USE_PLUGIN = false`) — server-generated PBF vector tiles served as standard Mapbox Vector Tiles. Source controlled by `CONTOUR_PBF_SOURCE`:
+  - `"local"` — self-hosted **[contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)** (see [`contours/`](contours/README.md)), serves up to z14
+  - `"trailsplits"` (default) — **[TrailSplits contour API](https://trailsplits.com/api)** (free, no key, caps at z12)
 
 > [!NOTE]
 > Both modes share the same styling (line widths, opacities, colours) defined in `scripts/build.mjs`. Contour labels always use metric at build time — `setupContours(style, 'imperial')` handles the imperial conversion at runtime for both modes.
@@ -69,9 +69,9 @@ No external source — these are POI classes drawn from Liberty's existing **Ope
 
 - **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, and more.
   - Source-layer: `outdoor_pois`
-  - Source controlled by `POI_USE_LOCAL`:
-    - `true` (default) — self-hosted **[Planetiler](https://github.com/onthegomap/planetiler) tiles** (see [`features/`](features/README.md)), z12–18
-    - `false` — **[TrailSplits outdoor POI API](https://trailsplits.com/api)** (free, no key, z12–14)
+  - Source controlled by `POI_SOURCE`:
+    - `"local"` — self-hosted **[Planetiler](https://github.com/onthegomap/planetiler) tiles** (see [`features/`](features/README.md)), z12–18
+    - `"trailsplits"` (default) — **[TrailSplits outdoor POI API](https://trailsplits.com/api)** (free, no key, z12–14)
   - Icons mapped from the Maki sprite set used by Liberty
   - Toggle: `OUTDOOR_POI` (default `true`)
 
@@ -79,9 +79,9 @@ No external source — these are POI classes drawn from Liberty's existing **Ope
 
 - **Vector tiles** of hiking route relations from OpenStreetMap, with line geometry and network classification (iwn/nwn/rwn/lwn). Coloured per network tier using the Waymarked Trails colour scheme, with casing/halo layers for regional and local routes.
   - Source-layer: `outdoor_routes` (self-hosted) or `hiking_network` (TrailSplits)
-  - Source controlled by `ROUTE_USE_LOCAL`:
-    - `true` (default) — self-hosted Planetiler tiles (see [`features/`](features/README.md)), z8–14
-    - `false` — **[TrailSplits hiking network API](https://trailsplits.com/api)** (free, no key, z8–12)
+  - Source controlled by `ROUTE_SOURCE`:
+    - `"local"` — self-hosted Planetiler tiles (see [`features/`](features/README.md)), z8–14
+    - `"trailsplits"` (default) — **[TrailSplits hiking network API](https://trailsplits.com/api)** (free, no key, z8–12)
   - Toggle: `OUTDOOR_ROUTE` (default `true`)
 
 ### MTB scale & bicycle access
@@ -118,13 +118,22 @@ Opens the compare app at [localhost:11000](http://localhost:11000) — a compari
 
 ### Scripts
 
-| Command                | Description                                                                                     |
-| ---------------------- | ----------------------------------------------------------------------------------------------- |
-| `npm run dev`          | Vite dev server + file watcher. HMR on `style.json` change; auto-rebuild on `build.mjs` changes |
-| `npm run build`        | One-shot build `style.json` from `build.mjs` feature flags                                      |
-| `npm run watch:build`  | Standalone file watcher (for separate terminal)                                                 |
+| Command                | Description                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm run dev`          | Vite dev server + file watcher. HMR on `style.json` change; auto-rebuild on `build.mjs` changes         |
+| `npm run build`        | One-shot build `style.json` from `build.mjs` feature flags                                              |
+| `npm run watch:build`  | Standalone file watcher (for separate terminal)                                                         |
 | `npm run demo:build`   | Build the compare app demo to `demo/` (`vite build`), then copy `dev/liberty-processed.json` to `demo/` |
-| `npm run demo:preview` | Preview the production build (`vite preview`)                                                   |
+| `npm run demo:preview` | Preview the production build (`vite preview`)                                                           |
+
+### Build Verification
+
+**Run both builds** after any code change to catch import/resolve errors early:
+
+```bash
+npm run build        # builds style.json from build.mjs feature flags
+npm run demo:build   # builds the Vue compare app to demo/ via Vite
+```
 
 ### Self-hosted tile servers
 
@@ -133,7 +142,7 @@ Two sub-projects provide local vector tile serving for development:
 - **[`contours/`](contours/README.md)** — self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server) for PBF contour mode (port 11001)
 - **[`features/`](features/README.md)** — self-hosted [Planetiler](https://github.com/onthegomap/planetiler) tiles for outdoor POIs and hiking routes (port 11002)
 
-Set `POI_USE_LOCAL = true`, `ROUTE_USE_LOCAL = true`, or `CONTOUR_PBF_USE_LOCAL = true` in `scripts/build.mjs` to use them.
+Set `POI_SOURCE = "local"`, `ROUTE_SOURCE = "local"`, or `CONTOUR_PBF_SOURCE = "local"` in `scripts/build.mjs` to use them.
 
 ### Project structure
 
@@ -172,11 +181,11 @@ Set `POI_USE_LOCAL = true`, `ROUTE_USE_LOCAL = true`, or `CONTOUR_PBF_USE_LOCAL 
 
 The compare app (`dev/src/App.vue`) lets you switch the left-hand reference map between multiple providers, configured in [`dev/src/providers.json`](dev/src/providers.json). Providers are grouped into three categories:
 
-| Category | Description | Examples |
-|----------|-------------|---------|
-| **Local Vector** | Liberty — built from `dev/liberty-processed.json`, generated by the build script | Liberty |
-| **Remote Vector** | Fetched via `styleUrl` at runtime | Thunderforest Atlas, MapTiler Outdoor |
-| **Remote Raster** | Inline style definitions with raster tile URLs | OpenTopoMap, Thunderforest Outdoors |
+| Category          | Description                                                                      | Examples                              |
+| ----------------- | -------------------------------------------------------------------------------- | ------------------------------------- |
+| **Local Vector**  | Liberty — built from `dev/liberty-processed.json`, generated by the build script | Liberty                               |
+| **Remote Vector** | Fetched via `styleUrl` at runtime                                                | Thunderforest Atlas, MapTiler Outdoor |
+| **Remote Raster** | Inline style definitions with raster tile URLs                                   | OpenTopoMap, Thunderforest Outdoors   |
 
 ### API key management
 

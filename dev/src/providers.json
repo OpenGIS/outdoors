@@ -1,22 +1,340 @@
 {
   "remoteVector": [
     {
-      "key": "thunderforest-atlas",
-      "label": "Thunderforest Atlas",
-      "apiKey": true,
-      "styleUrl": "https://api.thunderforest.com/styles/atlas/style.json?apikey={apiKey}"
+      "key": "openfreemap-bright",
+      "label": "OpenFreeMap Bright",
+      "category": "Misc",
+      "styleUrl": "https://tiles.openfreemap.org/styles/bright"
     },
     {
-      "key": "maptiler",
+      "key": "openfreemap-dark",
+      "label": "OpenFreeMap Dark",
+      "category": "Misc",
+      "styleUrl": "https://tiles.openfreemap.org/styles/dark"
+    },
+    {
+      "key": "openfreemap-fiord",
+      "label": "OpenFreeMap Fiord",
+      "category": "Misc",
+      "styleUrl": "https://tiles.openfreemap.org/styles/fiord"
+    },
+    {
+      "key": "openfreemap-liberty",
+      "label": "OpenFreeMap Liberty",
+      "category": "Misc",
+      "styleUrl": "https://tiles.openfreemap.org/styles/liberty"
+    },
+    {
+      "key": "openfreemap-positron",
+      "label": "OpenFreeMap Positron",
+      "category": "Misc",
+      "styleUrl": "https://tiles.openfreemap.org/styles/positron"
+    },
+    {
+      "key": "maptiler-outdoor",
       "label": "MapTiler Outdoor",
+      "category": "Outdoor",
       "apiKey": true,
       "styleUrl": "https://api.maptiler.com/maps/outdoor-v4/style.json?key={apiKey}"
+    },
+    {
+      "key": "maptiler-satellite",
+      "label": "MapTiler Satellite",
+      "category": "Satellite",
+      "apiKey": true,
+      "styleUrl": "https://api.maptiler.com/maps/satellite/style.json?key={apiKey}"
+    },
+    {
+      "key": "maptiler-topo",
+      "label": "MapTiler Topo",
+      "category": "Topo",
+      "apiKey": true,
+      "styleUrl": "https://api.maptiler.com/maps/topo-v2/style.json?key={apiKey}"
+    },
+    {
+      "key": "thunderforest-atlas",
+      "label": "Thunderforest Atlas",
+      "category": "Outdoor",
+      "apiKey": true,
+      "styleUrl": "https://api.thunderforest.com/styles/atlas/style.json?apikey={apiKey}"
     }
   ],
   "remoteRaster": [
     {
+      "key": "cyclosm",
+      "label": "CyclOSM",
+      "category": "Sports",
+      "style": {
+        "version": 8,
+        "name": "CyclOSM",
+        "sources": {
+          "cyclosm": {
+            "type": "raster",
+            "tiles": [
+            "https://a.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+            "https://b.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+            "https://c.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png"
+          ],
+            "tileSize": 256,
+            "attribution": "<a href=\"https://github.com/cyclosm/cyclosm-cartocss-style/releases\" title=\"CyclOSM - Open Bicycle render\">CyclOSM</a> | Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+          }
+        },
+        "layers": [
+          {
+            "id": "cyclosm-raster",
+            "type": "raster",
+            "source": "cyclosm",
+            "minzoom": 0,
+            "maxzoom": 20
+          }
+        ]
+      }
+    },
+    {
+      "key": "opencyclemap",
+      "label": "OpenCycleMap",
+      "category": "Sports",
+      "style": {
+        "version": 8,
+        "name": "OpenCycleMap",
+        "sources": {
+          "opencyclemap": {
+            "type": "raster",
+            "tiles": [
+              "https://a.tile.thunderforest.com/cycle/{z}/{x}/{y}.png",
+              "https://b.tile.thunderforest.com/cycle/{z}/{x}/{y}.png",
+              "https://c.tile.thunderforest.com/cycle/{z}/{x}/{y}.png"
+            ],
+            "tileSize": 256,
+            "attribution": "&copy; <a href=\"https://www.opencyclemap.org/\">OpenCycleMap</a> | &copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM Contributors</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "opencyclemap-raster",
+            "type": "raster",
+            "source": "opencyclemap",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "esri-natgeo",
+      "label": "Esri National Geographic",
+      "category": "Outdoor",
+      "style": {
+        "version": 8,
+        "name": "Esri National Geographic",
+        "sources": {
+          "esri-natgeo": {
+            "type": "raster",
+            "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles &copy; Esri &mdash; National Geographic, Esri, DeLorme, NAVTEQ, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, iPC"
+          }
+        },
+        "layers": [
+          {
+            "id": "esri-natgeo-raster",
+            "type": "raster",
+            "source": "esri-natgeo",
+            "minzoom": 0,
+            "maxzoom": 16
+          }
+        ]
+      }
+    },
+    {
+      "key": "esri-shadedrelief",
+      "label": "Esri Shaded Relief",
+      "category": "Terrain",
+      "style": {
+        "version": 8,
+        "name": "Esri Shaded Relief",
+        "sources": {
+          "esri-shadedrelief": {
+            "type": "raster",
+            "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles &copy; Esri &mdash; Source: Esri"
+          }
+        },
+        "layers": [
+          {
+            "id": "esri-shadedrelief-raster",
+            "type": "raster",
+            "source": "esri-shadedrelief",
+            "minzoom": 0,
+            "maxzoom": 13
+          }
+        ]
+      }
+    },
+    {
+      "key": "esri-terrain",
+      "label": "Esri Terrain",
+      "category": "Terrain",
+      "style": {
+        "version": 8,
+        "name": "Esri Terrain",
+        "sources": {
+          "esri-terrain": {
+            "type": "raster",
+            "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS"
+          }
+        },
+        "layers": [
+          {
+            "id": "esri-terrain-raster",
+            "type": "raster",
+            "source": "esri-terrain",
+            "minzoom": 0,
+            "maxzoom": 13
+          }
+        ]
+      }
+    },
+    {
+      "key": "esri-worldimagery",
+      "label": "Esri World Imagery",
+      "category": "Satellite",
+      "style": {
+        "version": 8,
+        "name": "Esri World Imagery",
+        "sources": {
+          "esri-worldimagery": {
+            "type": "raster",
+            "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+          }
+        },
+        "layers": [
+          {
+            "id": "esri-worldimagery-raster",
+            "type": "raster",
+            "source": "esri-worldimagery",
+            "minzoom": 0,
+            "maxzoom": 20
+          }
+        ]
+      }
+    },
+    {
+      "key": "esri-worldtopo",
+      "label": "Esri World Topo",
+      "category": "Topo",
+      "style": {
+        "version": 8,
+        "name": "Esri World Topo",
+        "sources": {
+          "esri-worldtopo": {
+            "type": "raster",
+            "tiles": ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community"
+          }
+        },
+        "layers": [
+          {
+            "id": "esri-worldtopo-raster",
+            "type": "raster",
+            "source": "esri-worldtopo",
+            "minzoom": 0,
+            "maxzoom": 20
+          }
+        ]
+      }
+    },
+
+    {
+      "key": "mtbmap",
+      "label": "MtbMap",
+      "category": "Sports",
+      "style": {
+        "version": 8,
+        "name": "MtbMap",
+        "sources": {
+          "mtbmap": {
+            "type": "raster",
+            "tiles": ["http://tile.mtbmap.cz/mtbmap_tiles/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors &amp; USGS"
+          }
+        },
+        "layers": [
+          {
+            "id": "mtbmap-raster",
+            "type": "raster",
+            "source": "mtbmap",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "openseamap",
+      "label": "OpenSeaMap",
+      "category": "Sports",
+      "style": {
+        "version": 8,
+        "name": "OpenSeaMap",
+        "sources": {
+          "openseamap": {
+            "type": "raster",
+            "tiles": ["https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"http://www.openseamap.org\">OpenSeaMap</a> contributors"
+          }
+        },
+        "layers": [
+          {
+            "id": "openseamap-raster",
+            "type": "raster",
+            "source": "openseamap",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "opensnowmap-pistes",
+      "label": "OpenSnowMap Pistes",
+      "category": "Sports",
+      "style": {
+        "version": 8,
+        "name": "OpenSnowMap Pistes",
+        "sources": {
+          "opensnowmap-pistes": {
+            "type": "raster",
+            "tiles": ["https://tiles.opensnowmap.org/pistes/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "minzoom": 9,
+            "maxzoom": 18,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors & ODbL, &copy; <a href=\"https://www.opensnowmap.org/iframes/data.html\">www.opensnowmap.org</a> <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "opensnowmap-pistes-raster",
+            "type": "raster",
+            "source": "opensnowmap-pistes",
+            "minzoom": 9,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
       "key": "opentopomap",
       "label": "OpenTopoMap",
+      "category": "Topo",
       "style": {
         "version": 8,
         "name": "OpenTopoMap",
@@ -34,7 +352,62 @@
             "type": "raster",
             "source": "opentopomap",
             "minzoom": 0,
-            "maxzoom": 18
+            "maxzoom": 17
+          }
+        ]
+      }
+    },
+    {
+      "key": "osm-mapnik",
+      "label": "OpenStreetMap",
+      "category": "Misc",
+      "style": {
+        "version": 8,
+        "name": "OpenStreetMap",
+        "sources": {
+          "osm-mapnik": {
+            "type": "raster",
+            "tiles": ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "minzoom": 0,
+            "maxzoom": 19,
+            "attribution": "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+          }
+        },
+        "layers": [
+          {
+            "id": "osm-mapnik-raster",
+            "type": "raster",
+            "source": "osm-mapnik",
+            "minzoom": 0,
+            "maxzoom": 19
+          }
+        ]
+      }
+    },
+    {
+      "key": "thunderforest-landscape",
+      "label": "Thunderforest Landscape",
+      "category": "Outdoor",
+      "apiKey": true,
+      "style": {
+        "version": 8,
+        "name": "Thunderforest Landscape",
+        "sources": {
+          "thunderforest-landscape": {
+            "type": "raster",
+            "tiles": ["https://api.thunderforest.com/landscape/{z}/{x}/{y}@2x.png?apikey={apiKey}"],
+            "tileSize": 256,
+            "attribution": "&copy; <a href=\"https://www.thunderforest.com\">Thunderforest</a> | &copy; <a href=\"https://www.openstreetmap.org/copyright\">OSM Contributors</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "thunderforest-landscape-raster",
+            "type": "raster",
+            "source": "thunderforest-landscape",
+            "minzoom": 0,
+            "maxzoom": 22
           }
         ]
       }
@@ -42,6 +415,7 @@
     {
       "key": "thunderforestoutdoors",
       "label": "Thunderforest Outdoors",
+      "category": "Outdoor",
       "apiKey": true,
       "style": {
         "version": 8,
@@ -59,6 +433,240 @@
             "id": "thunderforestoutdoors-raster",
             "type": "raster",
             "source": "thunderforestoutdoors",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "usgs-imagery",
+      "label": "USGS Imagery",
+      "category": "Satellite",
+      "style": {
+        "version": 8,
+        "name": "USGS Imagery",
+        "sources": {
+          "usgs-imagery": {
+            "type": "raster",
+            "tiles": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles courtesy of the <a href=\"https://usgs.gov/\">U.S. Geological Survey</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "usgs-imagery-raster",
+            "type": "raster",
+            "source": "usgs-imagery",
+            "minzoom": 0,
+            "maxzoom": 20
+          }
+        ]
+      }
+    },
+    {
+      "key": "usgs-imagerytopo",
+      "label": "USGS Imagery Topo",
+      "category": "Topo",
+      "style": {
+        "version": 8,
+        "name": "USGS Imagery Topo",
+        "sources": {
+          "usgs-imagerytopo": {
+            "type": "raster",
+            "tiles": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles courtesy of the <a href=\"https://usgs.gov/\">U.S. Geological Survey</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "usgs-imagerytopo-raster",
+            "type": "raster",
+            "source": "usgs-imagerytopo",
+            "minzoom": 0,
+            "maxzoom": 20
+          }
+        ]
+      }
+    },
+    {
+      "key": "usgs-ustopo",
+      "label": "USGS Topo",
+      "category": "Topo",
+      "style": {
+        "version": 8,
+        "name": "USGS Topo",
+        "sources": {
+          "usgs-ustopo": {
+            "type": "raster",
+            "tiles": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}"],
+            "tileSize": 256,
+            "attribution": "Tiles courtesy of the <a href=\"https://usgs.gov/\">U.S. Geological Survey</a>"
+          }
+        },
+        "layers": [
+          {
+            "id": "usgs-ustopo-raster",
+            "type": "raster",
+            "source": "usgs-ustopo",
+            "minzoom": 0,
+            "maxzoom": 20
+          }
+        ]
+      }
+    },
+    {
+      "key": "wmt-cycling",
+      "label": "Waymarked Trails Cycling",
+      "category": "Waymarked Trails",
+      "style": {
+        "version": 8,
+        "name": "Waymarked Trails Cycling",
+        "sources": {
+          "wmt-cycling": {
+            "type": "raster",
+            "tiles": ["https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors | Map style: &copy; <a href=\"https://waymarkedtrails.org\">waymarkedtrails.org</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "wmt-cycling-raster",
+            "type": "raster",
+            "source": "wmt-cycling",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "wmt-hiking",
+      "label": "Waymarked Trails Hiking",
+      "category": "Waymarked Trails",
+      "style": {
+        "version": 8,
+        "name": "Waymarked Trails Hiking",
+        "sources": {
+          "wmt-hiking": {
+            "type": "raster",
+            "tiles": ["https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors | Map style: &copy; <a href=\"https://waymarkedtrails.org\">waymarkedtrails.org</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "wmt-hiking-raster",
+            "type": "raster",
+            "source": "wmt-hiking",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "wmt-mtb",
+      "label": "Waymarked Trails MTB",
+      "category": "Waymarked Trails",
+      "style": {
+        "version": 8,
+        "name": "Waymarked Trails MTB",
+        "sources": {
+          "wmt-mtb": {
+            "type": "raster",
+            "tiles": ["https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors | Map style: &copy; <a href=\"https://waymarkedtrails.org\">waymarkedtrails.org</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "wmt-mtb-raster",
+            "type": "raster",
+            "source": "wmt-mtb",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "wmt-riding",
+      "label": "Waymarked Trails Riding",
+      "category": "Waymarked Trails",
+      "style": {
+        "version": 8,
+        "name": "Waymarked Trails Riding",
+        "sources": {
+          "wmt-riding": {
+            "type": "raster",
+            "tiles": ["https://tile.waymarkedtrails.org/riding/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors | Map style: &copy; <a href=\"https://waymarkedtrails.org\">waymarkedtrails.org</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "wmt-riding-raster",
+            "type": "raster",
+            "source": "wmt-riding",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "wmt-skating",
+      "label": "Waymarked Trails Skating",
+      "category": "Waymarked Trails",
+      "style": {
+        "version": 8,
+        "name": "Waymarked Trails Skating",
+        "sources": {
+          "wmt-skating": {
+            "type": "raster",
+            "tiles": ["https://tile.waymarkedtrails.org/skating/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors | Map style: &copy; <a href=\"https://waymarkedtrails.org\">waymarkedtrails.org</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "wmt-skating-raster",
+            "type": "raster",
+            "source": "wmt-skating",
+            "minzoom": 0,
+            "maxzoom": 18
+          }
+        ]
+      }
+    },
+    {
+      "key": "wmt-slopes",
+      "label": "Waymarked Trails Slopes",
+      "category": "Waymarked Trails",
+      "style": {
+        "version": 8,
+        "name": "Waymarked Trails Slopes",
+        "sources": {
+          "wmt-slopes": {
+            "type": "raster",
+            "tiles": ["https://tile.waymarkedtrails.org/slopes/{z}/{x}/{y}.png"],
+            "tileSize": 256,
+            "attribution": "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors | Map style: &copy; <a href=\"https://waymarkedtrails.org\">waymarkedtrails.org</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)"
+          }
+        },
+        "layers": [
+          {
+            "id": "wmt-slopes-raster",
+            "type": "raster",
+            "source": "wmt-slopes",
             "minzoom": 0,
             "maxzoom": 18
           }
