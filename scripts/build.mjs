@@ -70,7 +70,6 @@ const CACHE_DIR = resolve(__dirname, "..", ".cache");
 const CACHE_FILE = resolve(CACHE_DIR, "liberty.json");
 const CACHE_META_FILE = resolve(CACHE_DIR, "liberty-etag.txt");
 const CACHE_PROCESSED_FILE = resolve(CACHE_DIR, "liberty-processed.json");
-const DEV_PROCESSED_FILE = resolve(ROOT, "dev", "liberty-processed.json");
 
 const OFM_DOMAIN = "tiles.openfreemap.org";
 
@@ -560,13 +559,6 @@ async function fetchLiberty() {
     `[build] cached resolved liberty style to ${CACHE_PROCESSED_FILE}`,
   );
 
-  writeFileSync(
-    DEV_PROCESSED_FILE,
-    `${JSON.stringify(resolved, null, 2)}\n`,
-    "utf8",
-  );
-  console.log(`[build] copied resolved liberty style to ${DEV_PROCESSED_FILE}`);
-
   return JSON.parse(text);
 }
 
@@ -579,20 +571,13 @@ async function fetchLiberty() {
 async function build() {
   const liberty = await fetchLiberty();
 
-  // Always keep a fresh resolved copy for the dev app
+  // Always keep a fresh resolved copy in the cache
   const resolvedLiberty = finalizeStyle(liberty);
   writeFileSync(
     CACHE_PROCESSED_FILE,
     `${JSON.stringify(resolvedLiberty, null, 2)}\n`,
     "utf8",
   );
-
-  writeFileSync(
-    DEV_PROCESSED_FILE,
-    `${JSON.stringify(resolvedLiberty, null, 2)}\n`,
-    "utf8",
-  );
-  console.log(`[build] copied resolved liberty style to ${DEV_PROCESSED_FILE}`);
 
   const style = JSON.parse(JSON.stringify(liberty));
 

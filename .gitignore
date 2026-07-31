@@ -6,7 +6,6 @@ package-lock.json
 
 # Liberty style cache (downloaded from GitHub)
 .cache/
-dev/liberty-processed.json
 
 # Feature tiles (Planetiler)
 features/pois/outdoor_pois.pmtiles

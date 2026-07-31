@@ -17,30 +17,9 @@ const SELECTED_STORAGE = "outdoors_dev_selected";
 // ── Provider configuration from JSON ──
 const providerConfig = ref(rawProviders);
 
-// ── Liberty style (loaded async from dev cache) ──
-const libertyStyle = shallowRef(null);
-
-fetch("./liberty-processed.json")
-  .then((r) => r.json())
-  .then((style) => {
-    libertyStyle.value = style;
-  })
-  .catch(() => {
-    // Liberty cache not available — skip
-  });
-
 // ── Build sections from available providers ──
 const sections = computed(() => {
   const result = [];
-
-  if (libertyStyle.value) {
-    result.push({
-      label: "Local",
-      providers: [
-        { key: "liberty", label: "Liberty", style: libertyStyle.value },
-      ],
-    });
-  }
 
   // Merge remote vectors and rasters, group by category
   const allRemote = [];
@@ -132,7 +111,7 @@ watch(
       selectedKey.value = saved;
     } else {
       // Default to first provider that doesn't require an API key
-      // (e.g. Liberty or OpenTopoMap) to avoid key prompts on page load.
+      // (e.g. OpenTopoMap) to avoid key prompts on page load.
       const noKeyProvider = providers.find((p) => !p.apiKey);
       selectedKey.value = noKeyProvider?.key ?? providers[0].key;
     }
