@@ -99,21 +99,26 @@ async function ensureApiKey(provider) {
 }
 
 // ── Selected provider ──
+const DEFAULT_PROVIDER_KEY = "openfreemap-liberty";
+
 const selectedKey = ref(localStorage.getItem(SELECTED_STORAGE) || "");
 
 // Validate / initialise selection when providers become available
 watch(
   allProviders,
   (providers) => {
-    if (!providers.length || selectedKey.value) return;
+    if (!providers.length) return;
     const saved = localStorage.getItem(SELECTED_STORAGE);
     if (saved && providers.find((p) => p.key === saved)) {
       selectedKey.value = saved;
     } else {
-      // Default to first provider that doesn't require an API key
-      // (e.g. OpenTopoMap) to avoid key prompts on page load.
-      const noKeyProvider = providers.find((p) => !p.apiKey);
-      selectedKey.value = noKeyProvider?.key ?? providers[0].key;
+      // Default to OpenFreeMap Liberty; fall back to the first provider
+      // that doesn't require an API key (avoids key prompts on page load).
+      const defaultProvider =
+        providers.find((p) => p.key === DEFAULT_PROVIDER_KEY) ??
+        providers.find((p) => !p.apiKey) ??
+        providers[0];
+      selectedKey.value = defaultProvider?.key ?? "";
     }
   },
   { immediate: true },
