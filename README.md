@@ -28,18 +28,19 @@ Dependencies are listed in render order (bottom to top). Each entry includes the
 
 ### Contours
 
-Two mutually exclusive implementations, toggled by `CONTOURS_USE_PLUGIN`:
+Three mutually exclusive modes, selected by `CONTOURS_MODE` in `scripts/build.mjs`:
 
-- **Plugin mode** (`CONTOURS_USE_PLUGIN = true`, default) — **[maplibre-contour](https://github.com/onthegomap/maplibre-contour)** generates contour vector tiles on the GPU at render time from raw DEM tiles. No server-side contour processing needed.
+- **PBF mode** (`CONTOURS_MODE = "pbf"`, default) — server-generated PBF vector tiles served as standard Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), serves up to z14): `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf`
+  - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`); to test against a local contour server, edit it manually (see [`CONTOURS_PBF.md`](CONTOURS_PBF.md))
+
+- **Plugin mode** (`CONTOURS_MODE = "plugin"`) — **[maplibre-contour](https://github.com/onthegomap/maplibre-contour)** generates contour vector tiles on the GPU at render time from raw DEM tiles. No server-side contour processing needed.
 
   - DEM source: Mapterhorn (same DEM source as terrain)
   - Configurable zoom thresholds define contour intervals per zoom level
   - Labels are metric at build time; runtime `setupContours(style, 'imperial')` in [`scripts/contours.js`](scripts/contours.js) patches to imperial
   - Registered at runtime by `registerContourPlugin()` before the map parses the style
 
-- **PBF mode** (`CONTOURS_USE_PLUGIN = false`) — server-generated PBF vector tiles served as standard Mapbox Vector Tiles. Source controlled by `CONTOUR_PBF_SOURCE`:
-  - `"local"` — self-hosted **[contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)** (see [`contours/`](contours/README.md)), serves up to z14
-  - `"ogis"` (default) — **ogis.app hosted contour service** (same contour-mvt-server, serves up to z14): `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf`
+- **Disabled** (`CONTOURS_MODE = "disabled"`) — no contour source or layers are added to the style; the runtime skips contour setup entirely.
 
 > [!NOTE]
 > Both modes share the same styling (line widths, opacities, colours) defined in `scripts/build.mjs`. Contour labels always use metric at build time — `setupContours(style, 'imperial')` handles the imperial conversion at runtime for both modes.
@@ -142,7 +143,7 @@ Two sub-projects provide local vector tile serving for development:
 - **[`contours/`](contours/README.md)** — self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server) for PBF contour mode (port 11001)
 - **[`features/`](features/README.md)** — self-hosted [Planetiler](https://github.com/onthegomap/planetiler) tiles for outdoor POIs and hiking routes (port 11002)
 
-Set `POI_SOURCE = "local"`, `ROUTE_SOURCE = "local"`, or `CONTOUR_PBF_SOURCE = "local"` in `scripts/build.mjs` to use them.
+Set `POI_SOURCE = "local"` or `ROUTE_SOURCE = "local"` in `scripts/build.mjs` to use them. (PBF contours have no `"local"` source option — point `CONTOUR_PBF_TILE_URL` at a local server manually; see [`CONTOURS_PBF.md`](CONTOURS_PBF.md).)
 
 ### Project structure
 

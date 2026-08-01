@@ -45,6 +45,7 @@ const OUTDOOR_STYLE = resolve(ROOT, "style.json");
 
 const SATELLITE = false; // ESRI World Satellite raster base layer
 const TERRAIN = false; // 3D terrain hillshading (raster DEM)
+const CONTOURS_MODE = "pbf"; // Contour lines: "pbf" (ogis.app tiles) | "plugin" (GPU) | "disabled"
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
 const TRAILSPLITS_HIKING_TRAILS = false; // TrailSplits hiking network overlay (vector tiles)
 const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
@@ -183,10 +184,10 @@ const TERRAIN_SOURCE_TILESIZE = 512;
 const TERRAIN_SOURCE_MAXZOOM = 15;
 
 // ── Contours ─────────────────────────────────────────────────────────
-// Mode: true = maplibre-contour plugin (GPU-generated, client-side via Web Worker)
-//       false = PBF vector tiles (server-generated, standard MVT)
-
-const CONTOURS_USE_PLUGIN = false;
+// Mode selected by the CONTOURS_MODE feature toggle (see toggles above):
+//   "plugin"   = maplibre-contour plugin (GPU-generated, client-side via Web Worker)
+//   "pbf"      = PBF vector tiles from the ogis.app hosted contour service
+//   "disabled" = no contour source or layers in the style
 
 // Shared styling — used by both plugin and PBF modes
 const CONTOUR_WIDTH_MINOR = [
@@ -235,18 +236,14 @@ const CONTOUR_LABEL_EXPR = [
   "m",
 ];
 
-// PBF mode — only used when CONTOURS_USE_PLUGIN = false
-// "local" = self-hosted contour-mvt-server (goes to z14)
-// "ogis" = ogis.app hosted contour service (same contour-mvt-server — z14)
-const CONTOUR_PBF_SOURCE = "ogis";
+// PBF mode — only used when CONTOURS_MODE = "pbf"
+// ogis.app hosted contour service (contour-mvt-server — z9–14)
 const CONTOUR_PBF_TILE_URL =
-  CONTOUR_PBF_SOURCE === "local"
-    ? "http://localhost:11001/contours/terrain/{z}/{x}/{y}.pbf"
-    : "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf";
+  "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
-// Plugin mode — only used when CONTOURS_USE_PLUGIN = true
+// Plugin mode — only used when CONTOURS_MODE = "plugin"
 // Thresholds define contour intervals: [minor_interval, major_interval]
 // in metres at each zoom level.
 const CONTOUR_PLUGIN_SOURCE_MINZOOM = 9;
@@ -664,17 +661,19 @@ async function build() {
   // ═════════════════════════════════════════════════════════════════════
   // 3. Contours
   // ═════════════════════════════════════════════════════════════════════
-  // Two modes selected by CONTOURS_USE_PLUGIN:
+  // Mode selected by CONTOURS_MODE:
   //
-  // Plugin mode (true) — maplibre-contour plugin (GPU-generated, client-side).
+  // "plugin" — maplibre-contour plugin (GPU-generated, client-side).
   //   The plugin is registered at runtime by scripts/contours.js. It
   //   intercepts dem-contour:// tile requests and generates contour vector
   //   tiles from raw DEM data in a Web Worker.
   //
-  // PBF mode (false) — standard Mapbox Vector Tiles served as
+  // "pbf" — standard Mapbox Vector Tiles served as
   //   application/x-protobuf. No client-side contour generation.
+  //
+  // "disabled" — no contour source or layers are added to the style.
 
-  if (CONTOURS_USE_PLUGIN) {
+  if (CONTOURS_MODE === "plugin") {
     const url = buildContourTileUrl(
       CONTOUR_PLUGIN_PROTOCOL_ID,
       CONTOUR_PLUGIN_THRESHOLDS,
@@ -741,9 +740,7 @@ async function build() {
         },
       },
     );
-  }
-
-  if (!CONTOURS_USE_PLUGIN) {
+  } else if (CONTOURS_MODE === "pbf") {
     style.sources["contour-source"] = {
       type: "vector",
       minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
