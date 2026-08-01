@@ -44,12 +44,12 @@ const OUTDOOR_STYLE = resolve(ROOT, "style.json");
 // Flip these to enable/disable each feature section.
 
 const SATELLITE = false; // ESRI World Satellite raster base layer
-const TERRAIN = true; // 3D terrain hillshading (raster DEM)
+const TERRAIN = false; // 3D terrain hillshading (raster DEM)
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
 const TRAILSPLITS_HIKING_TRAILS = false; // TrailSplits hiking network overlay (vector tiles)
 const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
-const OUTDOOR_POI = true; // Outdoor POIs overlay (vector tiles)
-const OUTDOOR_ROUTE = true; // Hiking route overlay (vector tiles)
+const OUTDOOR_POI = false; // Outdoor POIs overlay (vector tiles)
+const OUTDOOR_ROUTE = false; // Hiking route overlay (vector tiles)
 const MTB_SCALE = false; // MTB difficulty + bicycle access overlays
 const PROMOTE_PATHS = true; // Paths/trails visible at all zoom levels
 
@@ -237,14 +237,14 @@ const CONTOUR_LABEL_EXPR = [
 
 // PBF mode — only used when CONTOURS_USE_PLUGIN = false
 // "local" = self-hosted contour-mvt-server (goes to z14)
-// "trailsplits" = TrailSplits API (free, no key — caps at z12)
-const CONTOUR_PBF_SOURCE = "trailsplits";
+// "ogis" = ogis.app hosted contour service (same contour-mvt-server — z14)
+const CONTOUR_PBF_SOURCE = "ogis";
 const CONTOUR_PBF_TILE_URL =
   CONTOUR_PBF_SOURCE === "local"
     ? "http://localhost:11001/contours/terrain/{z}/{x}/{y}.pbf"
-    : "https://api.trailsplits.com/tiles/v1/contours/current/{z}/{x}/{y}.pbf";
+    : "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
-const CONTOUR_PBF_SOURCE_MAXZOOM = CONTOUR_PBF_SOURCE === "local" ? 14 : 12;
+const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
 // Plugin mode — only used when CONTOURS_USE_PLUGIN = true
 // Thresholds define contour intervals: [minor_interval, major_interval]

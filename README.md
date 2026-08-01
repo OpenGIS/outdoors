@@ -39,7 +39,7 @@ Two mutually exclusive implementations, toggled by `CONTOURS_USE_PLUGIN`:
 
 - **PBF mode** (`CONTOURS_USE_PLUGIN = false`) — server-generated PBF vector tiles served as standard Mapbox Vector Tiles. Source controlled by `CONTOUR_PBF_SOURCE`:
   - `"local"` — self-hosted **[contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)** (see [`contours/`](contours/README.md)), serves up to z14
-  - `"trailsplits"` (default) — **[TrailSplits contour API](https://trailsplits.com/api)** (free, no key, caps at z12)
+  - `"ogis"` (default) — **ogis.app hosted contour service** (same contour-mvt-server, serves up to z14): `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf`
 
 > [!NOTE]
 > Both modes share the same styling (line widths, opacities, colours) defined in `scripts/build.mjs`. Contour labels always use metric at build time — `setupContours(style, 'imperial')` handles the imperial conversion at runtime for both modes.
