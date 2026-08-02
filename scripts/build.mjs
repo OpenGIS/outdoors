@@ -50,7 +50,7 @@ const DEM_HILLSHADE = true; // 2D hillshade layer from the DEM source
 const DEM_TERRAIN = false; // 3D terrain exaggeration from the DEM source
 const TERRAIN_PALETTE = true; // Muted base-layer colour palette (MapTiler terrain reference)
 const ROAD_PALETTE = true; // Muted warm-taupe road palette (outdoor-first: local roads & tracks most visible)
-const CONTOURS_MODE = "pbf"; // Contour lines: "pbf" (ogis.app tiles) | "plugin" (GPU) | "disabled"
+const CONTOURS = true; // Contour lines: hosted PBF vector tiles (ogis.app contour service — see docs/contours.md)
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
 const PEAK_LABELS = true; // Peak name + elevation labels (below promoted POIs)
 const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
@@ -215,13 +215,14 @@ const SATELLITE_SOURCE_ATTRIBUTION =
 
 // ── DEM (raster-dem source) ──────────────────────────────────────────
 // The raster-dem source feeds the hillshade layer and 3D terrain.
-// Mapterhorn (Terrarium, 512px, maxzoom 15):
+// Mapterhorn (Terrarium-encoded WebP, 512px, maxzoom 17 — service max; z0-12 global, z13-17 regional only):
 //   https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
 
 const DEM_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 const DEM_SOURCE_ENCODING = "terrarium";
 const DEM_SOURCE_TILESIZE = 512;
-const DEM_SOURCE_MAXZOOM = 15;
+const DEM_SOURCE_ATTRIBUTION = "© Mapterhorn"; // required by Mapterhorn TileJSON attribution
+const DEM_SOURCE_MAXZOOM = 17;
 // style.terrain.exaggeration — ratio by which the terrain is exaggerated relative to real world
 const TERRAIN_EXAGGERATION = 1.5;
 // hillshade-exaggeration — intensity of the hillshade (fades in z3 → z5)
@@ -257,12 +258,12 @@ const ROAD_TUNNEL_OPACITY = 0.55; // line-opacity for tunnel fills (faded, dashe
 const ROAD_TRACK_WIDTH = ["interpolate", ["exponential", 1.2], ["zoom"], 14, 0.5, 15, 1.5, 16, 3, 20, 9]; // line-width for service/track fills (appears ~1.5 zooms earlier than Liberty, thicker)
 
 // ── Contours ─────────────────────────────────────────────────────────
-// Mode selected by the CONTOURS_MODE feature toggle (see toggles above):
-//   "plugin"   = maplibre-contour plugin (GPU-generated, client-side via Web Worker)
-//   "pbf"      = PBF vector tiles from the ogis.app hosted contour service
-//   "disabled" = no contour source or layers in the style
+// PBF vector contour tiles from the ogis.app hosted contour service
+// (contour-mvt-server), generated server-side from the Mapterhorn DEM —
+// the same tiles.mapterhorn.com endpoint used by DEM_SOURCE_URL.
+// Gated by the CONTOURS toggle. See docs/contours.md for details.
 
-// Shared styling — used by both plugin and PBF modes
+// Styling shared by the minor/index/label contour layers
 const CONTOUR_WIDTH_MINOR = [
   "interpolate",
   ["exponential", 1.2],
@@ -302,41 +303,22 @@ const CONTOUR_OPACITY_INDEX = [
 const CONTOUR_LAYER_MAXZOOM = 20;
 
 // Label expression — always metric at build time.
-// Runtime scripts/contours.js patches "m" → "ft" for imperial units.
+// The compare app (dev/src/App.vue) converts "m" → "ft" for imperial units.
 const CONTOUR_LABEL_EXPR = [
   "concat",
   ["number-format", ["round", ["get", "ele"]], {}],
   "m",
 ];
 
-// PBF mode — only used when CONTOURS_MODE = "pbf"
-// ogis.app hosted contour service (contour-mvt-server — z9–14)
+// ogis.app hosted contour service (contour-mvt-server — z9–14). The
+// server renders tiles from the Mapterhorn DEM — the same endpoint as
+// DEM_SOURCE_URL — so the client and the tile server fetch the same
+// Mapterhorn tile; the CDN sees it twice and serves the second request
+// from cache.
 const CONTOUR_PBF_TILE_URL =
   "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
-
-// Plugin mode — only used when CONTOURS_MODE = "plugin"
-// Thresholds define contour intervals: [minor_interval, major_interval]
-// in metres at each zoom level.
-const CONTOUR_PLUGIN_SOURCE_MINZOOM = 9;
-const CONTOUR_PLUGIN_SOURCE_MAXZOOM = 20;
-const CONTOUR_PLUGIN_THRESHOLDS = {
-  9: [500, 2500],
-  11: [200, 1000],
-  12: [100, 500],
-  14: [50, 200],
-  15: [20, 100],
-};
-const CONTOUR_PLUGIN_EXTRA_OPTIONS = {
-  contourLayer: "contours",
-  elevationKey: "ele",
-  levelKey: "level",
-  extent: 4096,
-  buffer: 1,
-  overzoom: 1,
-};
-const CONTOUR_PLUGIN_PROTOCOL_ID = "dem"; // Must match DemSource.setupMaplibre() id at runtime
 
 // ── Mountain peak labels ─────────────────────────────────────────────
 // Peak name + elevation labels from the OpenMapTiles mountain_peak
@@ -560,30 +542,6 @@ function createAllRouteLayers(
   });
 
   return layers;
-}
-
-/**
- * Build the full maplibre-contour plugin tile URL with encoded thresholds
- * and options baked into the query string. Produces URLs like:
- *   dem-contour://{z}/{x}/{y}?buffer=1&contourLayer=contours&...&thresholds=0*100*500~...
- */
-function buildContourTileUrl(id, thresholds, extraOptions) {
-  const thresholdStr = Object.entries(thresholds)
-    .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([zoom, values]) => [zoom, ...values].join("*"))
-    .join("~");
-
-  const allOpts = { ...extraOptions, thresholds: thresholdStr };
-
-  const query = Object.keys(allOpts)
-    .sort()
-    .map(
-      (k) =>
-        `${encodeURIComponent(k)}=${encodeURIComponent(String(allOpts[k]))}`,
-    )
-    .join("&");
-
-  return `${id}-contour://{z}/{x}/{y}?${query}`;
 }
 
 /**
@@ -938,6 +896,7 @@ async function build() {
       encoding: DEM_SOURCE_ENCODING,
       tileSize: DEM_SOURCE_TILESIZE,
       maxzoom: DEM_SOURCE_MAXZOOM,
+      attribution: DEM_SOURCE_ATTRIBUTION,
     };
 
     if (DEM_HILLSHADE) {
@@ -968,93 +927,11 @@ async function build() {
   // ═════════════════════════════════════════════════════════════════════
   // 5. Contours
   // ═════════════════════════════════════════════════════════════════════
-  // Mode selected by CONTOURS_MODE:
-  //
-  // "plugin" — maplibre-contour plugin (GPU-generated, client-side).
-  //   The plugin is registered at runtime by scripts/contours.js. It
-  //   intercepts dem-contour:// tile requests and generates contour vector
-  //   tiles from raw DEM data in a Web Worker.
-  //
-  // "pbf" — standard Mapbox Vector Tiles served as
-  //   application/x-protobuf. No client-side contour generation.
-  //
-  // "disabled" — no contour source or layers are added to the style.
+  // PBF vector contour tiles from the ogis.app hosted contour service
+  // (contour-mvt-server), served as standard Mapbox Vector Tiles — no
+  // client-side contour generation. See docs/contours.md.
 
-  if (CONTOURS_MODE === "plugin") {
-    const url = buildContourTileUrl(
-      CONTOUR_PLUGIN_PROTOCOL_ID,
-      CONTOUR_PLUGIN_THRESHOLDS,
-      CONTOUR_PLUGIN_EXTRA_OPTIONS,
-    );
-
-    style.sources["contour-source"] = {
-      type: "vector",
-      minzoom: CONTOUR_PLUGIN_SOURCE_MINZOOM,
-      tiles: [url],
-      maxzoom: CONTOUR_PLUGIN_SOURCE_MAXZOOM,
-    };
-
-    const contourLayers = [
-      {
-        id: "contour-lines",
-        type: "line",
-        source: "contour-source",
-        "source-layer": "contours",
-        minzoom: CONTOUR_PLUGIN_SOURCE_MINZOOM,
-        maxzoom: CONTOUR_LAYER_MAXZOOM,
-        filter: ["==", ["get", "level"], 0],
-        paint: {
-          "line-color": COLOURS.CONTOURS.MINOR,
-          "line-opacity": CONTOUR_OPACITY_MINOR,
-          "line-width": CONTOUR_WIDTH_MINOR,
-        },
-      },
-      {
-        id: "contour-lines-index",
-        type: "line",
-        source: "contour-source",
-        "source-layer": "contours",
-        minzoom: CONTOUR_PLUGIN_SOURCE_MINZOOM,
-        maxzoom: CONTOUR_LAYER_MAXZOOM,
-        filter: [">", ["get", "level"], 0],
-        paint: {
-          "line-color": COLOURS.CONTOURS.INDEX,
-          "line-opacity": CONTOUR_OPACITY_INDEX,
-          "line-width": CONTOUR_WIDTH_INDEX,
-        },
-      },
-      {
-        id: "contour-labels",
-        type: "symbol",
-        source: "contour-source",
-        "source-layer": "contours",
-        minzoom: CONTOUR_PLUGIN_SOURCE_MINZOOM,
-        maxzoom: CONTOUR_LAYER_MAXZOOM,
-        filter: [">", ["get", "level"], 0],
-        layout: {
-          "symbol-placement": "line",
-          "symbol-avoid-edges": true,
-          "text-rotation-alignment": "map",
-          "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 14, 12],
-          "text-field": CONTOUR_LABEL_EXPR,
-          "text-font": ["Noto Sans Regular"],
-          "text-padding": 10,
-        },
-        paint: {
-          "text-color": COLOURS.CONTOURS.LABEL,
-          "text-halo-color": COLOURS.CONTOURS.HALO,
-          "text-halo-width": 1.25,
-        },
-      },
-    ];
-
-    const contourIdx = waterStackIndex(style);
-    if (contourIdx !== -1) {
-      style.layers.splice(contourIdx, 0, ...contourLayers);
-    } else {
-      style.layers.push(...contourLayers);
-    }
-  } else if (CONTOURS_MODE === "pbf") {
+  if (CONTOURS) {
     style.sources["contour-source"] = {
       type: "vector",
       minzoom: CONTOUR_PBF_SOURCE_MINZOOM,

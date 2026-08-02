@@ -1,6 +1,11 @@
-Read the [`README.md`](README.md)!
+## Understanding
 
-## Build verification
+To best understand this project:
+
+1. Read the [`README.md`](README.md), then
+2. Read **all** of the [`docs/README.md`](Documentation).
+
+## Making Changes
 
 **Run both builds** after any code change to catch import/resolve errors early:
 

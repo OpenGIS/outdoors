@@ -1,6 +1,5 @@
 <script setup>
 import { ref, shallowRef, watch, onMounted } from "vue";
-import { setupContours } from "../../scripts/contours.js";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MaplibreCompare from "@maplibre/maplibre-gl-compare";
@@ -166,12 +165,28 @@ watch(selectedKey, async (key) => {
   if (style) applyLeftStyle(style);
 });
 
+/**
+ * Convert contour labels from metric ("m") to imperial ("ft") in the
+ * built outdoor style. The style ships metric labels; the compare app
+ * applies this so the right-hand map displays feet. Only touches the
+ * `contour-labels` layer (hosted PBF contour mode).
+ */
+function applyImperialContours(style) {
+  const labelLayer = style.layers?.find((l) => l.id === "contour-labels");
+  if (!labelLayer?.layout) return;
+  labelLayer.layout["text-field"] = [
+    "concat",
+    ["number-format", ["round", ["*", ["get", "ele"], 3.28084]], {}],
+    "ft",
+  ];
+}
+
 // ── Initialise maps ──
 onMounted(async () => {
   const rightStyle = JSON.parse(outdoorStyleRaw);
 
-  // Register contour plugin & patch for imperial units BEFORE the map parses
-  setupContours(rightStyle, "imperial");
+  // Patch contour labels to imperial units BEFORE the map parses
+  applyImperialContours(rightStyle);
 
   // Resolve initial left-map style (with API key prompt if needed)
   const entry = selectedEntry.value;

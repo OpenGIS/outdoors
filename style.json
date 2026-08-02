@@ -20,7 +20,8 @@
       ],
       "encoding": "terrarium",
       "tileSize": 512,
-      "maxzoom": 15
+      "maxzoom": 17,
+      "attribution": "© Mapterhorn"
     },
     "contour-source": {
       "type": "vector",

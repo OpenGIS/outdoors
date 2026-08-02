@@ -1,3 +1,7 @@
+---
+last_commit: "81258e58f598c6193a509912aed1b65e3ccbeab3"
+---
+
 # Outdoors
 
 A map style for hiking, cycling, and outdoor activities. Built on the Liberty base style ([OpenFreeMap fork](https://github.com/hyperknot/openfreemap-styles)), it adds terrain hillshading, contour lines, outdoor POIs, hiking route overlays, and trail/path visibility enhancements. The output follows the [MapLibre/Mapbox Style Spec](https://maplibre.org/maplibre-style-spec/) (version 8) and can be used with any compatible renderer — [MapLibre GL JS](https://maplibre.org/), [MapLibre Native](https://github.com/maplibre/maplibre-native), [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/), and others.
@@ -52,30 +56,24 @@ No external source — overrides the Liberty base-layer road colours with a mute
 
 ### DEM — hillshade & terrain
 
-- **[Mapterhorn](https://tiles.mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 15). A single `demSource` raster-dem source is created when the `DEM` toggle below is enabled and feeds both the hillshade layer and 3D terrain. In plugin contour mode the same DEM data feeds the maplibre-contour plugin at runtime.
-  - Toggle: `DEM` (default `true`) — the master switch; creates the shared `demSource` raster-dem source (Mapterhorn, Terrarium, 512 px, maxzoom 15). Hillshade and terrain both read from it.
+- **[Mapterhorn](https://tiles.mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 17) with the required `© Mapterhorn` attribution. A single `demSource` raster-dem source is created when the `DEM` toggle below is enabled and feeds both the hillshade layer and 3D terrain. The same Mapterhorn DEM also feeds the ogis.app contour service server-side.
+  - Toggle: `DEM` (default `true`) — the master switch; creates the shared `demSource` raster-dem source (Mapterhorn, Terrarium, 512 px, maxzoom 17). Hillshade and terrain both read from it.
   - Toggle: `DEM_HILLSHADE` (default `true`) — a 2D hillshade layer drawn from the DEM source. Fades in from z3 to z5 (hillshade exaggeration 0 → 0.2) and renders above landcover but below contours and water.
   - Toggle: `DEM_TERRAIN` (default `false`) — 3D terrain elevation (`style.terrain.exaggeration`, 1.5) drawn from the DEM source.
   - Configurable via `DEM_SOURCE_URL` — point it at any Terrarium-encoded DEM tile server by changing the constant. `TERRAIN_EXAGGERATION` (default 1.5) and `HILLSHADE_EXAGGERATION` (fade-in ramp `[[3, 0], [5, 0.2], [12, 0.2]]`) tune the two consumers.
 
 ### Contours
 
-Three mutually exclusive modes, selected by `CONTOURS_MODE` in `scripts/build.mjs`:
+Gated by the `CONTOURS` boolean toggle in `scripts/build.mjs` (default `true`). See [docs/contours.md](docs/contours.md) for the full implementation reference.
 
-- **PBF mode** (`CONTOURS_MODE = "pbf"`, default) — server-generated PBF vector tiles served as standard Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), serves up to z14): `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf`
-  - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`); to test against a local contour server, edit it manually (see [`CONTOURS_PBF.md`](CONTOURS_PBF.md))
-
-- **Plugin mode** (`CONTOURS_MODE = "plugin"`) — **[maplibre-contour](https://github.com/onthegomap/maplibre-contour)** generates contour vector tiles on the GPU at render time from raw DEM tiles. No server-side contour processing needed.
-
-  - DEM source: Mapterhorn (same DEM source as terrain)
-  - Configurable zoom thresholds define contour intervals per zoom level
-  - Labels are metric at build time; runtime `setupContours(style, 'imperial')` in [`scripts/contours.js`](scripts/contours.js) patches to imperial
-  - Registered at runtime by `registerContourPlugin()` before the map parses the style
-
-- **Disabled** (`CONTOURS_MODE = "disabled"`) — no contour source or layers are added to the style; the runtime skips contour setup entirely.
+- **Hosted PBF vector tiles** — server-generated Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), renders up to z14): `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf`
+  - The contour service renders tiles server-side from the Mapterhorn DEM — the same `tiles.mapterhorn.com` endpoint used by `DEM_SOURCE_URL` — so no client-side contour generation is needed
+  - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`), served z9–14 (`CONTOUR_PBF_SOURCE_MINZOOM`/`MAXZOOM`)
+  - Three layers — `contour-lines` (minor), `contour-lines-index` (index), `contour-labels` — share the styling constants (`CONTOUR_WIDTH_*`, `CONTOUR_OPACITY_*`, `COLOURS.CONTOURS`)
+  - Labels are metric at build time; the compare app converts them to imperial via `applyImperialContours()` in [`dev/src/App.vue`](dev/src/App.vue)
 
 > [!NOTE]
-> Both modes share the same styling (line widths, opacities, colours) defined in `scripts/build.mjs`. Contour labels always use metric at build time — `setupContours(style, 'imperial')` handles the imperial conversion at runtime for both modes.
+> The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `api.ogis.app`.
 
 ### Waymarked Trails (raster overlays)
 
@@ -166,12 +164,11 @@ npm run demo:build   # builds the Vue compare app to demo/ via Vite
 
 ### Self-hosted tile servers
 
-Two sub-projects provide local vector tile serving for development:
+A sub-project provides local vector tile serving for development:
 
-- **[`contours/`](contours/README.md)** — self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server) for PBF contour mode (port 11001)
 - **[`features/`](features/README.md)** — self-hosted [Planetiler](https://github.com/onthegomap/planetiler) tiles for outdoor POIs and hiking routes (port 11002)
 
-Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, which points at the hosted production domain `https://api.ogis.app/features` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs). (PBF contours are not served from this endpoint — point `CONTOUR_PBF_TILE_URL` at a contour server manually; see [`CONTOURS_PBF.md`](CONTOURS_PBF.md).)
+Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, which points at the hosted production domain `https://api.ogis.app/features` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs). Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service — no local contour server is required.
 
 ### Project structure
 
@@ -180,7 +177,6 @@ Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL`
 ├── .cache/              # Liberty style cache (auto-created, gitignored)
 │   ├── liberty.json               # Raw fetched style
 │   └── liberty-processed.json     # Resolved copy (domain substitutes baked in)
-├── contours/            # Self-hosted contour tile server (contour-mvt-server)
 ├── features/            # Self-hosted feature tile generator (Planetiler) — pois, routes
 ├── index.html           # Compare app entry
 ├── dev/
@@ -198,8 +194,7 @@ Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL`
 ├── style.json           # Generated output (tracked in git)
 ├── scripts/
 │   ├── build.mjs        # Style build script — entry point for all feature flags
-│   ├── watch.mjs        # File watcher (auto-rebuild on build.mjs changes)
-│   └── contours.js      # Runtime contour plugin registration & unit conversion
+│   └── watch.mjs        # File watcher (auto-rebuild on build.mjs changes)
 ├── demo/                # Production build output (tracked in git)
 ├── package.json
 └── vite.config.js
@@ -222,5 +217,10 @@ Providers that require an API key have `"apiKey": true` in their config. Their U
 - If no key is found when the user **selects** a key-protected provider, a `window.prompt()` asks for one
 - The key is then stored in `localStorage` and injected into the provider config via `replaceApiKeyTokens()`
 - **No prompt appears on page load** — the default selection is explicitly OpenFreeMap Liberty (constant `DEFAULT_PROVIDER_KEY` in `dev/src/composables/useProviderSelection.js`), falling back to the first provider without `apiKey` if Liberty is unavailable. Stale or invalid saved selections are corrected to the default on load.
+
+## Further Reading
+
+- [Contours](docs/contours.md) - hosted PBF contour implementation reference
+- [Full docs index](docs/README.md)
 
 
