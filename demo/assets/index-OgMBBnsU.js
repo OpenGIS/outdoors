@@ -860,6 +860,24 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf"
       ],
       "maxzoom": 14
+    },
+    "outdoor-route": {
+      "type": "vector",
+      "tiles": [
+        "https://api.ogis.app/features/routes/{z}/{x}/{y}.pbf"
+      ],
+      "minzoom": 8,
+      "maxzoom": 14,
+      "attribution": "© OpenStreetMap contributors"
+    },
+    "outdoor-poi": {
+      "type": "vector",
+      "tiles": [
+        "https://api.ogis.app/features/pois/{z}/{x}/{y}.pbf"
+      ],
+      "minzoom": 12,
+      "maxzoom": 18,
+      "attribution": "© OpenStreetMap contributors"
     }
   },
   "sprite": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
@@ -5524,6 +5542,287 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "text-field": ""
       },
       "paint": {
+        "icon-opacity": 0.85
+      }
+    },
+    {
+      "id": "outdoor-route-iwn",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "iwn"
+      ],
+      "paint": {
+        "line-color": "#b20303",
+        "line-opacity": 0.7,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          3,
+          10,
+          4,
+          12,
+          5
+        ]
+      }
+    },
+    {
+      "id": "outdoor-route-nwn",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "nwn"
+      ],
+      "paint": {
+        "line-color": "#152eec",
+        "line-opacity": 0.7,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2,
+          10,
+          3,
+          12,
+          4
+        ]
+      }
+    },
+    {
+      "id": "outdoor-route-rwn-casing",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 10,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "rwn"
+      ],
+      "paint": {
+        "line-color": "#a76f0f",
+        "line-opacity": 0.35,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          5,
+          12,
+          7
+        ]
+      }
+    },
+    {
+      "id": "outdoor-route-rwn",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 10,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "rwn"
+      ],
+      "paint": {
+        "line-color": "#ffa304",
+        "line-opacity": 0.8,
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          2,
+          12,
+          3
+        ]
+      }
+    },
+    {
+      "id": "outdoor-route-lwn-halo",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "lwn"
+      ],
+      "paint": {
+        "line-color": "#c19ae6",
+        "line-opacity": 0.4,
+        "line-width": 4
+      }
+    },
+    {
+      "id": "outdoor-route-lwn",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "lwn"
+      ],
+      "paint": {
+        "line-color": "#7d31c6",
+        "line-opacity": 0.8,
+        "line-width": 1.5
+      }
+    },
+    {
+      "id": "outdoor-route-default",
+      "type": "line",
+      "source": "outdoor-route",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "!",
+        [
+          "has",
+          "network"
+        ]
+      ],
+      "paint": {
+        "line-color": "#b2b2b2",
+        "line-opacity": 0.5,
+        "line-width": 1
+      }
+    },
+    {
+      "id": "outdoor-poi",
+      "type": "symbol",
+      "source": "outdoor-poi",
+      "source-layer": "outdoor_pois",
+      "layout": {
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "water",
+          "drinking_water",
+          "hut",
+          "lodging",
+          "shelter",
+          "shelter",
+          "parking",
+          "parking",
+          "viewpoint",
+          "star_stroked",
+          "pass",
+          "mountain",
+          "picnic_site",
+          "picnic_site",
+          "information",
+          "information",
+          "toilets",
+          "toilets",
+          "ranger_station",
+          "ranger_station",
+          "campsite",
+          "campsite",
+          "playground",
+          "playground",
+          "skiing",
+          "skiing",
+          "ferry",
+          "ferry",
+          "bicycle",
+          "bicycle_rental",
+          "trailhead",
+          "entrance",
+          "bus_stop",
+          "bus",
+          "cable_car",
+          "aerialway",
+          "halt",
+          "railway",
+          "station",
+          "railway",
+          "tram_stop",
+          "railway_light",
+          "guest_house",
+          "lodging",
+          "hotel",
+          "lodging",
+          "pub",
+          "bar",
+          "town",
+          "town_hall",
+          "village",
+          "town_hall",
+          "hamlet",
+          "town_hall",
+          "marker"
+        ],
+        "icon-size": 1,
+        "text-field": [
+          "get",
+          "name"
+        ],
+        "text-size": 11,
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-offset": [
+          0,
+          1.5
+        ],
+        "text-anchor": "top"
+      },
+      "paint": {
+        "text-color": "#333333",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
         "icon-opacity": 0.85
       }
     },

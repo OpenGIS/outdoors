@@ -37,7 +37,7 @@ Settings in `config.json`:
 
 - **DEM source:** Mapterhorn (`tiles.mapterhorn.com`) — Terrarium encoding, 512px WebP tiles, maxzoom 15
 - **Contour thresholds:**
-  - z10–12: 20m minor, 100m major (matches TrailSplits)
+  - z10–12: 20m minor, 100m major (matches api.ogis.app)
   - z13: 10m minor, 50m major
   - z14: 5m minor, 25m major
 - **Output:** gzipped PBF with `ele` (elevation in m) and `level` (0=minor, 1=major) properties
@@ -54,10 +54,12 @@ To use AWS Terrarium instead (256px PNG tiles, slightly faster but less detail),
 
 ## Usage in style
 
-The outdoor build script (`scripts/build.mjs`) points at the local server:
+The outdoor build script (`scripts/build.mjs`) points at the hosted production contour service by default (`CONTOUR_PBF_TILE_URL`, z9–14):
 
 ```
-http://localhost:11001/contours/terrain/{z}/{x}/{y}.pbf
+https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf
 ```
+
+To use this local server instead, change `CONTOUR_PBF_TILE_URL` in `scripts/build.mjs` to `http://localhost:11001/contours/terrain/{z}/{x}/{y}.pbf`.
 
 Filter on `ele % 100 == 0` for index lines (100 m) or use the `level` property.

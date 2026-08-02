@@ -102,12 +102,15 @@ java -cp .planetiler/planetiler.jar scripts/HikingRouteOverlay.java \
 
 ## Usage in style
 
-The outdoor build script (`scripts/build.mjs`) uses local URLs when `POI_SOURCE === "local"` and `OUTDOOR_ROUTE` is `true`:
+The outdoor build script (`scripts/build.mjs`) serves both feature archives from a single configurable endpoint. `TILES_BASE_URL` points at the hosted production service; the route and POI tile URLs derive from it:
 
 ```js
-const POI_LOCAL_URL = 'http://localhost:11002/pois/{z}/{x}/{y}.pbf'
-const ROUTE_LOCAL_URL = 'http://localhost:11002/routes/{z}/{x}/{y}.pbf'
+const TILES_BASE_URL = "https://api.ogis.app/features";
+const ROUTE_TILE_URL = `${TILES_BASE_URL}/routes/{z}/{x}/{y}.pbf`; // source-layer 'outdoor_routes', z8–14
+const POI_TILE_URL = `${TILES_BASE_URL}/pois/{z}/{x}/{y}.pbf`;     // source-layer 'outdoor_pois', z12–18
 ```
+
+Enable the overlays with the `OUTDOOR_ROUTE` and `OUTDOOR_POI` toggles in `scripts/build.mjs` — both default to `true`, so both sections ship in the default `style.json` build.
 
 ## Stop
 

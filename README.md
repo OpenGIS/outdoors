@@ -56,7 +56,7 @@ No external source — overrides the Liberty base-layer road colours with a mute
   - Toggle: `DEM` (default `true`) — the master switch; creates the shared `demSource` raster-dem source (Mapterhorn, Terrarium, 512 px, maxzoom 15). Hillshade and terrain both read from it.
   - Toggle: `DEM_HILLSHADE` (default `true`) — a 2D hillshade layer drawn from the DEM source. Fades in from z3 to z5 (hillshade exaggeration 0 → 0.2) and renders above landcover but below contours and water.
   - Toggle: `DEM_TERRAIN` (default `false`) — 3D terrain elevation (`style.terrain.exaggeration`, 1.5) drawn from the DEM source.
-  - Configurable via `DEM_SOURCE_URL` — swap to AWS Terrarium or TrailSplits TerrainRGB by changing the constant. `TERRAIN_EXAGGERATION` (default 1.5) and `HILLSHADE_EXAGGERATION` (fade-in ramp `[[3, 0], [5, 0.2], [12, 0.2]]`) tune the two consumers.
+  - Configurable via `DEM_SOURCE_URL` — point it at any Terrarium-encoded DEM tile server by changing the constant. `TERRAIN_EXAGGERATION` (default 1.5) and `HILLSHADE_EXAGGERATION` (fade-in ramp `[[3, 0], [5, 0.2], [12, 0.2]]`) tune the two consumers.
 
 ### Contours
 
@@ -84,13 +84,6 @@ Three mutually exclusive modes, selected by `CONTOURS_MODE` in `scripts/build.mj
   - Add items like `'hiking'`, `'cycling'` to enable
   - Free tile service with attribution: © waymarkedtrails.org
 
-### TrailSplits hiking network
-
-- **[TrailSplits hiking network API](https://trailsplits.com/api)** — vector tile overlay of sign-posted hiking/cycling trail networks. Line layers coloured by network tier (iwn/nwn/rwn/lwn), matching the Waymarked Trails colour scheme.
-  - Toggle: `TRAILSPLITS_HIKING_TRAILS` (default `false`)
-  - Source-layer: `hiking_network`, zoom range z8–12
-  - Free, no API key required
-
 ### Mountain peak labels
 
 No external source — peak name + elevation labels with a ▲ marker, drawn from Liberty's existing **OpenMapTiles `mountain_peak`** source-layer for the most prominent peaks (`rank == 1`), visible from z7.
@@ -105,24 +98,20 @@ No external source — these are POI classes drawn from Liberty's existing **Ope
 - Toggle: `PROMOTE_LIBERTY_POI` (default `true`)
 - Uses Liberty's own Maki sprite for icons — no additional data source
 
-### Outdoor POIs
-
-- **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, and more.
-  - Source-layer: `outdoor_pois`
-  - Source controlled by `POI_SOURCE`:
-    - `"local"` — self-hosted **[Planetiler](https://github.com/onthegomap/planetiler) tiles** (see [`features/`](features/README.md)), z12–18
-    - `"trailsplits"` (default) — **[TrailSplits outdoor POI API](https://trailsplits.com/api)** (free, no key, z12–14)
-  - Icons mapped from the Maki sprite set used by Liberty
-  - Toggle: `OUTDOOR_POI` (default `true`)
-
 ### Outdoor routes
 
 - **Vector tiles** of hiking route relations from OpenStreetMap, with line geometry and network classification (iwn/nwn/rwn/lwn). Coloured per network tier using the Waymarked Trails colour scheme, with casing/halo layers for regional and local routes.
-  - Source-layer: `outdoor_routes` (self-hosted) or `hiking_network` (TrailSplits)
-  - Source controlled by `ROUTE_SOURCE`:
-    - `"local"` — self-hosted Planetiler tiles (see [`features/`](features/README.md)), z8–14
-    - `"trailsplits"` (default) — **[TrailSplits hiking network API](https://trailsplits.com/api)** (free, no key, z8–12)
+  - Source-layer: `outdoor_routes`, tile URL `https://api.ogis.app/features/routes/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z8–14
+  - Inserted at the `poi_r20` anchor — above roads/water but below base-map POI icons and labels
   - Toggle: `OUTDOOR_ROUTE` (default `true`)
+
+### Outdoor POIs
+
+- **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, and more.
+  - Source-layer: `outdoor_pois`, tile URL `https://api.ogis.app/features/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–18
+  - Icons mapped from the Maki sprite set used by Liberty — kind→icon map in `POI_ICON_BY_KIND` (`POI_ICON_DEFAULT` = `"marker"`); icon/text size, opacity and halo widths tuned via the `POI_ICON_*` / `POI_TEXT_*` consts
+  - Inserted at the `poi_r20` anchor — above the outdoor route lines, below base-map POIs and labels
+  - Toggle: `OUTDOOR_POI` (default `true`)
 
 ### MTB scale & bicycle access
 
@@ -182,7 +171,7 @@ Two sub-projects provide local vector tile serving for development:
 - **[`contours/`](contours/README.md)** — self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server) for PBF contour mode (port 11001)
 - **[`features/`](features/README.md)** — self-hosted [Planetiler](https://github.com/onthegomap/planetiler) tiles for outdoor POIs and hiking routes (port 11002)
 
-Set `POI_SOURCE = "local"` or `ROUTE_SOURCE = "local"` in `scripts/build.mjs` to use them. (PBF contours have no `"local"` source option — point `CONTOUR_PBF_TILE_URL` at a local server manually; see [`CONTOURS_PBF.md`](CONTOURS_PBF.md).)
+Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, which points at the hosted production domain `https://api.ogis.app/features` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs). (PBF contours are not served from this endpoint — point `CONTOUR_PBF_TILE_URL` at a contour server manually; see [`CONTOURS_PBF.md`](CONTOURS_PBF.md).)
 
 ### Project structure
 

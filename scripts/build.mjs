@@ -14,16 +14,15 @@
  * Cache: the downloaded liberty style is cached in .cache/liberty.json.
  *
  * Feature toggles at the top enable/disable each section. Per-feature
- * config blocks follow in the same render order. Data source URL
- * selectors (e.g. ROUTE_SOURCE = "trailsplits" | "local") swap
- * providers without changing any section logic.
+ * config blocks follow in the same render order. Both outdoor overlay
+ * sections (POIs & routes) derive their tile URLs from a single
+ * configurable endpoint, TILES_BASE_URL — change that one constant to
+ * point at the production tile server.
  *
  * Sections are ordered from bottom to top in the render stack:
  *  satellite → terrain palette → road palette → DEM (hillshade, terrain) →
- *  contours →
- *  waymarked trails → trailsplits hiking network → mountain peak labels →
- *  promoted liberty pois → outdoor pois → outdoor routes → mtb/bicycle →
- *  path styling
+ *  contours → waymarked trails → mountain peak labels → promoted liberty pois →
+ *  outdoor routes → outdoor pois → mtb/bicycle → path styling
  *
  * Dependencies:
  *   - OSM Liberty (OpenFreeMap fork): https://raw.githubusercontent.com/hyperknot/openfreemap-styles/main/styles/liberty/style.json
@@ -53,11 +52,10 @@ const TERRAIN_PALETTE = true; // Muted base-layer colour palette (MapTiler terra
 const ROAD_PALETTE = true; // Muted warm-taupe road palette (outdoor-first: local roads & tracks most visible)
 const CONTOURS_MODE = "pbf"; // Contour lines: "pbf" (ogis.app tiles) | "plugin" (GPU) | "disabled"
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
-const TRAILSPLITS_HIKING_TRAILS = false; // TrailSplits hiking network overlay (vector tiles)
 const PEAK_LABELS = true; // Peak name + elevation labels (below promoted POIs)
 const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
-const OUTDOOR_POI = false; // Outdoor POIs overlay (vector tiles)
-const OUTDOOR_ROUTE = false; // Hiking route overlay (vector tiles)
+const OUTDOOR_ROUTE = true; // Hiking route overlay (self-hosted vector tiles)
+const OUTDOOR_POI = true; // Outdoor POIs overlay (self-hosted vector tiles)
 const MTB_SCALE = false; // MTB difficulty + bicycle access overlays
 const PROMOTE_PATHS = true; // Paths/trails visible at all zoom levels
 
@@ -148,7 +146,7 @@ const COLOURS = {
 };
 
 // ── Route network tier paint configs ──────────────────────────────────
-// Shared by both outdoor-route-* and trailsplits-hiking-* sections.
+// Shared by all outdoor route tiers.
 // Each tier has colour, opacity, width, and minzoom.
 
 const ROUTE_TIERS = {
@@ -200,8 +198,8 @@ const ROUTE_TIER_DEFAULT = {
 // PER-FEATURE CONFIG (in rendering order, bottom→top)
 // ═════════════════════════════════════════════════════════════════════════
 // Each feature's constants are grouped before its build logic below.
-// Data source selectors like POI_SOURCE accept "local" (self-hosted) or
-// "trailsplits" (free API, no key required).
+// Both outdoor overlay features (routes & POIs) read their tile URLs from
+// the single TILES_BASE_URL endpoint — see the self-hosted tiles block.
 
 // ── Satellite imagery ──────────────────────────────────────────────────
 // ESRI World Satellite (ArcGIS Online) — CORS-permissive, no API key.
@@ -340,14 +338,6 @@ const CONTOUR_PLUGIN_EXTRA_OPTIONS = {
 };
 const CONTOUR_PLUGIN_PROTOCOL_ID = "dem"; // Must match DemSource.setupMaplibre() id at runtime
 
-// ── TrailSplits hiking network ───────────────────────────────────────
-// Vector tile overlay from the free TrailSplits API (no key required).
-// Reference: https://trailsplits.com/api
-
-const TRAILSPLITS_HIKING_URL =
-  "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
-const TRAILSPLITS_HIKING_MINZOOM = 8;
-
 // ── Mountain peak labels ─────────────────────────────────────────────
 // Peak name + elevation labels from the OpenMapTiles mountain_peak
 // source-layer. Text only — no icon-image.
@@ -390,36 +380,71 @@ const PROMOTED_POI_CLASSES = [
   "campsite",
 ];
 
-// ── Outdoor POI ──────────────────────────────────────────────────────
-// Vector tiles with outdoor points of interest — huts, shelters, water,
-// parking, viewpoints, mountain passes, campsites, etc.
-// Source-layer: 'outdoor_pois'.
-// "local" = self-hosted Planetiler tiles (z8–16, wider zoom range)
-// "trailsplits" = TrailSplits API (free, no key — z12–14)
+// ── Self-hosted outdoor vector tiles ────────────────────────────────
+// One configurable endpoint serves BOTH the outdoor POI and route tiles
+// (`/pois/...` and `/routes/...`).
 
-const POI_SOURCE = "trailsplits";
-const POI_LOCAL_URL = "http://localhost:11002/pois/{z}/{x}/{y}.pbf";
-const POI_REMOTE_URL =
-  "https://api.trailsplits.com/tiles/v1/outdoor-pois/current/{z}/{x}/{y}.pbf";
-const POI_TILE_URL = POI_SOURCE === "local" ? POI_LOCAL_URL : POI_REMOTE_URL;
-const POI_SOURCE_MINZOOM = 12;
-const POI_SOURCE_MAXZOOM = POI_SOURCE === "local" ? 18 : 14;
+const TILES_BASE_URL = "https://api.ogis.app/features";
+const TILES_ATTRIBUTION = "© OpenStreetMap contributors";
 
 // ── Outdoor routes (hiking route relations) ──────────────────────────
 // Vector tiles with hiking route relations from OSM — line geometry
 // with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
-// Source-layer: 'outdoor_routes' (local) or 'hiking_network' (TrailSplits).
-// "local" = self-hosted Planetiler tiles (z8–14, wider zoom range)
-// "trailsplits" = TrailSplits API (free, no key — z8–12)
+// Source-layer: 'outdoor_routes'. Self-hosted Planetiler tiles (z8–14).
 
-const ROUTE_SOURCE = "trailsplits";
-const ROUTE_LOCAL_URL = "http://localhost:11002/routes/{z}/{x}/{y}.pbf";
-const ROUTE_REMOTE_URL =
-  "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
-const ROUTE_TILE_URL =
-  ROUTE_SOURCE === "local" ? ROUTE_LOCAL_URL : ROUTE_REMOTE_URL;
+const ROUTE_SOURCE_LAYER = "outdoor_routes";
+const ROUTE_TILE_URL = `${TILES_BASE_URL}/routes/{z}/{x}/{y}.pbf`;
 const ROUTE_SOURCE_MINZOOM = 8;
-const ROUTE_SOURCE_MAXZOOM = ROUTE_SOURCE === "local" ? 14 : 12;
+const ROUTE_SOURCE_MAXZOOM = 14;
+
+// ── Outdoor POI ──────────────────────────────────────────────────────
+// Vector tiles with outdoor points of interest — huts, shelters, water,
+// parking, viewpoints, mountain passes, campsites, etc.
+// Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–18).
+
+const POI_SOURCE_LAYER = "outdoor_pois";
+const POI_TILE_URL = `${TILES_BASE_URL}/pois/{z}/{x}/{y}.pbf`;
+const POI_SOURCE_MINZOOM = 12;
+const POI_SOURCE_MAXZOOM = 18;
+
+// POI style settings — icon + label rendering for the outdoor-poi layer
+const POI_ICON_SIZE = 1;
+const POI_ICON_OPACITY = 0.85;
+const POI_TEXT_SIZE = 11;
+const POI_TEXT_OFFSET = [0, 1.5];
+const POI_TEXT_HALO_WIDTH = 1;
+// Icon shown per `kind` value (Liberty sprite icon names); POI_ICON_DEFAULT
+// is the fallback for unmapped kinds.
+const POI_ICON_BY_KIND = {
+  water: "drinking_water",
+  hut: "lodging",
+  shelter: "shelter",
+  parking: "parking",
+  viewpoint: "star_stroked",
+  pass: "mountain",
+  picnic_site: "picnic_site",
+  information: "information",
+  toilets: "toilets",
+  ranger_station: "ranger_station",
+  campsite: "campsite",
+  playground: "playground",
+  skiing: "skiing",
+  ferry: "ferry",
+  bicycle: "bicycle_rental",
+  trailhead: "entrance",
+  bus_stop: "bus",
+  cable_car: "aerialway",
+  halt: "railway",
+  station: "railway",
+  tram_stop: "railway_light",
+  guest_house: "lodging",
+  hotel: "lodging",
+  pub: "bar",
+  town: "town_hall",
+  village: "town_hall",
+  hamlet: "town_hall",
+};
+const POI_ICON_DEFAULT = "marker";
 
 // ═════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -436,7 +461,7 @@ function finalizeStyle(style) {
 
 /**
  * Create a core route line layer for a network tier.
- * Shared by outdoor-route and trailsplits-hiking sections.
+ * Used by the outdoor route section.
  */
 function createRouteLayer(
   sourceId,
@@ -464,7 +489,7 @@ function createRouteLayer(
 
 /**
  * Create a casing/halo background layer for a network tier.
- * Shared by outdoor-route and trailsplits-hiking sections.
+ * Used by the outdoor route section.
  * Returns null if the tier has no casing or halo.
  */
 function createRouteCasing(
@@ -1132,30 +1157,6 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 7. TrailSplits hiking network
-  // ═════════════════════════════════════════════════════════════════════
-
-  if (TRAILSPLITS_HIKING_TRAILS) {
-    style.sources["trailsplits-hiking"] = {
-      type: "vector",
-      tiles: [TRAILSPLITS_HIKING_URL],
-      minzoom: 8,
-      maxzoom: 12,
-      attribution: "© TrailSplits",
-    };
-
-    const tsLayers = createAllRouteLayers(
-      "trailsplits-hiking",
-      "hiking_network",
-      ROUTE_TIERS,
-      ROUTE_TIER_DEFAULT,
-      TRAILSPLITS_HIKING_MINZOOM,
-    );
-
-    style.layers.push(...tsLayers);
-  }
-
-  // ═════════════════════════════════════════════════════════════════════
   // 8. Mountain peak labels
   // ═════════════════════════════════════════════════════════════════════
   // Peak name + elevation labels from the OpenMapTiles `mountain_peak`
@@ -1239,11 +1240,44 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 10. Outdoor POIs (external vector tiles)
+  // 10. Outdoor routes (hiking route relations)
+  // ═════════════════════════════════════════════════════════════════════
+  // Vector tiles with hiking route relations from OSM — line geometry
+  // with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
+  // Source-layer: 'outdoor_routes'. Self-hosted Planetiler tiles (z8–14).
+
+  if (OUTDOOR_ROUTE) {
+    style.sources["outdoor-route"] = {
+      type: "vector",
+      tiles: [ROUTE_TILE_URL],
+      minzoom: ROUTE_SOURCE_MINZOOM,
+      maxzoom: ROUTE_SOURCE_MAXZOOM,
+      attribution: TILES_ATTRIBUTION,
+    };
+
+    const routeLayers = createAllRouteLayers(
+      "outdoor-route",
+      ROUTE_SOURCE_LAYER,
+      ROUTE_TIERS,
+      ROUTE_TIER_DEFAULT,
+    );
+
+    // Insert below the base-map POI layers (poi_r20 anchor) so route lines
+    // render above roads/water but below POI icons & labels.
+    const poiIdx = style.layers.findIndex((l) => l.id === "poi_r20");
+    if (poiIdx !== -1) {
+      style.layers.splice(poiIdx, 0, ...routeLayers);
+    } else {
+      style.layers.push(...routeLayers);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 11. Outdoor POIs (external vector tiles)
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with outdoor points of interest — huts, shelters, water,
   // parking, viewpoints, mountain passes, campsites, etc.
-  // Source-layer: 'outdoor_pois'.
+  // Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–18).
 
   if (OUTDOOR_POI) {
     style.sources["outdoor-poi"] = {
@@ -1251,122 +1285,44 @@ async function build() {
       tiles: [POI_TILE_URL],
       minzoom: POI_SOURCE_MINZOOM,
       maxzoom: POI_SOURCE_MAXZOOM,
-      attribution:
-        POI_SOURCE === "local"
-          ? "© OpenStreetMap contributors"
-          : "© TrailSplits",
+      attribution: TILES_ATTRIBUTION,
     };
 
-    style.layers.push({
+    const poiLayer = {
       id: "outdoor-poi",
       type: "symbol",
       source: "outdoor-poi",
-      "source-layer": "outdoor_pois",
+      "source-layer": POI_SOURCE_LAYER,
       layout: {
         "icon-image": [
           "match",
           ["get", "kind"],
-          "water",
-          "drinking_water",
-          "hut",
-          "lodging",
-          "shelter",
-          "shelter",
-          "parking",
-          "parking",
-          "viewpoint",
-          "star_stroked",
-          "pass",
-          "mountain",
-          "picnic_site",
-          "picnic_site",
-          "information",
-          "information",
-          "toilets",
-          "toilets",
-          "ranger_station",
-          "ranger_station",
-          "campsite",
-          "campsite",
-          "playground",
-          "playground",
-          "skiing",
-          "skiing",
-          "ferry",
-          "ferry",
-          "bicycle",
-          "bicycle_rental",
-          "trailhead",
-          "entrance",
-          "bus_stop",
-          "bus",
-          "cable_car",
-          "aerialway",
-          "halt",
-          "railway",
-          "station",
-          "railway",
-          "tram_stop",
-          "railway_light",
-          "guest_house",
-          "lodging",
-          "hotel",
-          "lodging",
-          "pub",
-          "bar",
-          "town",
-          "town_hall",
-          "village",
-          "town_hall",
-          "hamlet",
-          "town_hall",
-          "marker",
+          ...Object.entries(POI_ICON_BY_KIND).flat(),
+          POI_ICON_DEFAULT,
         ],
-        "icon-size": 1,
+        "icon-size": POI_ICON_SIZE,
         "text-field": ["get", "name"],
-        "text-size": 11,
+        "text-size": POI_TEXT_SIZE,
         "text-font": ["Noto Sans Regular"],
-        "text-offset": [0, 1.5],
+        "text-offset": POI_TEXT_OFFSET,
         "text-anchor": "top",
       },
       paint: {
         "text-color": COLOURS.POI.TEXT,
         "text-halo-color": COLOURS.POI.HALO,
-        "text-halo-width": 1,
-        "icon-opacity": 0.85,
+        "text-halo-width": POI_TEXT_HALO_WIDTH,
+        "icon-opacity": POI_ICON_OPACITY,
       },
-    });
-  }
-
-  // ═════════════════════════════════════════════════════════════════════
-  // 11. Outdoor routes (hiking route relations)
-  // ═════════════════════════════════════════════════════════════════════
-  // Vector tiles with hiking route relations from OSM — line geometry
-  // with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
-
-  if (OUTDOOR_ROUTE) {
-    const routeSourceLayer =
-      ROUTE_SOURCE === "local" ? "outdoor_routes" : "hiking_network";
-
-    style.sources["outdoor-route"] = {
-      type: "vector",
-      tiles: [ROUTE_TILE_URL],
-      minzoom: ROUTE_SOURCE_MINZOOM,
-      maxzoom: ROUTE_SOURCE_MAXZOOM,
-      attribution:
-        ROUTE_SOURCE === "local"
-          ? "© OpenStreetMap contributors"
-          : "© TrailSplits",
     };
 
-    const routeLayers = createAllRouteLayers(
-      "outdoor-route",
-      routeSourceLayer,
-      ROUTE_TIERS,
-      ROUTE_TIER_DEFAULT,
-    );
-
-    style.layers.push(...routeLayers);
+    // Insert at the poi_r20 anchor — above outdoor-route lines (so icons &
+    // labels stay readable) but below base-map POIs and place labels.
+    const poiIdx = style.layers.findIndex((l) => l.id === "poi_r20");
+    if (poiIdx !== -1) {
+      style.layers.splice(poiIdx, 0, poiLayer);
+    } else {
+      style.layers.push(poiLayer);
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════
