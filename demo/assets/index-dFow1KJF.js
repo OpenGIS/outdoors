@@ -844,6 +844,15 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "type": "vector",
       "url": "https://tiles.openfreemap.org/planet"
     },
+    "demSource": {
+      "type": "raster-dem",
+      "tiles": [
+        "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"
+      ],
+      "encoding": "terrarium",
+      "tileSize": 512,
+      "maxzoom": 15
+    },
     "contour-source": {
       "type": "vector",
       "minzoom": 9,
@@ -860,7 +869,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#f8f4f0"
+        "background-color": "hsl(47, 26%, 88%)"
       }
     },
     {
@@ -891,8 +900,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "source": "openmaptiles",
       "source-layer": "park",
       "paint": {
-        "fill-color": "#d8e8c8",
-        "fill-opacity": 0.7,
+        "fill-color": "rgb(192, 216, 151)",
+        "fill-opacity": 0.53,
         "fill-outline-color": "rgba(95, 208, 100, 1)"
       }
     },
@@ -924,19 +933,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "residential"
       ],
       "paint": {
-        "fill-color": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          "hsla(0,3%,85%,0.84)",
-          12,
-          "hsla(35,57%,88%,0.49)"
-        ]
+        "fill-color": "hsl(47, 13%, 86%)",
+        "fill-opacity": 0.7
       }
     },
     {
@@ -954,8 +952,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "hsla(98,61%,72%,0.7)",
-        "fill-opacity": 0.4
+        "fill-color": "hsl(82, 46%, 72%)",
+        "fill-opacity": 0.6
       }
     },
     {
@@ -973,8 +971,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "rgba(176, 213, 154, 1)",
-        "fill-opacity": 0.3
+        "fill-color": "hsl(82, 46%, 72%)",
+        "fill-opacity": 0.45
       }
     },
     {
@@ -992,7 +990,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       ],
       "paint": {
         "fill-antialias": false,
-        "fill-color": "rgba(224, 236, 236, 1)",
+        "fill-color": "hsl(47, 22%, 94%)",
         "fill-opacity": 0.8
       }
     },
@@ -1103,6 +1101,223 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       }
     },
     {
+      "id": "hillshade-layer",
+      "type": "hillshade",
+      "source": "demSource",
+      "paint": {
+        "hillshade-exaggeration": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          0,
+          5,
+          0.2,
+          12,
+          0.2
+        ]
+      }
+    },
+    {
+      "id": "contour-lines",
+      "type": "line",
+      "source": "contour-source",
+      "source-layer": "contours",
+      "minzoom": 9,
+      "maxzoom": 20,
+      "filter": [
+        "all",
+        [
+          "!=",
+          [
+            "%",
+            [
+              "get",
+              "ele"
+            ],
+            100
+          ],
+          0
+        ],
+        [
+          ">",
+          [
+            "get",
+            "ele"
+          ],
+          0
+        ]
+      ],
+      "paint": {
+        "line-color": "rgb(198, 170, 138)",
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.4,
+          14,
+          0.5
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.5,
+          14,
+          1
+        ]
+      }
+    },
+    {
+      "id": "contour-lines-index",
+      "type": "line",
+      "source": "contour-source",
+      "source-layer": "contours",
+      "minzoom": 9,
+      "maxzoom": 20,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "%",
+            [
+              "get",
+              "ele"
+            ],
+            100
+          ],
+          0
+        ],
+        [
+          ">",
+          [
+            "get",
+            "ele"
+          ],
+          0
+        ]
+      ],
+      "paint": {
+        "line-color": "rgb(164, 130, 94)",
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.55,
+          14,
+          0.7
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          0.7,
+          14,
+          1.1
+        ]
+      }
+    },
+    {
+      "id": "contour-labels",
+      "type": "symbol",
+      "source": "contour-source",
+      "source-layer": "contours",
+      "minzoom": 9,
+      "maxzoom": 20,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "%",
+            [
+              "get",
+              "ele"
+            ],
+            100
+          ],
+          0
+        ],
+        [
+          ">",
+          [
+            "get",
+            "ele"
+          ],
+          0
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-avoid-edges": true,
+        "text-rotation-alignment": "map",
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          10,
+          14,
+          12
+        ],
+        "text-field": [
+          "concat",
+          [
+            "number-format",
+            [
+              "round",
+              [
+                "get",
+                "ele"
+              ]
+            ],
+            {}
+          ],
+          "m"
+        ],
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-padding": 10
+      },
+      "paint": {
+        "text-color": "#5c4634",
+        "text-halo-color": "rgba(255, 255, 255, 0.5)",
+        "text-halo-width": 1.25
+      }
+    },
+    {
       "id": "waterway_tunnel",
       "type": "line",
       "source": "openmaptiles",
@@ -1116,7 +1331,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "tunnel"
       ],
       "paint": {
-        "line-color": "#a0c8f0",
+        "line-color": "hsl(205, 56%, 73%)",
         "line-dasharray": [
           3,
           3
@@ -1179,7 +1394,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#a0c8f0",
+        "line-color": "hsl(205, 56%, 73%)",
         "line-width": [
           "interpolate",
           [
@@ -1224,7 +1439,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-cap": "round"
       },
       "paint": {
-        "line-color": "#a0c8f0",
+        "line-color": "hsl(205, 56%, 73%)",
         "line-width": [
           "interpolate",
           [
@@ -1255,7 +1470,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "tunnel"
       ],
       "paint": {
-        "fill-color": "rgb(158,189,255)"
+        "fill-color": "hsl(205, 56%, 73%)"
       }
     },
     {
@@ -1272,7 +1487,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "sand"
       ],
       "paint": {
-        "fill-color": "rgba(247, 239, 195, 1)"
+        "fill-color": "rgb(232, 214, 38)",
+        "fill-opacity": 0.3
       }
     },
     {
@@ -1428,7 +1644,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-dasharray": [
           0.5,
           0.25
@@ -1486,7 +1702,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#cfcdca",
+        "line-color": "rgb(183, 168, 145)",
         "line-dasharray": [
           0.5,
           0.25
@@ -1537,7 +1753,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -1591,7 +1807,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#cfcdca",
+        "line-color": "rgb(183, 168, 145)",
         "line-opacity": [
           "interpolate",
           [
@@ -1658,7 +1874,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -1708,7 +1924,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -1765,7 +1981,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-dasharray": [
           0.5,
           0.25
@@ -1889,7 +2105,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fc8",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -1907,7 +2123,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           2.5,
           20,
           11.5
-        ]
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -1943,7 +2160,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff",
+        "line-color": "rgb(217, 203, 176)",
         "line-width": [
           "interpolate",
           [
@@ -1953,13 +2170,16 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          15.5,
-          0,
+          14,
+          0.5,
+          15,
+          1.5,
           16,
-          2,
+          3,
           20,
-          7.5
-        ]
+          9
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -1990,7 +2210,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff4c6",
+        "line-color": "rgb(223, 211, 188)",
         "line-width": [
           "interpolate",
           [
@@ -2008,7 +2228,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           2.5,
           20,
           11.5
-        ]
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -2043,7 +2264,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff",
+        "line-color": "rgb(217, 203, 176)",
         "line-width": [
           "interpolate",
           [
@@ -2059,7 +2280,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           2.5,
           20,
           11.5
-        ]
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -2095,7 +2317,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff4c6",
+        "line-color": "rgb(223, 211, 188)",
         "line-width": [
           "interpolate",
           [
@@ -2111,7 +2333,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           0.5,
           20,
           10
-        ]
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -2147,7 +2370,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff4c6",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -2163,7 +2386,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           1,
           20,
           18
-        ]
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -2202,7 +2426,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#ffdaa6",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -2218,7 +2442,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           1,
           20,
           18
-        ]
+        ],
+        "line-opacity": 0.55
       }
     },
     {
@@ -2477,7 +2702,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -2537,7 +2762,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#cfcdca",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -2607,7 +2832,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -2686,7 +2911,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#cfcdca",
+        "line-color": "rgb(183, 168, 145)",
         "line-opacity": [
           "interpolate",
           [
@@ -2767,7 +2992,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -2822,7 +3047,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -2886,7 +3111,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -3025,7 +3250,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fc8",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -3085,7 +3310,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff",
+        "line-color": "rgb(217, 203, 176)",
         "line-width": [
           "interpolate",
           [
@@ -3095,12 +3320,14 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          15.5,
-          0,
+          14,
+          0.5,
+          15,
+          1.5,
           16,
-          2,
+          3,
           20,
-          7.5
+          9
         ]
       }
     },
@@ -3155,7 +3382,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fea",
+        "line-color": "rgb(223, 211, 188)",
         "line-width": [
           "interpolate",
           [
@@ -3226,7 +3453,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff",
+        "line-color": "rgb(217, 203, 176)",
         "line-width": [
           "interpolate",
           [
@@ -3284,7 +3511,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fea",
+        "line-color": "rgb(223, 211, 188)",
         "line-width": [
           "interpolate",
           [
@@ -3341,7 +3568,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fea",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -3403,19 +3630,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          5,
-          "hsl(26,87%,62%)",
-          6,
-          "#fc8"
-        ],
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -3713,7 +3928,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -3767,7 +3982,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#cfcdca",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -3814,7 +4029,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -3868,7 +4083,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "hsl(36,6%,74%)",
+        "line-color": "rgb(183, 168, 145)",
         "line-opacity": [
           "interpolate",
           [
@@ -3998,7 +4213,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -4048,7 +4263,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -4105,7 +4320,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#e9ac77",
+        "line-color": "rgb(183, 168, 145)",
         "line-width": [
           "interpolate",
           [
@@ -4225,7 +4440,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fc8",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -4279,7 +4494,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff",
+        "line-color": "rgb(217, 203, 176)",
         "line-width": [
           "interpolate",
           [
@@ -4289,12 +4504,14 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          15.5,
-          0,
+          14,
+          0.5,
+          15,
+          1.5,
           16,
-          2,
+          3,
           20,
-          7.5
+          9
         ]
       }
     },
@@ -4326,7 +4543,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fea",
+        "line-color": "rgb(223, 211, 188)",
         "line-width": [
           "interpolate",
           [
@@ -4379,7 +4596,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fff",
+        "line-color": "rgb(217, 203, 176)",
         "line-width": [
           "interpolate",
           [
@@ -4431,7 +4648,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fea",
+        "line-color": "rgb(223, 211, 188)",
         "line-width": [
           "interpolate",
           [
@@ -4483,7 +4700,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fea",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -4538,7 +4755,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#fc8",
+        "line-color": "rgb(228, 219, 201)",
         "line-width": [
           "interpolate",
           [
@@ -4749,7 +4966,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "minzoom": 13,
       "maxzoom": 14,
       "paint": {
-        "fill-color": "hsl(35,8%,85%)",
+        "fill-color": "hsl(39, 41%, 86%)",
         "fill-outline-color": [
           "interpolate",
           [
@@ -4776,7 +4993,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "get",
           "render_min_height"
         ],
-        "fill-extrusion-color": "hsl(35,8%,85%)",
+        "fill-extrusion-color": "hsl(39, 41%, 86%)",
         "fill-extrusion-height": [
           "get",
           "render_height"
@@ -5185,6 +5402,45 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "text-color": "#495e91",
         "text-halo-color": "rgba(255,255,255,0.7)",
         "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "mountain-peak",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "mountain_peak",
+      "minzoom": 7,
+      "filter": [
+        "all",
+        [
+          "==",
+          "$type",
+          "Point"
+        ],
+        [
+          "==",
+          "rank",
+          1
+        ]
+      ],
+      "layout": {
+        "text-field": "{name:latin} {name:nonlatin}\\n{ele} m\\n▲",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-anchor": "bottom",
+        "text-offset": [
+          0,
+          0.5
+        ],
+        "text-max-width": 8,
+        "text-size": 11
+      },
+      "paint": {
+        "text-color": "#333333",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+        "text-halo-blur": 1
       }
     },
     {
@@ -6966,168 +7222,6 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "text-halo-blur": 1,
         "text-halo-color": "#fff",
         "text-halo-width": 1
-      }
-    },
-    {
-      "id": "contour-lines",
-      "type": "line",
-      "source": "contour-source",
-      "source-layer": "contours",
-      "minzoom": 9,
-      "maxzoom": 20,
-      "filter": [
-        "!=",
-        [
-          "%",
-          [
-            "get",
-            "ele"
-          ],
-          100
-        ],
-        0
-      ],
-      "paint": {
-        "line-color": "rgb(190, 186, 180)",
-        "line-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          12,
-          0.4,
-          14,
-          0.5
-        ],
-        "line-width": [
-          "interpolate",
-          [
-            "exponential",
-            1.2
-          ],
-          [
-            "zoom"
-          ],
-          12,
-          0.5,
-          14,
-          1
-        ]
-      }
-    },
-    {
-      "id": "contour-lines-index",
-      "type": "line",
-      "source": "contour-source",
-      "source-layer": "contours",
-      "minzoom": 9,
-      "maxzoom": 20,
-      "filter": [
-        "==",
-        [
-          "%",
-          [
-            "get",
-            "ele"
-          ],
-          100
-        ],
-        0
-      ],
-      "paint": {
-        "line-color": "rgb(180, 175, 170)",
-        "line-opacity": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          12,
-          0.55,
-          14,
-          0.7
-        ],
-        "line-width": [
-          "interpolate",
-          [
-            "exponential",
-            1.2
-          ],
-          [
-            "zoom"
-          ],
-          12,
-          0.7,
-          14,
-          1.1
-        ]
-      }
-    },
-    {
-      "id": "contour-labels",
-      "type": "symbol",
-      "source": "contour-source",
-      "source-layer": "contours",
-      "minzoom": 9,
-      "maxzoom": 20,
-      "filter": [
-        "==",
-        [
-          "%",
-          [
-            "get",
-            "ele"
-          ],
-          100
-        ],
-        0
-      ],
-      "layout": {
-        "symbol-placement": "line",
-        "symbol-avoid-edges": true,
-        "text-rotation-alignment": "map",
-        "text-size": [
-          "interpolate",
-          [
-            "linear"
-          ],
-          [
-            "zoom"
-          ],
-          12,
-          10,
-          14,
-          12
-        ],
-        "text-field": [
-          "concat",
-          [
-            "number-format",
-            [
-              "round",
-              [
-                "get",
-                "ele"
-              ]
-            ],
-            {}
-          ],
-          "m"
-        ],
-        "text-font": [
-          "Noto Sans Regular"
-        ],
-        "text-padding": 0
-      },
-      "paint": {
-        "text-color": "#4a4a4a",
-        "text-halo-color": "rgba(255, 255, 255, 0.85)",
-        "text-halo-width": 1.25
       }
     }
   ]

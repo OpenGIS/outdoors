@@ -20,11 +20,43 @@ Dependencies are listed in render order (bottom to top). Each entry includes the
   - Fetched from GitHub at build time, cached in `.cache/liberty.json`. Uses HTTP ETag for cache invalidation — auto-updates when upstream changes.
   - A **resolved copy** (`liberty-processed.json`) with `__TILEJSON_DOMAIN__` placeholders baked in is written to `.cache/` for subsequent builds.
 
-### Terrain
+### Base terrain palette
 
-- **[Mapterhorn](https://tiles.mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 15) for 3D terrain and hillshading. The terrain source feeds both the `hillshade` layer and, in plugin contour mode, the maplibre-contour demo source.
-  - Toggle: `TERRAIN` (default `true`)
-  - Configurable via `TERRAIN_SOURCE_URL` — swap to AWS Terrarium or TrailSplits TerrainRGB by changing the constant.
+No external source — overrides the Liberty base-layer colours with muted, reference-inspired colours (MapTiler terrain reference) so the outdoor overlays read clearly on top.
+
+- Toggle: `TERRAIN_PALETTE` (default `true`) — applies the muted colour overrides to Liberty's base layers: background, water/waterways, landcover grass/wood/ice/sand, park, landuse residential, and buildings (2D fill and 3D extrusion)
+- Opacity knobs (flat constants in the palette config block) soften the opaque base fills: `PALETTE_PARK_OPACITY` (0.53), `PALETTE_GRASS_OPACITY` (0.45), `PALETTE_WOOD_OPACITY` (0.6), `PALETTE_SAND_OPACITY` (0.3), `PALETTE_RESIDENTIAL_OPACITY` (0.7)
+- All colours are customisable via the nested `COLOURS` object in [`scripts/build.mjs`](scripts/build.mjs), grouped by feature:
+  - `COLOURS.TERRAIN` — base terrain palette (background, water, waterways, grass, wood, park, sand, ice, residential, buildings)
+  - `COLOURS.ROADS` — road palette (major/medium/local fills + casing)
+  - `COLOURS.CONTOURS` — contour lines (minor/index) and labels (text + halo)
+  - `COLOURS.PEAKS` — mountain peak label text + halo
+  - `COLOURS.POI` — outdoor POI label text + halo
+  - `COLOURS.ROUTES` — route network tiers (iwn/nwn/rwn/lwn) + rwn casing, lwn halo, default
+  - `COLOURS.MTB` — MTB difficulty grades (1/2/3+) and bicycle access
+  - `COLOURS.PATHS` — path & trail colour
+
+### Road colour palette
+
+No external source — overrides the Liberty base-layer road colours with a muted warm-taupe palette, replacing Liberty's bright yellow/orange roads with an outdoor-first hierarchy in which local roads and forest tracks are the most visible. Local roads were lightened and desaturated so they read clearly against the brown contour lines, while the contours stay the saturated brown family.
+
+- Toggle: `ROAD_PALETTE` (default `true`) — applies the muted colour overrides to Liberty's road fills and casings via `applyRoadPalette()`
+- Outdoor-first hierarchy (darkest/most visible → lightest/most recessive):
+  - `COLOURS.ROADS.LOCAL` `rgb(217, 203, 176)` — minor/service/track/street fills
+  - `COLOURS.ROADS.MEDIUM` `rgb(223, 211, 188)` — secondary/tertiary/link fills
+  - `COLOURS.ROADS.MAJOR` `rgb(228, 219, 201)` — motorway/trunk/primary fills (lightest, most recessive)
+  - `COLOURS.ROADS.CASING` `rgb(183, 168, 145)` — all non-path casing layers
+- Tunnel fills render at `ROAD_TUNNEL_OPACITY` (0.55) — faded so their dash patterns stay readable
+- Track width/zoom boost: `ROAD_TRACK_WIDTH` (`["interpolate", ["exponential", 1.2], ["zoom"], 14, 0.5, 15, 1.5, 16, 3, 20, 9]`) thickens service/track fills so forest tracks appear roughly 1.5 zooms earlier and thicker than Liberty
+- Paths/pedestrian styling is separate — the path promotion (`COLOURS.PATHS.PATH`, #c05a2a) is untouched by this section (see [Path & trail visibility](#path--trail-visibility))
+
+### DEM — hillshade & terrain
+
+- **[Mapterhorn](https://tiles.mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 15). A single `demSource` raster-dem source is created when the `DEM` toggle below is enabled and feeds both the hillshade layer and 3D terrain. In plugin contour mode the same DEM data feeds the maplibre-contour plugin at runtime.
+  - Toggle: `DEM` (default `true`) — the master switch; creates the shared `demSource` raster-dem source (Mapterhorn, Terrarium, 512 px, maxzoom 15). Hillshade and terrain both read from it.
+  - Toggle: `DEM_HILLSHADE` (default `true`) — a 2D hillshade layer drawn from the DEM source. Fades in from z3 to z5 (hillshade exaggeration 0 → 0.2) and renders above landcover but below contours and water.
+  - Toggle: `DEM_TERRAIN` (default `false`) — 3D terrain elevation (`style.terrain.exaggeration`, 1.5) drawn from the DEM source.
+  - Configurable via `DEM_SOURCE_URL` — swap to AWS Terrarium or TrailSplits TerrainRGB by changing the constant. `TERRAIN_EXAGGERATION` (default 1.5) and `HILLSHADE_EXAGGERATION` (fade-in ramp `[[3, 0], [5, 0.2], [12, 0.2]]`) tune the two consumers.
 
 ### Contours
 
@@ -58,6 +90,13 @@ Three mutually exclusive modes, selected by `CONTOURS_MODE` in `scripts/build.mj
   - Toggle: `TRAILSPLITS_HIKING_TRAILS` (default `false`)
   - Source-layer: `hiking_network`, zoom range z8–12
   - Free, no API key required
+
+### Mountain peak labels
+
+No external source — peak name + elevation labels with a ▲ marker, drawn from Liberty's existing **OpenMapTiles `mountain_peak`** source-layer for the most prominent peaks (`rank == 1`), visible from z7.
+
+- Toggle: `PEAK_LABELS` (default `true`)
+- Text-only symbols (no sprite icon) — inserted just below the promoted POI layer in the render stack
 
 ### Promoted Liberty POIs
 

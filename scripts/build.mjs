@@ -19,9 +19,11 @@
  * providers without changing any section logic.
  *
  * Sections are ordered from bottom to top in the render stack:
- *   satellite → terrain → contours → waymarked trails →
- *   trailsplits hiking network → promoted liberty pois →
- *   outdoor pois → outdoor routes → mtb/bicycle → path styling
+ *  satellite → terrain palette → road palette → DEM (hillshade, terrain) →
+ *  contours →
+ *  waymarked trails → trailsplits hiking network → mountain peak labels →
+ *  promoted liberty pois → outdoor pois → outdoor routes → mtb/bicycle →
+ *  path styling
  *
  * Dependencies:
  *   - OSM Liberty (OpenFreeMap fork): https://raw.githubusercontent.com/hyperknot/openfreemap-styles/main/styles/liberty/style.json
@@ -44,10 +46,15 @@ const OUTDOOR_STYLE = resolve(ROOT, "style.json");
 // Flip these to enable/disable each feature section.
 
 const SATELLITE = false; // ESRI World Satellite raster base layer
-const TERRAIN = false; // 3D terrain hillshading (raster DEM)
+const DEM = true; // raster-dem source (Mapterhorn) — shared elevation source
+const DEM_HILLSHADE = true; // 2D hillshade layer from the DEM source
+const DEM_TERRAIN = false; // 3D terrain exaggeration from the DEM source
+const TERRAIN_PALETTE = true; // Muted base-layer colour palette (MapTiler terrain reference)
+const ROAD_PALETTE = true; // Muted warm-taupe road palette (outdoor-first: local roads & tracks most visible)
 const CONTOURS_MODE = "pbf"; // Contour lines: "pbf" (ogis.app tiles) | "plugin" (GPU) | "disabled"
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
 const TRAILSPLITS_HIKING_TRAILS = false; // TrailSplits hiking network overlay (vector tiles)
+const PEAK_LABELS = true; // Peak name + elevation labels (below promoted POIs)
 const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
 const OUTDOOR_POI = false; // Outdoor POIs overlay (vector tiles)
 const OUTDOOR_ROUTE = false; // Hiking route overlay (vector tiles)
@@ -75,35 +82,69 @@ const CACHE_PROCESSED_FILE = resolve(CACHE_DIR, "liberty-processed.json");
 const OFM_DOMAIN = "tiles.openfreemap.org";
 
 // ═════════════════════════════════════════════════════════════════════════
-// COLOURS
+// COLOURS — nested by feature, grouped in build/render order:
+//   terrain base palette → contours → peaks → POIs → routes → MTB → paths
+// Every colour literal in this file lives inside this object.
 // ═════════════════════════════════════════════════════════════════════════
 
 const COLOURS = {
-  // Paths & trails
-  PATH: "#c05a2a",
+  // Base terrain palette (applied by applyTerrainPalette)
+  TERRAIN: {
+    BACKGROUND: "hsl(47, 26%, 88%)",
+    WATER: "hsl(205, 56%, 73%)",
+    WATERWAY: "hsl(205, 56%, 73%)",
+    GRASS: "hsl(82, 46%, 72%)",
+    WOOD: "hsl(82, 46%, 72%)",
+    PARK: "rgb(192, 216, 151)",
+    SAND: "rgb(232, 214, 38)",
+    ICE: "hsl(47, 22%, 94%)",
+    RESIDENTIAL: "hsl(47, 13%, 86%)",
+    BUILDINGS: "hsl(39, 41%, 86%)",
+  },
 
-  // MTB scale difficulty overlay
-  MTB_GRADE_1: "blue",
-  MTB_GRADE_2: "red",
-  MTB_GRADE_3_PLUS: "black",
-
-  // Bicycle access overlay
-  BICYCLE_ACCESS: "#8c64bd",
+  // Roads — muted warm-taupe road palette (applied by applyRoadPalette)
+  ROADS: {
+    MAJOR: "rgb(228, 219, 201)", // lightest, most recessive — motorway/trunk/primary (+ motorway links)
+    MEDIUM: "rgb(223, 211, 188)", // secondary/tertiary/links
+    LOCAL: "rgb(217, 203, 176)", // darkest of the roads, clearly lighter than contour browns — minor/service/track/street
+    CASING: "rgb(183, 168, 145)", // all non-path casing layers — darker than fills, keeps road outline crisp
+  },
 
   // Contour lines & labels
-  CONTOUR_MINOR: "rgb(190, 186, 180)",
-  CONTOUR_INDEX: "rgb(180, 175, 170)",
-  CONTOUR_LABEL: "#4a4a4a",
-  CONTOUR_HALO: "rgba(255, 255, 255, 0.85)",
+  CONTOURS: {
+    MINOR: "rgb(198, 170, 138)", // soft sand-brown — minor contour lines
+    INDEX: "rgb(164, 130, 94)", // medium topo brown — index contour lines
+    LABEL: "#5c4634", // dark umber — elevation labels
+    HALO: "rgba(255, 255, 255, 0.5)", // semi-transparent white — label halo
+  },
+
+  // Mountain peak labels
+  PEAKS: { TEXT: "#333333", HALO: "#ffffff" },
+
+  // Outdoor POI labels
+  POI: { TEXT: "#333333", HALO: "#ffffff" },
 
   // Hiking route network tiers
-  ROUTE_IWN: "#b20303",
-  ROUTE_NWN: "#152eec",
-  ROUTE_RWN: "#ffa304",
-  ROUTE_RWN_CASING: "#a76f0f",
-  ROUTE_LWN: "#7d31c6",
-  ROUTE_LWN_HALO: "#c19ae6",
-  ROUTE_DEFAULT: "#b2b2b2",
+  ROUTES: {
+    IWN: "#b20303",
+    NWN: "#152eec",
+    RWN: "#ffa304",
+    RWN_CASING: "#a76f0f",
+    LWN: "#7d31c6",
+    LWN_HALO: "#c19ae6",
+    DEFAULT: "#b2b2b2",
+  },
+
+  // MTB scale difficulty overlay
+  MTB: {
+    GRADE_1: "blue",
+    GRADE_2: "red",
+    GRADE_3_PLUS: "black",
+    BICYCLE_ACCESS: "#8c64bd",
+  },
+
+  // Paths & trails
+  PATHS: { PATH: "#c05a2a" },
 };
 
 // ── Route network tier paint configs ──────────────────────────────────
@@ -112,35 +153,35 @@ const COLOURS = {
 
 const ROUTE_TIERS = {
   iwn: {
-    color: COLOURS.ROUTE_IWN,
+    color: COLOURS.ROUTES.IWN,
     opacity: 0.7,
     minzoom: 8,
     width: ["interpolate", ["linear"], ["zoom"], 8, 3, 10, 4, 12, 5],
   },
   nwn: {
-    color: COLOURS.ROUTE_NWN,
+    color: COLOURS.ROUTES.NWN,
     opacity: 0.7,
     minzoom: 8,
     width: ["interpolate", ["linear"], ["zoom"], 8, 2, 10, 3, 12, 4],
   },
   rwn: {
-    color: COLOURS.ROUTE_RWN,
+    color: COLOURS.ROUTES.RWN,
     opacity: 0.8,
     minzoom: 10,
     width: ["interpolate", ["linear"], ["zoom"], 10, 2, 12, 3],
     casing: {
-      color: COLOURS.ROUTE_RWN_CASING,
+      color: COLOURS.ROUTES.RWN_CASING,
       opacity: 0.35,
       width: ["interpolate", ["linear"], ["zoom"], 10, 5, 12, 7],
     },
   },
   lwn: {
-    color: COLOURS.ROUTE_LWN,
+    color: COLOURS.ROUTES.LWN,
     opacity: 0.8,
     minzoom: 12,
     width: 1.5,
     halo: {
-      color: COLOURS.ROUTE_LWN_HALO,
+      color: COLOURS.ROUTES.LWN_HALO,
       opacity: 0.4,
       width: 4,
       minzoom: 12,
@@ -149,7 +190,7 @@ const ROUTE_TIERS = {
 };
 
 const ROUTE_TIER_DEFAULT = {
-  color: COLOURS.ROUTE_DEFAULT,
+  color: COLOURS.ROUTES.DEFAULT,
   opacity: 0.5,
   width: 1.0,
   minzoom: 12,
@@ -174,14 +215,48 @@ const SATELLITE_SOURCE_MAXZOOM = 19;
 const SATELLITE_SOURCE_ATTRIBUTION =
   "Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community";
 
-// ── Terrain DEM (raster-elevation) ────────────────────────────────────
+// ── DEM (raster-dem source) ──────────────────────────────────────────
+// The raster-dem source feeds the hillshade layer and 3D terrain.
 // Mapterhorn (Terrarium, 512px, maxzoom 15):
 //   https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
 
-const TERRAIN_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
-const TERRAIN_SOURCE_ENCODING = "terrarium";
-const TERRAIN_SOURCE_TILESIZE = 512;
-const TERRAIN_SOURCE_MAXZOOM = 15;
+const DEM_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
+const DEM_SOURCE_ENCODING = "terrarium";
+const DEM_SOURCE_TILESIZE = 512;
+const DEM_SOURCE_MAXZOOM = 15;
+// style.terrain.exaggeration — ratio by which the terrain is exaggerated relative to real world
+const TERRAIN_EXAGGERATION = 1.5;
+// hillshade-exaggeration — intensity of the hillshade (fades in z3 → z5)
+const HILLSHADE_EXAGGERATION = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  3,
+  0,
+  5,
+  0.2,
+  12,
+  0.2,
+];
+
+// ── Terrain palette ───────────────────────────────────────────────────
+// Muted base-layer colours (see COLOURS.TERRAIN) applied by
+// applyTerrainPalette(). Opacities are reference-derived values that
+// soften the flat base fills so overlays read clearly on top.
+
+const PALETTE_PARK_OPACITY = 0.53; // softened park fill (reference-derived)
+const PALETTE_GRASS_OPACITY = 0.45; // softened grass fill (reference-derived)
+const PALETTE_WOOD_OPACITY = 0.6; // softened wood fill (reference-derived)
+const PALETTE_SAND_OPACITY = 0.3; // softened sand fill (reference-derived)
+const PALETTE_RESIDENTIAL_OPACITY = 0.7; // softened residential fill (reference-derived)
+
+// ── Roads ─────────────────────────────────────────────────────────────
+// Muted warm-taupe road colours (see COLOURS.ROADS) applied by
+// applyRoadPalette(). Tunnel fills stay faded so their dashes read
+// clearly; track/service fills are thickened to suit outdoor use.
+
+const ROAD_TUNNEL_OPACITY = 0.55; // line-opacity for tunnel fills (faded, dashes preserved)
+const ROAD_TRACK_WIDTH = ["interpolate", ["exponential", 1.2], ["zoom"], 14, 0.5, 15, 1.5, 16, 3, 20, 9]; // line-width for service/track fills (appears ~1.5 zooms earlier than Liberty, thicker)
 
 // ── Contours ─────────────────────────────────────────────────────────
 // Mode selected by the CONTOURS_MODE feature toggle (see toggles above):
@@ -272,6 +347,15 @@ const CONTOUR_PLUGIN_PROTOCOL_ID = "dem"; // Must match DemSource.setupMaplibre(
 const TRAILSPLITS_HIKING_URL =
   "https://api.trailsplits.com/tiles/v1/hiking-network/current/{z}/{x}/{y}.pbf";
 const TRAILSPLITS_HIKING_MINZOOM = 8;
+
+// ── Mountain peak labels ─────────────────────────────────────────────
+// Peak name + elevation labels from the OpenMapTiles mountain_peak
+// source-layer. Text only — no icon-image.
+
+const PEAK_LABEL_MINZOOM = 7;
+const PEAK_LABEL_TEXT_SIZE = 11;
+const PEAK_LABEL_HALO_WIDTH = 1;
+const PEAK_LABEL_HALO_BLUR = 1;
 
 // ── Promoted liberty POIs ────────────────────────────────────────────
 // Display selected base-map POIs at lower zooms (z12–14) rather than
@@ -477,6 +561,165 @@ function buildContourTileUrl(id, thresholds, extraOptions) {
   return `${id}-contour://{z}/{x}/{y}?${query}`;
 }
 
+/**
+ * Index of the first water/waterway layer in the layer stack.
+ * Hillshade and contour layers are inserted just below this point so they
+ * render above landcover/landuse but below all water features.
+ * Returns -1 if no water layer is found.
+ */
+function waterStackIndex(style) {
+  return style.layers.findIndex(
+    (l) => l.id.startsWith("waterway") || l.id.startsWith("water"),
+  );
+}
+
+/**
+ * Override the Liberty base-layer colours with the muted terrain palette.
+ * Skips any layer id that isn't found in the base style, so the build
+ * stays robust if upstream renames or removes a layer.
+ */
+function applyTerrainPalette(style) {
+  const set = (id, paintKey, value) => {
+    const layer = style.layers.find((l) => l.id === id);
+    if (!layer) return;
+    layer.paint = layer.paint || {};
+    layer.paint[paintKey] = value;
+  };
+
+  set("background", "background-color", COLOURS.TERRAIN.BACKGROUND);
+
+  set("water", "fill-color", COLOURS.TERRAIN.WATER);
+
+  set("waterway_tunnel", "line-color", COLOURS.TERRAIN.WATERWAY);
+  set("waterway_river", "line-color", COLOURS.TERRAIN.WATERWAY);
+  set("waterway_other", "line-color", COLOURS.TERRAIN.WATERWAY);
+
+  set("landcover_grass", "fill-color", COLOURS.TERRAIN.GRASS);
+  set("landcover_grass", "fill-opacity", PALETTE_GRASS_OPACITY);
+
+  set("landcover_wood", "fill-color", COLOURS.TERRAIN.WOOD);
+  set("landcover_wood", "fill-opacity", PALETTE_WOOD_OPACITY);
+
+  set("park", "fill-color", COLOURS.TERRAIN.PARK);
+  set("park", "fill-opacity", PALETTE_PARK_OPACITY);
+
+  set("landcover_ice", "fill-color", COLOURS.TERRAIN.ICE);
+
+  set("landcover_sand", "fill-color", COLOURS.TERRAIN.SAND);
+  set("landcover_sand", "fill-opacity", PALETTE_SAND_OPACITY);
+
+  set("landuse_residential", "fill-color", COLOURS.TERRAIN.RESIDENTIAL);
+  set("landuse_residential", "fill-opacity", PALETTE_RESIDENTIAL_OPACITY);
+
+  set("building", "fill-color", COLOURS.TERRAIN.BUILDINGS);
+
+  set("building-3d", "fill-extrusion-color", COLOURS.TERRAIN.BUILDINGS);
+}
+
+/**
+ * Override the Liberty base-layer road colours with the muted road
+ * palette (see COLOURS.ROADS). Skips any layer id that isn't found in
+ * the base style, so the build stays robust if upstream renames or
+ * removes a layer. Tunnel fills are faded (dashes preserved); the
+ * service/track fills are thickened for outdoor use.
+ */
+function applyRoadPalette(style) {
+  const set = (id, paintKey, value) => {
+    const layer = style.layers.find((l) => l.id === id);
+    if (!layer) return;
+    layer.paint = layer.paint || {};
+    layer.paint[paintKey] = value;
+  };
+
+  // Fills → MAJOR (motorway/trunk/primary + motorway links)
+  for (const id of [
+    "road_motorway",
+    "road_trunk_primary",
+    "road_motorway_link",
+    "bridge_motorway",
+    "bridge_trunk_primary",
+    "bridge_motorway_link",
+    "tunnel_motorway",
+    "tunnel_trunk_primary",
+    "tunnel_motorway_link",
+  ]) {
+    set(id, "line-color", COLOURS.ROADS.MAJOR);
+  }
+
+  // Fills → MEDIUM (secondary/tertiary/links)
+  for (const id of [
+    "road_secondary_tertiary",
+    "road_link",
+    "bridge_secondary_tertiary",
+    "bridge_link",
+    "tunnel_secondary_tertiary",
+    "tunnel_link",
+  ]) {
+    set(id, "line-color", COLOURS.ROADS.MEDIUM);
+  }
+
+  // Fills → LOCAL (minor/service/track/street)
+  for (const id of [
+    "road_minor",
+    "road_service_track",
+    "bridge_street",
+    "bridge_service_track",
+    "tunnel_minor",
+    "tunnel_service_track",
+  ]) {
+    set(id, "line-color", COLOURS.ROADS.LOCAL);
+  }
+
+  // Casings → CASING (all non-path casing layers)
+  for (const id of [
+    "tunnel_motorway_link_casing",
+    "tunnel_service_track_casing",
+    "tunnel_link_casing",
+    "tunnel_street_casing",
+    "tunnel_secondary_tertiary_casing",
+    "tunnel_trunk_primary_casing",
+    "tunnel_motorway_casing",
+    "road_motorway_link_casing",
+    "road_service_track_casing",
+    "road_link_casing",
+    "road_minor_casing",
+    "road_secondary_tertiary_casing",
+    "road_trunk_primary_casing",
+    "road_motorway_casing",
+    "bridge_motorway_link_casing",
+    "bridge_service_track_casing",
+    "bridge_link_casing",
+    "bridge_street_casing",
+    "bridge_secondary_tertiary_casing",
+    "bridge_trunk_primary_casing",
+    "bridge_motorway_casing",
+  ]) {
+    set(id, "line-color", COLOURS.ROADS.CASING);
+  }
+
+  // Tunnel fills — faded, but their dash arrays are left untouched
+  for (const id of [
+    "tunnel_motorway",
+    "tunnel_trunk_primary",
+    "tunnel_motorway_link",
+    "tunnel_secondary_tertiary",
+    "tunnel_link",
+    "tunnel_minor",
+    "tunnel_service_track",
+  ]) {
+    set(id, "line-opacity", ROAD_TUNNEL_OPACITY);
+  }
+
+  // Service/track fills — thicker line-width (appears earlier than Liberty)
+  for (const id of [
+    "road_service_track",
+    "tunnel_service_track",
+    "bridge_service_track",
+  ]) {
+    set(id, "line-width", ROAD_TRACK_WIDTH);
+  }
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 // Liberty fetch — download from GitHub with local cache
 // ═════════════════════════════════════════════════════════════════════════
@@ -638,28 +881,67 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 2. Terrain & hillshade
+  // 2. Base terrain palette
   // ═════════════════════════════════════════════════════════════════════
+  // Overrides the Liberty base colours (background, water, landcover,
+  // landuse, buildings) with the muted MapTiler terrain-reference palette
+  // so overlays read clearly on top.
 
-  if (TERRAIN) {
-    style.sources.terrainSource = {
+  if (TERRAIN_PALETTE) applyTerrainPalette(style);
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 3. Road colour palette
+  // ═════════════════════════════════════════════════════════════════════
+  // Overrides the Liberty base road colours with the muted warm-taupe
+  // palette (see COLOURS.ROADS) so local roads & tracks read clearly.
+
+  if (ROAD_PALETTE) applyRoadPalette(style);
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 4. DEM — raster-dem source, hillshade & terrain
+  // ═════════════════════════════════════════════════════════════════════
+  // One raster-dem source (demSource) feeds two granular features, both
+  // gated on the DEM master toggle:
+  //   DEM_HILLSHADE — a 2D hillshade layer (fades in from z3 to z5+),
+  //                   rendered above landcover/landuse, below contours/water
+  //   DEM_TERRAIN   — 3D terrain elevation (style.terrain.exaggeration)
+
+  if (DEM) {
+    style.sources.demSource = {
       type: "raster-dem",
-      tiles: [TERRAIN_SOURCE_URL],
-      encoding: TERRAIN_SOURCE_ENCODING,
-      tileSize: TERRAIN_SOURCE_TILESIZE,
-      maxzoom: TERRAIN_SOURCE_MAXZOOM,
+      tiles: [DEM_SOURCE_URL],
+      encoding: DEM_SOURCE_ENCODING,
+      tileSize: DEM_SOURCE_TILESIZE,
+      maxzoom: DEM_SOURCE_MAXZOOM,
     };
-    style.terrain = { source: "terrainSource", exaggeration: 1.5 };
-    style.layers.push({
-      id: "hillshade-layer",
-      type: "hillshade",
-      source: "terrainSource",
-      paint: { "hillshade-exaggeration": 0.2 },
-    });
+
+    if (DEM_HILLSHADE) {
+      const hillshadeIdx = waterStackIndex(style);
+      const hillshadeLayer = {
+        id: "hillshade-layer",
+        type: "hillshade",
+        source: "demSource",
+        paint: {
+          "hillshade-exaggeration": HILLSHADE_EXAGGERATION,
+        },
+      };
+      if (hillshadeIdx !== -1) {
+        style.layers.splice(hillshadeIdx, 0, hillshadeLayer);
+      } else {
+        style.layers.push(hillshadeLayer);
+      }
+    }
+
+    if (DEM_TERRAIN) {
+      style.terrain = {
+        source: "demSource",
+        exaggeration: TERRAIN_EXAGGERATION,
+      };
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 3. Contours
+  // 5. Contours
   // ═════════════════════════════════════════════════════════════════════
   // Mode selected by CONTOURS_MODE:
   //
@@ -687,7 +969,7 @@ async function build() {
       maxzoom: CONTOUR_PLUGIN_SOURCE_MAXZOOM,
     };
 
-    style.layers.push(
+    const contourLayers = [
       {
         id: "contour-lines",
         type: "line",
@@ -697,7 +979,7 @@ async function build() {
         maxzoom: CONTOUR_LAYER_MAXZOOM,
         filter: ["==", ["get", "level"], 0],
         paint: {
-          "line-color": COLOURS.CONTOUR_MINOR,
+          "line-color": COLOURS.CONTOURS.MINOR,
           "line-opacity": CONTOUR_OPACITY_MINOR,
           "line-width": CONTOUR_WIDTH_MINOR,
         },
@@ -711,7 +993,7 @@ async function build() {
         maxzoom: CONTOUR_LAYER_MAXZOOM,
         filter: [">", ["get", "level"], 0],
         paint: {
-          "line-color": COLOURS.CONTOUR_INDEX,
+          "line-color": COLOURS.CONTOURS.INDEX,
           "line-opacity": CONTOUR_OPACITY_INDEX,
           "line-width": CONTOUR_WIDTH_INDEX,
         },
@@ -731,15 +1013,22 @@ async function build() {
           "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 14, 12],
           "text-field": CONTOUR_LABEL_EXPR,
           "text-font": ["Noto Sans Regular"],
-          "text-padding": 0,
+          "text-padding": 10,
         },
         paint: {
-          "text-color": COLOURS.CONTOUR_LABEL,
-          "text-halo-color": COLOURS.CONTOUR_HALO,
+          "text-color": COLOURS.CONTOURS.LABEL,
+          "text-halo-color": COLOURS.CONTOURS.HALO,
           "text-halo-width": 1.25,
         },
       },
-    );
+    ];
+
+    const contourIdx = waterStackIndex(style);
+    if (contourIdx !== -1) {
+      style.layers.splice(contourIdx, 0, ...contourLayers);
+    } else {
+      style.layers.push(...contourLayers);
+    }
   } else if (CONTOURS_MODE === "pbf") {
     style.sources["contour-source"] = {
       type: "vector",
@@ -748,7 +1037,7 @@ async function build() {
       maxzoom: CONTOUR_PBF_SOURCE_MAXZOOM,
     };
 
-    style.layers.push(
+    const contourLayers = [
       {
         id: "contour-lines",
         type: "line",
@@ -756,9 +1045,13 @@ async function build() {
         "source-layer": "contours",
         minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
         maxzoom: CONTOUR_LAYER_MAXZOOM,
-        filter: ["!=", ["%", ["get", "ele"], 100], 0],
+        filter: [
+          "all",
+          ["!=", ["%", ["get", "ele"], 100], 0],
+          [">", ["get", "ele"], 0],
+        ],
         paint: {
-          "line-color": COLOURS.CONTOUR_MINOR,
+          "line-color": COLOURS.CONTOURS.MINOR,
           "line-opacity": CONTOUR_OPACITY_MINOR,
           "line-width": CONTOUR_WIDTH_MINOR,
         },
@@ -770,9 +1063,13 @@ async function build() {
         "source-layer": "contours",
         minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
         maxzoom: CONTOUR_LAYER_MAXZOOM,
-        filter: ["==", ["%", ["get", "ele"], 100], 0],
+        filter: [
+          "all",
+          ["==", ["%", ["get", "ele"], 100], 0],
+          [">", ["get", "ele"], 0],
+        ],
         paint: {
-          "line-color": COLOURS.CONTOUR_INDEX,
+          "line-color": COLOURS.CONTOURS.INDEX,
           "line-opacity": CONTOUR_OPACITY_INDEX,
           "line-width": CONTOUR_WIDTH_INDEX,
         },
@@ -784,7 +1081,11 @@ async function build() {
         "source-layer": "contours",
         minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
         maxzoom: CONTOUR_LAYER_MAXZOOM,
-        filter: ["==", ["%", ["get", "ele"], 100], 0],
+        filter: [
+          "all",
+          ["==", ["%", ["get", "ele"], 100], 0],
+          [">", ["get", "ele"], 0],
+        ],
         layout: {
           "symbol-placement": "line",
           "symbol-avoid-edges": true,
@@ -792,19 +1093,26 @@ async function build() {
           "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 14, 12],
           "text-field": CONTOUR_LABEL_EXPR,
           "text-font": ["Noto Sans Regular"],
-          "text-padding": 0,
+          "text-padding": 10,
         },
         paint: {
-          "text-color": COLOURS.CONTOUR_LABEL,
-          "text-halo-color": COLOURS.CONTOUR_HALO,
+          "text-color": COLOURS.CONTOURS.LABEL,
+          "text-halo-color": COLOURS.CONTOURS.HALO,
           "text-halo-width": 1.25,
         },
       },
-    );
+    ];
+
+    const contourIdx = waterStackIndex(style);
+    if (contourIdx !== -1) {
+      style.layers.splice(contourIdx, 0, ...contourLayers);
+    } else {
+      style.layers.push(...contourLayers);
+    }
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 4. Waymarked Trails
+  // 6. Waymarked Trails
   // ═════════════════════════════════════════════════════════════════════
 
   for (const activity of WAYMARKED_ACTIVITIES) {
@@ -824,7 +1132,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 5. TrailSplits hiking network
+  // 7. TrailSplits hiking network
   // ═════════════════════════════════════════════════════════════════════
 
   if (TRAILSPLITS_HIKING_TRAILS) {
@@ -848,7 +1156,46 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 6. Promoted liberty POIs — outdoor-relevant POIs at lower zoom
+  // 8. Mountain peak labels
+  // ═════════════════════════════════════════════════════════════════════
+  // Peak name + elevation labels from the OpenMapTiles `mountain_peak`
+  // source-layer. Text only — no icon-image. Renders below the promoted
+  // POIs so peaks stay below labels/icons.
+
+  if (PEAK_LABELS) {
+    const peakLayer = {
+      id: "mountain-peak",
+      type: "symbol",
+      source: "openmaptiles",
+      "source-layer": "mountain_peak",
+      minzoom: PEAK_LABEL_MINZOOM,
+      filter: ["all", ["==", "$type", "Point"], ["==", "rank", 1]],
+      layout: {
+        "text-field": "{name:latin} {name:nonlatin}\n{ele} m\n▲",
+        "text-font": ["Noto Sans Regular"],
+        "text-anchor": "bottom",
+        "text-offset": [0, 0.5],
+        "text-max-width": 8,
+        "text-size": PEAK_LABEL_TEXT_SIZE,
+      },
+      paint: {
+        "text-color": COLOURS.PEAKS.TEXT,
+        "text-halo-color": COLOURS.PEAKS.HALO,
+        "text-halo-width": PEAK_LABEL_HALO_WIDTH,
+        "text-halo-blur": PEAK_LABEL_HALO_BLUR,
+      },
+    };
+
+    const poiIdx = style.layers.findIndex((l) => l.id === "poi_r20");
+    if (poiIdx !== -1) {
+      style.layers.splice(poiIdx, 0, peakLayer);
+    } else {
+      style.layers.push(peakLayer);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 9. Promoted liberty POIs — outdoor-relevant POIs at lower zoom
   // ═════════════════════════════════════════════════════════════════════
   // Promotes selected POI classes from the OpenMapTiles `poi` source-layer
   // (toilets, restaurants, pubs, grocery stores, etc.) so they appear at
@@ -892,7 +1239,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 7. Outdoor POIs (external vector tiles)
+  // 10. Outdoor POIs (external vector tiles)
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with outdoor points of interest — huts, shelters, water,
   // parking, viewpoints, mountain passes, campsites, etc.
@@ -983,8 +1330,8 @@ async function build() {
         "text-anchor": "top",
       },
       paint: {
-        "text-color": "#333333",
-        "text-halo-color": "#ffffff",
+        "text-color": COLOURS.POI.TEXT,
+        "text-halo-color": COLOURS.POI.HALO,
         "text-halo-width": 1,
         "icon-opacity": 0.85,
       },
@@ -992,7 +1339,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 8. Outdoor routes (hiking route relations)
+  // 11. Outdoor routes (hiking route relations)
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with hiking route relations from OSM — line geometry
   // with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
@@ -1023,7 +1370,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 9. Activity overlays (MTB / bicycle)
+  // 12. Activity overlays (MTB / bicycle)
   // ═════════════════════════════════════════════════════════════════════
   // Inserted before poi_r20 in the layer stack.
 
@@ -1048,10 +1395,10 @@ async function build() {
           "match",
           ["get", "mtb_scale"],
           "1",
-          COLOURS.MTB_GRADE_1,
+          COLOURS.MTB.GRADE_1,
           "2",
-          COLOURS.MTB_GRADE_2,
-          COLOURS.MTB_GRADE_3_PLUS,
+          COLOURS.MTB.GRADE_2,
+          COLOURS.MTB.GRADE_3_PLUS,
         ],
         "line-opacity": 0.8,
         "line-width": {
@@ -1079,7 +1426,7 @@ async function build() {
         ["in", "class", "track"],
       ],
       paint: {
-        "line-color": COLOURS.BICYCLE_ACCESS,
+        "line-color": COLOURS.MTB.BICYCLE_ACCESS,
         "line-opacity": 0.7,
         "line-width": 2,
       },
@@ -1094,7 +1441,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 10. Path & trail styling
+  // 13. Path & trail styling
   // ═════════════════════════════════════════════════════════════════════
 
   if (PROMOTE_PATHS) {
@@ -1103,7 +1450,7 @@ async function build() {
       pathLayer.minzoom = 0;
       pathLayer.maxzoom = 22;
       pathLayer.paint = pathLayer.paint || {};
-      pathLayer.paint["line-color"] = COLOURS.PATH;
+      pathLayer.paint["line-color"] = COLOURS.PATHS.PATH;
       if (MTB_SCALE) {
         pathLayer.paint["line-opacity"] = ["case", ["has", "mtb_scale"], 0, 1];
       }
@@ -1125,7 +1472,7 @@ async function build() {
       nameLayer.minzoom = 0;
       nameLayer.maxzoom = 22;
       nameLayer.paint = nameLayer.paint || {};
-      nameLayer.paint["text-color"] = COLOURS.PATH;
+      nameLayer.paint["text-color"] = COLOURS.PATHS.PATH;
     }
   }
 
