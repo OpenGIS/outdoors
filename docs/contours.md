@@ -16,7 +16,7 @@ Contours are the only fully server-side feature in the style. The build script a
 
 ## Tile endpoint
 
-- **Tile URL**: `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf` — constant `CONTOUR_PBF_TILE_URL`
+- **Tile URL**: `https://tiles.ogis.app/terrain/{z}/{x}/{y}.pbf` — constant `CONTOUR_PBF_TILE_URL`
 - **Zoom range**: z9–14 (`CONTOUR_PBF_SOURCE_MINZOOM = 9`, `CONTOUR_PBF_SOURCE_MAXZOOM = 14`)
 - **Vector source**: `contour-source` (type `vector`)
 - **Source-layer**: `contours`
@@ -27,7 +27,7 @@ Contours are the only fully server-side feature in the style. The build script a
 
 ## Server side
 
-Tiles are generated on demand by the hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server) at `api.ogis.app`, which rasterises contours with marching squares over the **Mapterhorn DEM**:
+Tiles are generated on demand by the hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server) at `tiles.ogis.app`, which rasterises contours with marching squares over the **Mapterhorn DEM**:
 
 - DEM endpoint: `https://tiles.mapterhorn.com/{z}/{x}/{y}.webp`
 - Terrarium-encoded WebP, 512 px tiles, standard Web Mercator XYZ (confirmed by Mapterhorn's TileJSON at <https://tiles.mapterhorn.com/tilejson.json>)
@@ -79,7 +79,7 @@ To replicate the ogis.app contour service against the Mapterhorn DEM, [contour-m
 ```
 
 - **Purpose** — contour-mvt-server (Express + maplibre-contour, Node ≥ 18, `npx contour-mvt-server config.json` or the npm CLI) generates gzipped MVT v2 contour tiles on demand from raster DEM sources. The style consumes it as a plain vector source — nothing client-side.
-- **Endpoint** — the source key `terrain` appears in the URL path, so the source serves `GET /contours/terrain/{z}/{x}/{y}.pbf`, matching `CONTOUR_PBF_TILE_URL`. If the key were renamed, the style URL would change too.
+- **Endpoint** — the source key `terrain` appears in the URL path, so the source serves `GET /terrain/{z}/{x}/{y}.pbf`, matching `CONTOUR_PBF_TILE_URL`. If the key were renamed, the style URL would change too.
 - **Source-layer & properties** — the server emits source-layer `contours` with properties `ele` (elevation in metres, key `elevationKey`) and `level` (0 = minor, 1 = major, key `levelKey`) — exactly what the style's three layers read.
 - **`tiles` + `encoding`** — Mapterhorn's own TileJSON confirms `encoding: "terrarium"` and 512 px WebP tiles, so the URL and encoding above are the only correct pairing.
 - **`maxzoom: 17`** — the service's maximum. Contour requests arrive at the DEM zoom (overzoom 0), and requests above the DEM maxzoom silently use the max-zoom tile. Since the style only requests z9–14, this provides full headroom.

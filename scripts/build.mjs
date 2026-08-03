@@ -47,7 +47,7 @@ const OUTDOOR_STYLE = resolve(ROOT, "style.json");
 const SATELLITE = false; // ESRI World Satellite raster base layer
 const DEM = true; // raster-dem source (Mapterhorn) — shared elevation source
 const DEM_HILLSHADE = true; // 2D hillshade layer from the DEM source
-const DEM_TERRAIN = false; // 3D terrain exaggeration from the DEM source
+const DEM_TERRAIN = true; // 3D terrain exaggeration from the DEM source
 const TERRAIN_PALETTE = true; // Muted base-layer colour palette (MapTiler terrain reference)
 const ROAD_PALETTE = true; // Muted warm-taupe road palette (outdoor-first: local roads & tracks most visible)
 const CONTOURS = true; // Contour lines: hosted PBF vector tiles (ogis.app contour service — see docs/contours.md)
@@ -104,7 +104,7 @@ const COLOURS = {
   ROADS: {
     MAJOR: "rgb(228, 219, 201)", // lightest, most recessive — motorway/trunk/primary (+ motorway links)
     MEDIUM: "rgb(223, 211, 188)", // secondary/tertiary/links
-    LOCAL: "rgb(217, 203, 176)", // darkest of the roads, clearly lighter than contour browns — minor/service/track/street
+    LOCAL: "rgb(255, 255, 255)", // darkest of the roads, clearly lighter than contour browns — minor/service/track/street
     CASING: "rgb(183, 168, 145)", // all non-path casing layers — darker than fills, keeps road outline crisp
   },
 
@@ -255,7 +255,19 @@ const PALETTE_RESIDENTIAL_OPACITY = 0.7; // softened residential fill (reference
 // clearly; track/service fills are thickened to suit outdoor use.
 
 const ROAD_TUNNEL_OPACITY = 0.55; // line-opacity for tunnel fills (faded, dashes preserved)
-const ROAD_TRACK_WIDTH = ["interpolate", ["exponential", 1.2], ["zoom"], 14, 0.5, 15, 1.5, 16, 3, 20, 9]; // line-width for service/track fills (appears ~1.5 zooms earlier than Liberty, thicker)
+const ROAD_TRACK_WIDTH = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  14,
+  0.5,
+  15,
+  1.5,
+  16,
+  3,
+  20,
+  9,
+]; // line-width for service/track fills (appears ~1.5 zooms earlier than Liberty, thicker)
 
 // ── Contours ─────────────────────────────────────────────────────────
 // PBF vector contour tiles from the ogis.app hosted contour service
@@ -310,13 +322,13 @@ const CONTOUR_LABEL_EXPR = [
   "m",
 ];
 
-// ogis.app hosted contour service (contour-mvt-server — z9–14). The
+// ogis.app hosted contour service (contour-mvt-server — serves z0–17). The
 // server renders tiles from the Mapterhorn DEM — the same endpoint as
 // DEM_SOURCE_URL — so the client and the tile server fetch the same
 // Mapterhorn tile; the CDN sees it twice and serves the second request
 // from cache.
 const CONTOUR_PBF_TILE_URL =
-  "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf";
+  "https://tiles.ogis.app/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
@@ -365,8 +377,9 @@ const PROMOTED_POI_CLASSES = [
 // ── Self-hosted outdoor vector tiles ────────────────────────────────
 // One configurable endpoint serves BOTH the outdoor POI and route tiles
 // (`/pois/...` and `/routes/...`).
+// (prefixes `/pois/...` and `/routes/...` directly — the old `/features` prefix is retired)
 
-const TILES_BASE_URL = "https://api.ogis.app/features";
+const TILES_BASE_URL = "https://tiles.ogis.app";
 const TILES_ATTRIBUTION = "© OpenStreetMap contributors";
 
 // ── Outdoor routes (hiking route relations) ──────────────────────────
@@ -382,12 +395,12 @@ const ROUTE_SOURCE_MAXZOOM = 14;
 // ── Outdoor POI ──────────────────────────────────────────────────────
 // Vector tiles with outdoor points of interest — huts, shelters, water,
 // parking, viewpoints, mountain passes, campsites, etc.
-// Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–18).
+// Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–16).
 
 const POI_SOURCE_LAYER = "outdoor_pois";
 const POI_TILE_URL = `${TILES_BASE_URL}/pois/{z}/{x}/{y}.pbf`;
 const POI_SOURCE_MINZOOM = 12;
-const POI_SOURCE_MAXZOOM = 18;
+const POI_SOURCE_MAXZOOM = 16;
 
 // POI style settings — icon + label rendering for the outdoor-poi layer
 const POI_ICON_SIZE = 1;
@@ -1154,7 +1167,7 @@ async function build() {
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with outdoor points of interest — huts, shelters, water,
   // parking, viewpoints, mountain passes, campsites, etc.
-  // Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–18).
+// Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–16).
 
   if (OUTDOOR_POI) {
     style.sources["outdoor-poi"] = {

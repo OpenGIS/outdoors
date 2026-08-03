@@ -27,14 +27,14 @@
       "type": "vector",
       "minzoom": 9,
       "tiles": [
-        "https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf"
+        "https://tiles.ogis.app/terrain/{z}/{x}/{y}.pbf"
       ],
       "maxzoom": 14
     },
     "outdoor-route": {
       "type": "vector",
       "tiles": [
-        "https://api.ogis.app/features/routes/{z}/{x}/{y}.pbf"
+        "https://tiles.ogis.app/routes/{z}/{x}/{y}.pbf"
       ],
       "minzoom": 8,
       "maxzoom": 14,
@@ -43,10 +43,10 @@
     "outdoor-poi": {
       "type": "vector",
       "tiles": [
-        "https://api.ogis.app/features/pois/{z}/{x}/{y}.pbf"
+        "https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf"
       ],
       "minzoom": 12,
-      "maxzoom": 18,
+      "maxzoom": 16,
       "attribution": "© OpenStreetMap contributors"
     }
   },
@@ -1348,7 +1348,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(217, 203, 176)",
+        "line-color": "rgb(255, 255, 255)",
         "line-width": [
           "interpolate",
           [
@@ -1452,7 +1452,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(217, 203, 176)",
+        "line-color": "rgb(255, 255, 255)",
         "line-width": [
           "interpolate",
           [
@@ -2498,7 +2498,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(217, 203, 176)",
+        "line-color": "rgb(255, 255, 255)",
         "line-width": [
           "interpolate",
           [
@@ -2641,7 +2641,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(217, 203, 176)",
+        "line-color": "rgb(255, 255, 255)",
         "line-width": [
           "interpolate",
           [
@@ -3682,7 +3682,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(217, 203, 176)",
+        "line-color": "rgb(255, 255, 255)",
         "line-width": [
           "interpolate",
           [
@@ -3784,7 +3784,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(217, 203, 176)",
+        "line-color": "rgb(255, 255, 255)",
         "line-width": [
           "interpolate",
           [
@@ -6693,5 +6693,9 @@
         "text-halo-width": 1
       }
     }
-  ]
+  ],
+  "terrain": {
+    "source": "demSource",
+    "exaggeration": 1.5
+  }
 }

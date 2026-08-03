@@ -1,5 +1,5 @@
 ---
-git_hash: "81258e58f598c6193a509912aed1b65e3ccbeab3"
+git_hash: "c585e5ec09c36013b705d4ac796127e1667b185a"
 modified: "2026-08-02"
 ---
 
@@ -10,16 +10,17 @@ Developer-focused documentation for the [Outdoors](../README.md) codebase — a 
 ## Reading Order
 
 1. [Contours](contours.md) - Hosted PBF contour implementation reference (tile endpoint, layers, zoom ceiling, units)
+2. [Outdoor feature tiles (POIs & routes)](features.md) - How the outdoor POI and hiking-route layers are generated (schema vs profile)
 
 ## Quick Links
 
 - [Main README](../README.md)
 - [Style build: scripts/build.mjs](../scripts/build.mjs)
 - [Compare app: dev/src/App.vue](../dev/src/App.vue)
-- [Feature tiles: features/](../features/README.md)
 
 ## Documentation Coverage
 
 This documentation covers:
 
 - The hosted PBF contour implementation
+- The outdoor POI and hiking-route tile generation (YAML schema vs Java profile)

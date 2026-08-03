@@ -1,5 +1,5 @@
 ---
-last_commit: "81258e58f598c6193a509912aed1b65e3ccbeab3"
+last_commit: "c585e5ec09c36013b705d4ac796127e1667b185a"
 ---
 
 # Outdoors
@@ -66,14 +66,14 @@ No external source — overrides the Liberty base-layer road colours with a mute
 
 Gated by the `CONTOURS` boolean toggle in `scripts/build.mjs` (default `true`). See [docs/contours.md](docs/contours.md) for the full implementation reference.
 
-- **Hosted PBF vector tiles** — server-generated Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), renders up to z14): `https://api.ogis.app/contours/terrain/{z}/{x}/{y}.pbf`
+- **Hosted PBF vector tiles** — server-generated Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), serves z0–17): `https://tiles.ogis.app/terrain/{z}/{x}/{y}.pbf`
   - The contour service renders tiles server-side from the Mapterhorn DEM — the same `tiles.mapterhorn.com` endpoint used by `DEM_SOURCE_URL` — so no client-side contour generation is needed
   - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`), served z9–14 (`CONTOUR_PBF_SOURCE_MINZOOM`/`MAXZOOM`)
   - Three layers — `contour-lines` (minor), `contour-lines-index` (index), `contour-labels` — share the styling constants (`CONTOUR_WIDTH_*`, `CONTOUR_OPACITY_*`, `COLOURS.CONTOURS`)
   - Labels are metric at build time; the compare app converts them to imperial via `applyImperialContours()` in [`dev/src/App.vue`](dev/src/App.vue)
 
 > [!NOTE]
-> The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `api.ogis.app`.
+> The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `tiles.ogis.app`.
 
 ### Waymarked Trails (raster overlays)
 
@@ -99,14 +99,14 @@ No external source — these are POI classes drawn from Liberty's existing **Ope
 ### Outdoor routes
 
 - **Vector tiles** of hiking route relations from OpenStreetMap, with line geometry and network classification (iwn/nwn/rwn/lwn). Coloured per network tier using the Waymarked Trails colour scheme, with casing/halo layers for regional and local routes.
-  - Source-layer: `outdoor_routes`, tile URL `https://api.ogis.app/features/routes/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z8–14
+  - Source-layer: `outdoor_routes`, tile URL `https://tiles.ogis.app/routes/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z8–14
   - Inserted at the `poi_r20` anchor — above roads/water but below base-map POI icons and labels
   - Toggle: `OUTDOOR_ROUTE` (default `true`)
 
 ### Outdoor POIs
 
 - **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, and more.
-  - Source-layer: `outdoor_pois`, tile URL `https://api.ogis.app/features/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–18
+  - Source-layer: `outdoor_pois`, tile URL `https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–16
   - Icons mapped from the Maki sprite set used by Liberty — kind→icon map in `POI_ICON_BY_KIND` (`POI_ICON_DEFAULT` = `"marker"`); icon/text size, opacity and halo widths tuned via the `POI_ICON_*` / `POI_TEXT_*` consts
   - Inserted at the `poi_r20` anchor — above the outdoor route lines, below base-map POIs and labels
   - Toggle: `OUTDOOR_POI` (default `true`)
@@ -162,13 +162,15 @@ npm run build        # builds style.json from build.mjs feature flags
 npm run demo:build   # builds the Vue compare app to demo/ via Vite
 ```
 
-### Self-hosted tile servers
+### Hosted outdoor tiles
 
-A sub-project provides local vector tile serving for development:
+All outdoor tile overlays are served from the hosted `tiles.ogis.app` service — no local tile servers are required:
 
-- **[`features/`](features/README.md)** — self-hosted [Planetiler](https://github.com/onthegomap/planetiler) tiles for outdoor POIs and hiking routes (port 11002)
+- Outdoor POI and route tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, pointing at `https://tiles.ogis.app` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs)
+- Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service
 
-Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, which points at the hosted production domain `https://api.ogis.app/features` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs). Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service — no local contour server is required.
+> [!NOTE]
+> The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tiles.ogis.app`. See [docs/features.md](docs/features.md) for how they were produced (YAML schema for POIs, Java profile for routes).
 
 ### Project structure
 
@@ -177,7 +179,6 @@ Both the outdoor POI and route tile URLs derive from the single `TILES_BASE_URL`
 ├── .cache/              # Liberty style cache (auto-created, gitignored)
 │   ├── liberty.json               # Raw fetched style
 │   └── liberty-processed.json     # Resolved copy (domain substitutes baked in)
-├── features/            # Self-hosted feature tile generator (Planetiler) — pois, routes
 ├── index.html           # Compare app entry
 ├── dev/
 │   ├── index.html       # HTML entry

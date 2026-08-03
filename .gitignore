@@ -10,12 +10,6 @@ package-lock.json
 # Liberty style cache (downloaded from GitHub)
 .cache/
 
-# Feature tiles (Planetiler)
-features/pois/outdoor_pois.pmtiles
-features/routes/outdoor_routes.pmtiles
-features/.planetiler/
-features/data/
-
 # Logs
 logs
 *.log

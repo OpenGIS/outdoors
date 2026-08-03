@@ -14,10 +14,10 @@
  *   3. postProcessLayerFeatures — merge touching line segments
  *
  * Usage:
- *   java -cp ../.planetiler/planetiler.jar scripts/HikingRouteOverlay.java \
+ *   java -cp planetiler.jar HikingRouteOverlay.java \
  *     --area=italy --download --bounds=10.48,45.27,11.78,46.18
  *
- * Output: routes/outdoor_routes.pmtiles
+ * Output: routes/outdoor_routes.pmtiles (relative to the working directory)
  */
 
 import com.onthegomap.planetiler.FeatureCollector;
@@ -186,7 +186,7 @@ public class HikingRouteOverlay implements Profile {
 
     String area = arguments.getString("area", "geofabrik area", "italy");
 
-    // Resolve paths relative to the features/ directory
+    // Input OSM extract under data/sources, output tiles under routes/
     Path dataDir = Path.of("data", "sources");
     Path osmPath = dataDir.resolve(area + ".osm.pbf");
     Path outputPath = Path.of("routes", "outdoor_routes.pmtiles");
