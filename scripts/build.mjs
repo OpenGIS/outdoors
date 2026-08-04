@@ -22,7 +22,7 @@
  * Sections are ordered from bottom to top in the render stack:
  *  satellite → terrain palette → road palette → DEM (hillshade, terrain) →
  *  contours → waymarked trails → mountain peak labels → promoted liberty pois →
- *  outdoor routes → outdoor pois → mtb/bicycle → path styling
+ *  low-zoom paths → outdoor routes → outdoor pois → mtb/bicycle → path styling
  *
  * Dependencies:
  *   - OSM Liberty (OpenFreeMap fork): https://raw.githubusercontent.com/hyperknot/openfreemap-styles/main/styles/liberty/style.json
@@ -54,10 +54,11 @@ const CONTOURS = true; // Contour lines: hosted PBF vector tiles (ogis.app conto
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
 const PEAK_LABELS = true; // Peak name + elevation labels (below promoted POIs)
 const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
+const LOW_ZOOM_PATHS = true; // Low-zoom paths overlay (self-hosted vector tiles, z9–13 — fills the OMT path data gap below z14)
 const OUTDOOR_ROUTE = true; // Hiking route overlay (self-hosted vector tiles)
 const OUTDOOR_POI = true; // Outdoor POIs overlay (self-hosted vector tiles)
 const MTB_SCALE = false; // MTB difficulty + bicycle access overlays
-const PROMOTE_PATHS = true; // Paths/trails visible at all zoom levels
+const PROMOTE_PATHS = true; // Prominent path styling from z14+ (the LOW_ZOOM_PATHS overlay owns z9–13)
 
 // ═════════════════════════════════════════════════════════════════════════
 // LIBERTY BASE STYLE — source URL, local caching, and domain replacement
@@ -106,6 +107,7 @@ const COLOURS = {
     MEDIUM: "rgb(223, 211, 188)", // secondary/tertiary/links
     LOCAL: "rgb(255, 255, 255)", // darkest of the roads, clearly lighter than contour browns — minor/service/track/street
     CASING: "rgb(183, 168, 145)", // all non-path casing layers — darker than fills, keeps road outline crisp
+    TRACK_CASING: "rgb(146, 118, 86)", // darker warm brown — track/service road outline (darker than CASING so low-zoom tracks read against land & contours)
   },
 
   // Contour lines & labels
@@ -252,22 +254,47 @@ const PALETTE_RESIDENTIAL_OPACITY = 0.7; // softened residential fill (reference
 // ── Roads ─────────────────────────────────────────────────────────────
 // Muted warm-taupe road colours (see COLOURS.ROADS) applied by
 // applyRoadPalette(). Tunnel fills stay faded so their dashes read
-// clearly; track/service fills are thickened to suit outdoor use.
+// clearly; track/service roads are promoted — they render from z12
+// with a dark casing outline and their name labels start at z13.
 
 const ROAD_TUNNEL_OPACITY = 0.55; // line-opacity for tunnel fills (faded, dashes preserved)
 const ROAD_TRACK_WIDTH = [
   "interpolate",
   ["exponential", 1.2],
   ["zoom"],
-  14,
-  0.5,
-  15,
+  12,
+  1,
+  13,
   1.5,
-  16,
+  14,
+  2,
+  15,
   3,
+  16,
+  4,
   20,
-  9,
-]; // line-width for service/track fills (appears ~1.5 zooms earlier than Liberty, thicker)
+  9.5,
+]; // line-width for service/track fills (promoted: visible from z12 — the earliest zoom where OMT tiles carry track geometry)
+
+const ROAD_TRACK_CASING_WIDTH = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  12,
+  2,
+  13,
+  3,
+  14,
+  4,
+  15,
+  5.5,
+  16,
+  7,
+  20,
+  12.5,
+]; // casing width for service/track roads (fill + ~2px dark outline)
+
+const ROAD_TRACK_LABEL_MINZOOM = 13; // track/service road name labels (highway-name-minor) promoted from z15
 
 // ── Contours ─────────────────────────────────────────────────────────
 // PBF vector contour tiles from the ogis.app hosted contour service
@@ -440,6 +467,49 @@ const POI_ICON_BY_KIND = {
   hamlet: "town_hall",
 };
 const POI_ICON_DEFAULT = "marker";
+
+// ── Low-zoom paths overlay ──────────────────────────────────────────
+// Vector tiles with path/footway/track geometry from OSM — fills the
+// z9–13 gap where the OpenMapTiles base tiles carry no path data
+// (route-gated below z13, all paths at z13). Source-layer:
+// 'outdoor_paths'. Self-hosted Planetiler tiles (z9–13).
+// See docs/paths.md.
+
+const PATHS_SOURCE_LAYER = "outdoor_paths";
+const PATHS_TILE_URL = `${TILES_BASE_URL}/paths/{z}/{x}/{y}.pbf`;
+const PATHS_SOURCE_MINZOOM = 9;
+const PATHS_SOURCE_MAXZOOM = 13;
+const PATHS_LAYER_MAXZOOM = 14; // exclusive — hands off to road_path_pedestrian at z14
+
+// Path styling shared between the low-zoom overlay (z9–13) and the
+// promoted base layer road_path_pedestrian (z14+) so the two render as
+// one continuous visual family — no duplicated literals.
+const PATH_LINE_CAP = "round";
+const PATH_LINE_JOIN = "round";
+const PATH_DASHARRAY = [1, 0.7]; // matches the Liberty base road_path_pedestrian dash
+const PATH_WIDTH = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  12,
+  1,
+  14,
+  2,
+  20,
+  8,
+]; // base layer width z14+ (previously hard-coded in the PROMOTE_PATHS section)
+const PATH_WIDTH_LOW_ZOOM = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  9,
+  0.6,
+  11,
+  1,
+  13,
+  2,
+]; // overlay width z9–13; z13 ≈ PATH_WIDTH at z14 for a seamless handoff
+const PATH_BASE_MINZOOM = 14; // road_path_pedestrian renders from here; the overlay owns z9–13
 
 // ═════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -617,7 +687,8 @@ function applyTerrainPalette(style) {
  * palette (see COLOURS.ROADS). Skips any layer id that isn't found in
  * the base style, so the build stays robust if upstream renames or
  * removes a layer. Tunnel fills are faded (dashes preserved); the
- * service/track fills are thickened for outdoor use.
+ * service/track fills are thickened for outdoor use and their casings
+ * get a darker colour + promoted width so tracks read at low zoom.
  */
 function applyRoadPalette(style) {
   const set = (id, paintKey, value) => {
@@ -691,6 +762,17 @@ function applyRoadPalette(style) {
     "bridge_motorway_casing",
   ]) {
     set(id, "line-color", COLOURS.ROADS.CASING);
+  }
+
+  // Track/service casings — darker colour + promoted width (outline so tracks
+  // read against land + contour lines at low zoom)
+  for (const id of [
+    "road_service_track_casing",
+    "bridge_service_track_casing",
+    "tunnel_service_track_casing",
+  ]) {
+    set(id, "line-color", COLOURS.ROADS.TRACK_CASING);
+    set(id, "line-width", ROAD_TRACK_CASING_WIDTH);
   }
 
   // Tunnel fills — faded, but their dash arrays are left untouched
@@ -890,8 +972,20 @@ async function build() {
   // ═════════════════════════════════════════════════════════════════════
   // Overrides the Liberty base road colours with the muted warm-taupe
   // palette (see COLOURS.ROADS) so local roads & tracks read clearly.
+  // Track/service roads are promoted: rendered from z12 with a dark
+  // casing outline, name labels from z13.
 
-  if (ROAD_PALETTE) applyRoadPalette(style);
+  if (ROAD_PALETTE) {
+    applyRoadPalette(style);
+
+    // Promote track/service road name labels (highway-name-minor covers
+    // minor/service/track classes) from z15 → z13 so forest roads are
+    // identifiable as soon as they render.
+    const trackNameLayer = style.layers.find(
+      (l) => l.id === "highway-name-minor",
+    );
+    if (trackNameLayer) trackNameLayer.minzoom = ROAD_TRACK_LABEL_MINZOOM;
+  }
 
   // ═════════════════════════════════════════════════════════════════════
   // 4. DEM — raster-dem source, hillshade & terrain
@@ -1130,7 +1224,54 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 10. Outdoor routes (hiking route relations)
+  // 10. Low-zoom paths overlay
+  // ═════════════════════════════════════════════════════════════════════
+  // Vector tiles with path/footway/track geometry from OSM — fills the
+  // z9–13 gap where the OpenMapTiles base tiles carry no path data
+  // (route-gated below z13, all paths at z13). Source-layer:
+  // 'outdoor_paths'. Self-hosted Planetiler tiles (z9–13). Renders
+  // below the outdoor route lines so routes stay on top of paths.
+  // See docs/paths.md.
+
+  if (LOW_ZOOM_PATHS) {
+    style.sources["outdoor-paths"] = {
+      type: "vector",
+      tiles: [PATHS_TILE_URL],
+      minzoom: PATHS_SOURCE_MINZOOM,
+      maxzoom: PATHS_SOURCE_MAXZOOM,
+      attribution: TILES_ATTRIBUTION,
+    };
+
+    const pathsLayer = {
+      id: "outdoor-paths",
+      type: "line",
+      source: "outdoor-paths",
+      "source-layer": PATHS_SOURCE_LAYER,
+      minzoom: PATHS_SOURCE_MINZOOM,
+      maxzoom: PATHS_LAYER_MAXZOOM,
+      layout: {
+        "line-cap": PATH_LINE_CAP,
+        "line-join": PATH_LINE_JOIN,
+      },
+      paint: {
+        "line-color": COLOURS.PATHS.PATH,
+        "line-dasharray": PATH_DASHARRAY,
+        "line-width": PATH_WIDTH_LOW_ZOOM,
+      },
+    };
+
+    // Insert at the poi_r20 anchor — above the promoted POIs, below the
+    // outdoor route lines so routes stay on top of paths.
+    const poiIdx = style.layers.findIndex((l) => l.id === "poi_r20");
+    if (poiIdx !== -1) {
+      style.layers.splice(poiIdx, 0, pathsLayer);
+    } else {
+      style.layers.push(pathsLayer);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 11. Outdoor routes (hiking route relations)
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with hiking route relations from OSM — line geometry
   // with network classification (iwn/nwn/rwn/lwn), ref, name, etc.
@@ -1163,7 +1304,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 11. Outdoor POIs (external vector tiles)
+  // 12. Outdoor POIs (external vector tiles)
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with outdoor points of interest — huts, shelters, water,
   // parking, viewpoints, mountain passes, campsites, etc.
@@ -1216,7 +1357,7 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 12. Activity overlays (MTB / bicycle)
+  // 13. Activity overlays (MTB / bicycle)
   // ═════════════════════════════════════════════════════════════════════
   // Inserted before poi_r20 in the layer stack.
 
@@ -1287,30 +1428,24 @@ async function build() {
   }
 
   // ═════════════════════════════════════════════════════════════════════
-  // 13. Path & trail styling
+  // 14. Path & trail styling
   // ═════════════════════════════════════════════════════════════════════
 
   if (PROMOTE_PATHS) {
     const pathLayer = style.layers.find((l) => l.id === "road_path_pedestrian");
     if (pathLayer) {
-      pathLayer.minzoom = 0;
+      pathLayer.minzoom = PATH_BASE_MINZOOM; // the LOW_ZOOM_PATHS overlay owns z9–13
       pathLayer.maxzoom = 22;
       pathLayer.paint = pathLayer.paint || {};
       pathLayer.paint["line-color"] = COLOURS.PATHS.PATH;
+      pathLayer.paint["line-dasharray"] = PATH_DASHARRAY;
       if (MTB_SCALE) {
         pathLayer.paint["line-opacity"] = ["case", ["has", "mtb_scale"], 0, 1];
       }
-      pathLayer.paint["line-width"] = [
-        "interpolate",
-        ["exponential", 1.2],
-        ["zoom"],
-        12,
-        1,
-        14,
-        2,
-        20,
-        8,
-      ];
+      pathLayer.paint["line-width"] = PATH_WIDTH;
+      pathLayer.layout = pathLayer.layout || {};
+      pathLayer.layout["line-cap"] = PATH_LINE_CAP;
+      pathLayer.layout["line-join"] = PATH_LINE_JOIN;
     }
 
     const nameLayer = style.layers.find((l) => l.id === "highway-name-path");

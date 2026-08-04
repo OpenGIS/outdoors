@@ -849,6 +849,15 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       ],
       "maxzoom": 14
     },
+    "outdoor-paths": {
+      "type": "vector",
+      "tiles": [
+        "https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf"
+      ],
+      "minzoom": 9,
+      "maxzoom": 13,
+      "attribution": "© OpenStreetMap contributors"
+    },
     "outdoor-route": {
       "type": "vector",
       "tiles": [
@@ -1708,7 +1717,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(183, 168, 145)",
+        "line-color": "rgb(146, 118, 86)",
         "line-dasharray": [
           0.5,
           0.25
@@ -1722,12 +1731,18 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          15,
-          1,
-          16,
+          12,
+          2,
+          13,
+          3,
+          14,
           4,
+          15,
+          5.5,
+          16,
+          7,
           20,
-          11
+          12.5
         ]
       }
     },
@@ -2176,14 +2191,18 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          14,
-          0.5,
-          15,
+          12,
+          1,
+          13,
           1.5,
-          16,
+          14,
+          2,
+          15,
           3,
+          16,
+          4,
           20,
-          9
+          9.5
         ],
         "line-opacity": 0.55
       }
@@ -2768,7 +2787,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(183, 168, 145)",
+        "line-color": "rgb(146, 118, 86)",
         "line-width": [
           "interpolate",
           [
@@ -2778,12 +2797,18 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          15,
-          1,
-          16,
+          12,
+          2,
+          13,
+          3,
+          14,
           4,
+          15,
+          5.5,
+          16,
+          7,
           20,
-          11
+          12.5
         ]
       }
     },
@@ -3143,7 +3168,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "minzoom": 0,
+      "minzoom": 14,
       "filter": [
         "all",
         [
@@ -3186,7 +3211,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         ]
       ],
       "layout": {
-        "line-join": "round"
+        "line-join": "round",
+        "line-cap": "round"
       },
       "paint": {
         "line-color": "#c05a2a",
@@ -3326,14 +3352,18 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          14,
-          0.5,
-          15,
+          12,
+          1,
+          13,
           1.5,
-          16,
+          14,
+          2,
+          15,
           3,
+          16,
+          4,
           20,
-          9
+          9.5
         ]
       }
     },
@@ -3988,7 +4018,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgb(183, 168, 145)",
+        "line-color": "rgb(146, 118, 86)",
         "line-width": [
           "interpolate",
           [
@@ -3998,12 +4028,18 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          15,
-          1,
-          16,
+          12,
+          2,
+          13,
+          3,
+          14,
           4,
+          15,
+          5.5,
+          16,
+          7,
           20,
-          11
+          12.5
         ]
       }
     },
@@ -4510,14 +4546,18 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           [
             "zoom"
           ],
-          14,
-          0.5,
-          15,
+          12,
+          1,
+          13,
           1.5,
-          16,
+          14,
+          2,
+          15,
           3,
+          16,
+          4,
           20,
-          9
+          9.5
         ]
       }
     },
@@ -5534,6 +5574,41 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       }
     },
     {
+      "id": "outdoor-paths",
+      "type": "line",
+      "source": "outdoor-paths",
+      "source-layer": "outdoor_paths",
+      "minzoom": 9,
+      "maxzoom": 14,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#c05a2a",
+        "line-dasharray": [
+          1,
+          0.7
+        ],
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.2
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.6,
+          11,
+          1,
+          13,
+          2
+        ]
+      }
+    },
+    {
       "id": "outdoor-route-iwn",
       "type": "line",
       "source": "outdoor-route",
@@ -6273,7 +6348,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "type": "symbol",
       "source": "openmaptiles",
       "source-layer": "transportation_name",
-      "minzoom": 15,
+      "minzoom": 13,
       "filter": [
         "all",
         [
