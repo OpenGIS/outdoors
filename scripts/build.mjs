@@ -45,20 +45,20 @@ const OUTDOOR_STYLE = resolve(ROOT, "style.json");
 // Flip these to enable/disable each feature section.
 
 const SATELLITE = false; // ESRI World Satellite raster base layer
-const DEM = true; // raster-dem source (Mapterhorn) — shared elevation source
-const DEM_HILLSHADE = true; // 2D hillshade layer from the DEM source
-const DEM_TERRAIN = true; // 3D terrain exaggeration from the DEM source
+const DEM = false; // raster-dem source (Mapterhorn) — shared elevation source
+const DEM_HILLSHADE = false; // 2D hillshade layer from the DEM source
+const DEM_TERRAIN = false; // 3D terrain exaggeration from the DEM source
 const TERRAIN_PALETTE = true; // Muted base-layer colour palette (MapTiler terrain reference)
 const ROAD_PALETTE = true; // Muted warm-taupe road palette (outdoor-first: local roads & tracks most visible)
-const CONTOURS = true; // Contour lines: hosted PBF vector tiles (ogis.app contour service — see docs/contours.md)
+const CONTOURS = false; // Contour lines: hosted PBF vector tiles (ogis.app contour service — see docs/contours.md)
 const WAYMARKED_ACTIVITIES = []; // Raster overlays, e.g. ['hiking', 'cycling']
-const PEAK_LABELS = true; // Peak name + elevation labels (below promoted POIs)
-const PROMOTE_LIBERTY_POI = true; // Promote selected base-map POIs to lower zoom
-const LOW_ZOOM_PATHS = true; // Low-zoom paths overlay (self-hosted vector tiles, z9–13 — fills the OMT path data gap below z14)
-const OUTDOOR_ROUTE = true; // Hiking route overlay (self-hosted vector tiles)
-const OUTDOOR_POI = true; // Outdoor POIs overlay (self-hosted vector tiles)
+const PEAK_LABELS = false; // Peak name + elevation labels (below promoted POIs)
+const PROMOTE_LIBERTY_POI = false; // Promote selected base-map POIs to lower zoom
+const LOW_ZOOM_PATHS = false; // Low-zoom paths overlay (self-hosted vector tiles, z9–13 — fills the OMT path data gap below z14)
+const OUTDOOR_ROUTE = false; // Hiking route overlay (self-hosted vector tiles)
+const OUTDOOR_POI = false; // Outdoor POIs overlay (self-hosted vector tiles)
 const MTB_SCALE = false; // MTB difficulty + bicycle access overlays
-const PROMOTE_PATHS = true; // Prominent path styling from z14+ (the LOW_ZOOM_PATHS overlay owns z9–13)
+const PROMOTE_PATHS = false; // Prominent path styling from z14+ (the LOW_ZOOM_PATHS overlay owns z9–13)
 
 // ═════════════════════════════════════════════════════════════════════════
 // LIBERTY BASE STYLE — source URL, local caching, and domain replacement

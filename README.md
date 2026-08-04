@@ -176,7 +176,7 @@ npm run demo:build   # builds the Vue compare app to demo/ via Vite
 
 ### Hosted outdoor tiles
 
-All outdoor tile overlays are served from the hosted `tiles.ogis.app` service — no local tile servers are required:
+All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, built from the full planet with open CORS — no local tile servers are required:
 
 - Outdoor POI, route and path tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, pointing at `https://tiles.ogis.app` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs, `/paths/{z}/{x}/{y}.pbf` for the low-zoom paths overlay)
 - Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service

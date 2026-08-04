@@ -26,10 +26,10 @@ The Liberty style layer `road_path_pedestrian` sits at `minzoom: 14` because of 
 
 **The base map is augmented with a self-hosted vector overlay** — the same pattern as the POI/route overlays (see [features.md](features.md)):
 
-- Source served from `TILES_BASE_URL` (`https://tiles.ogis.app`) at **`/paths/{z}/{x}/{y}.pbf`**, source-layer **`outdoor_paths`**, z9–13. The endpoint is live — e.g. <https://tiles.ogis.app/paths/12/2183/1450.pbf> and <https://tiles.ogis.app/paths/13/4366/2900.pbf> (Dolomites) return gzipped MVT at every zoom z9–13; see [§7](#7-verification) for the per-zoom verification.
+- Source served from `TILES_BASE_URL` (`https://tiles.ogis.app`) at **`/paths/{z}/{x}/{y}.pbf`**, source-layer **`outdoor_paths`**, z9–13. The endpoint is live and planet-wide (open CORS) — e.g. <https://tiles.ogis.app/paths/12/2183/1450.pbf> and <https://tiles.ogis.app/paths/13/4366/2900.pbf> (sampled at Dolomites coords) return gzipped MVT at every zoom z9–13; see [§7](#7-verification) for the per-zoom verification.
 - Generated with a **Planetiler Java profile** ([`FootpathOverlay.java`](examples/FootpathOverlay.java)) — network gating below z12 requires relation preprocessing (`preprocessOsmRelation`), which only the Java profile supports. Pattern: [`HikingRouteOverlay.java`](examples/HikingRouteOverlay.java) + Planetiler's [BikeRouteOverlay example](https://github.com/onthegomap/planetiler/blob/main/planetiler-examples/src/main/java/com/onthegomap/planetiler/examples/BikeRouteOverlay.java).
 - **Density strategy: route-gated below z12, all paths at z12.** This mirrors the Mapzen/Tilezen proposal ([vector-datasource #596](https://github.com/mapzen/vector-datasource/issues/596)): **iwn → z9, nwn → z10, rwn → z11, lwn → z12**, all paths at z12. It also matches the lesson OpenMapTiles learned: the naive "all paths at z12–13" attempt ([PR #1186](https://github.com/openmaptiles/openmaptiles/pull/1186)) caused a **~20 % tile-size increase at z13** and was abandoned in favour of importance gating ([PR #1190](https://github.com/openmaptiles/openmaptiles/pull/1190), refined by the merged [PR #1334](https://github.com/openmaptiles/openmaptiles/pull/1334), Jan 2022).
-- **Build scale: the Italy Geofabrik extract.** The current live build covers Italy only — see [§5](#5-worldwide-build--reference-notes) for the planet-scale process notes.
+- **Coverage: planet-wide with open CORS.** The hosted service is built from the **full planet PBF**, like the `/routes/` and `/pois/` overlays — the same planet data the base OpenFreeMap tiles are built from, so the overlay and the base agree everywhere. The profile's `--area=italy` default and the `--bounds` examples below are **local-dev shortcuts for fast test builds**; see [§5](#5-planet-build--production-notes) for the planet build.
 
 ## 3. Data scope
 
@@ -82,7 +82,7 @@ For line features (`sourceFeature.canBeLine()`) with `highway ∈ {path, footway
 
 ### Entrypoint & build command
 
-- `area` argument (Geofabrik, default `italy`), `--download`, optional `--bounds` (e.g. `10.48,45.27,11.78,46.18` for the Dolomites test), output `paths/outdoor_paths.pmtiles`.
+- `area` argument (Geofabrik, default `italy` — a local-dev shortcut; the hosted tiles are built from the full planet), `--download`, optional `--bounds` (e.g. `10.48,45.27,11.78,46.18` for the Dolomites test), output `paths/outdoor_paths.pmtiles`.
 - Run from the project root with Planetiler on the classpath:
 
 ```bash
@@ -90,10 +90,10 @@ java -cp ../.planetiler/planetiler.jar build/FootpathOverlay.java \
   --area=italy --download --bounds=10.48,45.27,11.78,46.18
 ```
 
-## 5. Worldwide build — reference notes
+## 5. Planet build — production notes
 
 > [!NOTE]
-> The current live build covers the **Italy Geofabrik extract** only. The table below documents the planet-scale process, should the overlay ever be built worldwide.
+> The hosted service is built from the **full planet PBF** — all `tiles.ogis.app` overlays are planet-wide with open CORS. The table below documents that production build; the profile's `--area=italy` default is a local-dev shortcut for fast test builds.
 
 | Factor | Value |
 |---|---|
@@ -103,7 +103,7 @@ java -cp ../.planetiler/planetiler.jar build/FootpathOverlay.java \
 | Serving | Same as `/routes/` and `/pois/`: pmtiles → `/{z}/{x}/{y}.pbf` server on tiles.ogis.app behind the CDN (mechanism already in place for the other overlays) |
 | Precedent | OpenFreeMap itself builds the unmodified OMT schema planet-wide weekly with Planetiler (500 GB SSD, 64 GB RAM, ~5 h); single-purpose planet layers are fast (e.g. Paul Norman's planet-wide trees layer in ~10 min with Tilemaker) |
 
-Refresh cadence on the current Italy scope is a rebuild of the extract (minutes); a weekly planet cadence would mirror OpenFreeMap if the build ever goes worldwide.
+Rebuilds of the planet PBF are cheap for this profile — a paths-only build is substantially cheaper than the full-OMT times above — so the hosted service can be refreshed on demand rather than on a fixed schedule.
 
 ## 6. Style-side changes — `scripts/build.mjs`
 
@@ -133,8 +133,8 @@ Both the overlay (z9–13) and the promoted base layer (z14+) are styled from th
 
 | # | Check | Status | Result |
 |---|---|---|---|
-| 1 | Profile correctness (tile source) | **Done** | `FootpathOverlay.java` builds the Italy extract (Dolomites bounds) to `paths/outdoor_paths.pmtiles`; tile contents follow the density strategy per zoom (z9 = iwn only → z12+ = all paths) |
-| 2 | Serving (tile source) | **Done** | `curl https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` returns HTTP 200 with gzipped MVT (source-layer `outdoor_paths`) at all zooms z9–13 (Dolomites): z9/272/181 = 5660 B · z10/545/362 = 9244 B · z11/1091/725 = 4496 B · z12/2183/1450 = 9768 B · z13/4366/2900 = 2477 B |
+| 1 | Profile correctness (tile source) | **Done** | `FootpathOverlay.java` verified locally on the Italy extract (Dolomites bounds — local-dev shortcut); tile contents follow the density strategy per zoom (z9 = iwn only → z12+ = all paths) |
+| 2 | Serving (tile source) | **Done** | `curl https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` returns HTTP 200 with gzipped MVT (source-layer `outdoor_paths`) from the planet-wide live service at all zooms z9–13 (sampled at Dolomites coords): z9/272/181 = 5660 B · z10/545/362 = 9244 B · z11/1091/725 = 4496 B · z12/2183/1450 = 9768 B · z13/4366/2900 = 2477 B |
 | 3 | Style build | **Done** | `npm run build` passes — style.json gains source `outdoor-paths` + layer; both project builds pass (`npm run build` — 126 layers / 7 sources; `npm run demo:build`) |
 | 4 | Visual | **Done** | Chrome-verified z11–z13 in the Dolomites: dashed brown paths render, route lines above them, zero console errors |
 | 5 | Handoff | **Done** | Clean z13 → z14: no double-draw (overlay `maxzoom: 14` exclusive + base `minzoom: 14`), widths matched (z13 = z14 = 2 px) |
@@ -149,8 +149,8 @@ The pipeline (profile → pmtiles → served tiles → style) is live end-to-end
 1. **Scope:** `path` + `track` + `footway` — the full recommended set (flippable in one line of the profile if the tile source is ever rebuilt).
 2. **Route relations:** hiking/foot/walking only; cycling/mtb not included (parity with `outdoor_routes`).
 3. **Serving:** the same pmtiles→zxy server behind `tiles.ogis.app` that serves `/routes/` and `/pois/` also serves `/paths/`.
-4. **Refresh cadence:** rebuilds of the Italy extract on demand (minutes); a weekly planet cadence would mirror OpenFreeMap if the build ever goes worldwide.
-5. **Build machine:** the ogis.app box (≥ 64 GB RAM + ~0.5–1 TB scratch would be needed for a future planet build).
+4. **Refresh cadence:** the hosted service is rebuilt from the planet PBF; planet rebuilds are cheap for this profile (§5), so the cadence is on demand.
+5. **Build machine:** the ogis.app box, sized for planet builds (≥ 64 GB RAM + ~0.5–1 TB scratch).
 
 ## 9. Key references
 
