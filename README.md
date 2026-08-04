@@ -1,5 +1,5 @@
 ---
-last_commit: "fa4574de3351119e439e2cbd1f6c918aeee9dc7b"
+last_commit: "5b7b4b77899103fe42f997fd301da73de205eced"
 ---
 
 # Outdoors
@@ -105,6 +105,8 @@ No external source — these are POI classes drawn from Liberty's existing **Ope
   - Source-layer: `outdoor_paths`, tile URL `https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z9–13
   - Inserted at the `poi_r20` anchor — above the promoted POIs, below the outdoor route lines (routes stay on top of paths)
   - Toggle: `LOW_ZOOM_PATHS` (default `true`)
+
+See [docs/paths.md](docs/paths.md) for the full implementation reference.
 
 ### Outdoor routes
 
@@ -232,6 +234,8 @@ Providers that require an API key have `"apiKey": true` in their config. Their U
 ## Further Reading
 
 - [Contours](docs/contours.md) - hosted PBF contour implementation reference
+- [Paths overlay](docs/paths.md) - low-zoom paths implementation reference (Planetiler profile + style handoff)
+- [Outdoor feature tiles](docs/features.md) - POIs & routes
 - [Full docs index](docs/README.md)
 
 

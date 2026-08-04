@@ -471,9 +471,9 @@ const POI_ICON_DEFAULT = "marker";
 // ── Low-zoom paths overlay ──────────────────────────────────────────
 // Vector tiles with path/footway/track geometry from OSM — fills the
 // z9–13 gap where the OpenMapTiles base tiles carry no path data
-// (route-gated below z13, all paths at z13). Source-layer:
-// 'outdoor_paths'. Self-hosted Planetiler tiles (z9–13).
-// See docs/paths.md.
+// (route-gated below z12, all paths at z12; tiers keep earlier zooms:
+// iwn 9, nwn 10, rwn 11). Source-layer: 'outdoor_paths'.
+// Self-hosted Planetiler tiles (z9–13). See docs/paths.md.
 
 const PATHS_SOURCE_LAYER = "outdoor_paths";
 const PATHS_TILE_URL = `${TILES_BASE_URL}/paths/{z}/{x}/{y}.pbf`;
@@ -1228,10 +1228,10 @@ async function build() {
   // ═════════════════════════════════════════════════════════════════════
   // Vector tiles with path/footway/track geometry from OSM — fills the
   // z9–13 gap where the OpenMapTiles base tiles carry no path data
-  // (route-gated below z13, all paths at z13). Source-layer:
-  // 'outdoor_paths'. Self-hosted Planetiler tiles (z9–13). Renders
-  // below the outdoor route lines so routes stay on top of paths.
-  // See docs/paths.md.
+  // (route-gated below z12, all paths at z12; tiers keep earlier zooms:
+  // iwn 9, nwn 10, rwn 11). Source-layer: 'outdoor_paths'.
+  // Self-hosted Planetiler tiles (z9–13). Renders below the outdoor
+  // route lines so routes stay on top of paths. See docs/paths.md.
 
   if (LOW_ZOOM_PATHS) {
     style.sources["outdoor-paths"] = {

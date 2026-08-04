@@ -1,23 +1,35 @@
 /**
- * Planetiler Java profile for outdoor hiking route vector tiles.
+ * Planetiler Java profile for low-zoom outdoor path vector tiles.
  *
- * Processes OSM hiking route relations (type=route, route=hiking|foot|walking)
- * and emits line features for each member way, tagged with relation-level
- * attributes (name, ref, network, osmc:symbol, etc.).
+ * Generates an overlay of footpaths (highway=path|footway|track) at
+ * zoom levels 9-13, filling the gap where the OpenMapTiles base schema
+ * emits no path geometry below z14. Hiking route network tier gates
+ * density below z12 — route-gated below, everything at z12.
  *
- * Patterned on Planetiler's BikeRouteOverlay example:
- *   https://github.com/onthegomap/planetiler/blob/main/planetiler-examples/src/main/java/com/onthegomap/planetiler/examples/BikeRouteOverlay.java
+ * Density strategy, mirroring the Mapzen/Tilezen proposal
+ * (vector-datasource issue #596):
+ *
+ *   | Best route membership | min zoom |
+ *   |-----------------------|----------|
+ *   | iwn                   | 9        |
+ *   | nwn                   | 10       |
+ *   | rwn                   | 11       |
+ *   | lwn                   | 12       |
+ *   | none (not routed)     | 12       |
+ *
+ * (All paths appear from z12 — since 2026-08-03; network tiers keep earlier
+ * zooms so long-distance routes still lead when zoomed out.)
  *
  * Three-phase processing:
- *   1. preprocessOsmRelation — store route relation info
+ *   1. preprocessOsmRelation — store route relation network tier
  *   2. processFeature — emit line features for matched ways
  *   3. postProcessLayerFeatures — merge touching line segments
  *
  * Usage:
- *   java -cp ../.planetiler/planetiler.jar scripts/HikingRouteOverlay.java \
+ *   java -cp ../.planetiler/planetiler.jar build/FootpathOverlay.java \
  *     --area=italy --download --bounds=10.48,45.27,11.78,46.18
  *
- * Output: routes/outdoor_routes.pmtiles
+ * Output: paths/outdoor_paths.pmtiles
  */
 
 import com.onthegomap.planetiler.FeatureCollector;
@@ -32,34 +44,25 @@ import com.onthegomap.planetiler.reader.osm.OsmRelationInfo;
 import java.nio.file.Path;
 import java.util.List;
 
-public class HikingRouteOverlay implements Profile {
+public class FootpathOverlay implements Profile {
 
   /**
    * Minimal container for hiking route relation data held in RAM during processing.
    */
-  private record RouteRelationInfo(
+  private record PathRelationInfo(
     long id,
-    String name,
-    String ref,
-    String network,
-    String osmcSymbol,
-    String operator,
-    String distance,
-    String ascent,
-    String descent,
-    String caiScale,
-    String roundtrip
+    String network
   ) implements OsmRelationInfo {}
 
   /**
-   * Phase 1: Extract hiking route relation data.
+   * Phase 1: Extract hiking route relation network tiers.
    *
    * Matches OSM relations with:
    *   type = route | superroute
    *   route = hiking | foot | walking
    *
-   * Stores name, ref, network, osmc:symbol, operator, distance,
-   * ascent, descent, cai_scale, and roundtrip for each matched relation.
+   * Stores the relation id and the network tier (iwn/nwn/rwn/lwn,
+   * null when untagged) for each matched relation.
    */
   @Override
   public List<OsmRelationInfo> preprocessOsmRelation(OsmElement.Relation relation) {
@@ -70,25 +73,16 @@ public class HikingRouteOverlay implements Profile {
         for (var r : route.split(";")) {
           r = r.trim();
           if (r.equals("hiking") || r.equals("foot") || r.equals("walking")) {
-            return List.of(new RouteRelationInfo(
+            return List.of(new PathRelationInfo(
               relation.id(),
-              relation.getString("name"),
-              relation.getString("ref"),
-              // Map network abbreviation to human-readable
+              // Map network abbreviation to tier
               switch (relation.getString("network", "")) {
                 case "iwn" -> "iwn";
                 case "nwn" -> "nwn";
                 case "rwn" -> "rwn";
                 case "lwn" -> "lwn";
                 default -> null;
-              },
-              relation.getString("osmc:symbol"),
-              relation.getString("operator"),
-              relation.getString("distance"),
-              relation.getString("ascent"),
-              relation.getString("descent"),
-              relation.getString("cai_scale"),
-              relation.getString("roundtrip")
+              }
             ));
           }
         }
@@ -98,43 +92,70 @@ public class HikingRouteOverlay implements Profile {
   }
 
   /**
-   * Phase 2: Emit line features for ways that belong to hiking route relations.
+   * Phase 2: Emit line features for footpath ways.
    *
-   * Each way member of a matched relation emits a line string in the
-   * outdoor_routes layer with the relation's attributes attached.
+   * Each way with highway=path|footway|track emits a line string in the
+   * outdoor_paths layer. The way's minimum zoom is the lowest zoom
+   * among its route relation memberships (iwn z9 … lwn z12); ways with
+   * no membership appear only at z12.
    */
   @Override
   public void processFeature(SourceFeature sourceFeature, FeatureCollector features) {
-    if (sourceFeature.canBeLine()) {
-      // Get all hiking route relations this way belongs to
-      var routeInfos = sourceFeature.relationInfo(RouteRelationInfo.class, true);
-      if (routeInfos == null) return;
+    if (!sourceFeature.canBeLine()) return;
 
-      for (var routeInfo : routeInfos) {
-        RouteRelationInfo rel = routeInfo.relation();
+    String highway = sourceFeature.getString("highway");
+    if (highway == null) return;
 
-        var feature = features.line("outdoor_routes")
-          .setAttr("name", rel.name)
-          .setAttr("ref", rel.ref)
-          .setAttr("network", rel.network)
-          .setAttr("osmc_symbol", rel.osmcSymbol)
-          .setAttr("operator", rel.operator)
-          .setAttr("distance", rel.distance)
-          .setAttr("ascent", rel.ascent)
-          .setAttr("descent", rel.descent)
-          .setAttr("cai_scale", rel.caiScale)
-          .setAttr("roundtrip", rel.roundtrip)
-          .setZoomRange(8, 14)
-          // Don't filter short segments — needed for line merging in phase 3
-          .setMinPixelSize(0);
+    // Support semicolon-separated values: "path;footway"
+    String pathClass = null;
+    for (var h : highway.split(";")) {
+      h = h.trim();
+      if (h.equals("path") || h.equals("footway") || h.equals("track")) {
+        pathClass = h;
+        break;
       }
     }
+    if (pathClass == null) return;
+
+    // Get all hiking route relations this way belongs to
+    var routeInfos = sourceFeature.relationInfo(PathRelationInfo.class, true);
+
+    // Lowest zoom among member relation tiers wins; no membership → 12
+    // (all paths appear from z12 — changed 2026-08-03 per Joe: "all paths at
+    // z12"; long-distance tiers keep their earlier zooms: iwn 9, nwn 10, rwn 11).
+    String network = null;
+    int minZoom = 12;
+    if (routeInfos != null) {
+      for (var routeInfo : routeInfos) {
+        String tier = routeInfo.relation().network;
+        int zoom = tier == null ? 12 : switch (tier) {
+          case "iwn" -> 9;
+          case "nwn" -> 10;
+          case "rwn" -> 11;
+          case "lwn" -> 12;
+          default -> 12;
+        };
+        if (zoom < minZoom) {
+          minZoom = zoom;
+          network = tier;
+        }
+      }
+    }
+
+    features.line("outdoor_paths")
+      .setAttr("class", pathClass)
+      .setAttr("network", network)
+      .setAttr("name", sourceFeature.getString("name"))
+      .setAttr("sac_scale", sourceFeature.getString("sac_scale"))
+      .setZoomRange(minZoom, 13)
+      // Don't filter short segments — needed for line merging in phase 3
+      .setMinPixelSize(0);
   }
 
   /**
    * Phase 3: Merge touching line segments in each tile before writing.
    *
-   * Route relations are composed of multiple ways. This merges adjacent
+   * Footpath ways are fragmented at every junction. This merges adjacent
    * ways that share the same tags into continuous linestrings, which
    * improves both visual rendering and label placement.
    */
@@ -142,7 +163,7 @@ public class HikingRouteOverlay implements Profile {
   public List<VectorTile.Feature> postProcessLayerFeatures(
     String layer, int zoom, List<VectorTile.Feature> items
   ) {
-    if ("outdoor_routes".equals(layer)) {
+    if ("outdoor_paths".equals(layer)) {
       return FeatureMerge.mergeLineStrings(
         items,
         0.5,   // min length in px after merging
@@ -157,12 +178,12 @@ public class HikingRouteOverlay implements Profile {
 
   @Override
   public String name() {
-    return "Outdoor Routes";
+    return "Outdoor Paths";
   }
 
   @Override
   public String description() {
-    return "Hiking route relations (hiking, foot, walking) from OpenStreetMap";
+    return "Footpaths (path, footway, track) with hiking route network tiers from OpenStreetMap";
   }
 
   @Override
@@ -182,22 +203,22 @@ public class HikingRouteOverlay implements Profile {
   public static void main(String[] args) throws Exception {
     var arguments = Arguments.fromArgsOrConfigFile(args)
       .withDefault("download", true)
-      .withDefault("maxzoom", 14);
+      .withDefault("maxzoom", 13);
 
     String area = arguments.getString("area", "geofabrik area", "italy");
 
     // Resolve paths relative to the features/ directory
     Path dataDir = Path.of("data", "sources");
     Path osmPath = dataDir.resolve(area + ".osm.pbf");
-    Path outputPath = Path.of("routes", "outdoor_routes.pmtiles");
+    Path outputPath = Path.of("paths", "outdoor_paths.pmtiles");
     String url = "geofabrik:" + area;
 
     Planetiler.create(arguments)
-      .setProfile(new HikingRouteOverlay())
+      .setProfile(new FootpathOverlay())
       .addOsmSource("osm", osmPath, url)
       .overwriteOutput(outputPath)
       .run();
 
-    System.out.println("✓ Outdoor routes tiles written to " + outputPath);
+    System.out.println("✓ Outdoor paths tiles written to " + outputPath);
   }
 }

@@ -1,6 +1,6 @@
 ---
-git_hash: "c585e5ec09c36013b705d4ac796127e1667b185a"
-modified: "2026-08-02"
+git_hash: "5b7b4b77899103fe42f997fd301da73de205eced"
+modified: "2026-08-03"
 ---
 
 # Outdoor Feature Tiles (POIs & Routes)
