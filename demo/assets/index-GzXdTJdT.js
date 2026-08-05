@@ -3450,71 +3450,6 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       }
     },
     {
-      "id": "poi-outdoor-promoted",
-      "type": "symbol",
-      "source": "openmaptiles",
-      "source-layer": "poi",
-      "minzoom": 12,
-      "maxzoom": 15,
-      "filter": [
-        "all",
-        [
-          "in",
-          "class",
-          "restaurant",
-          "cafe",
-          "fast_food",
-          "pub",
-          "bar",
-          "grocery",
-          "ice_cream",
-          "toilets",
-          "drinking_water",
-          "information",
-          "shelter",
-          "picnic_site",
-          "parking",
-          "bus",
-          "ferry",
-          "fuel",
-          "pharmacy",
-          "hospital",
-          "doctors",
-          "bank",
-          "atm",
-          "post",
-          "lodging",
-          "campsite"
-        ]
-      ],
-      "layout": {
-        "icon-image": [
-          "match",
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
-            "class"
-          ]
-        ],
-        "icon-size": 1,
-        "text-field": ""
-      },
-      "paint": {
-        "icon-opacity": 0.85
-      }
-    },
-    {
       "id": "outdoor-paths",
       "type": "line",
       "source": "outdoor-paths",
@@ -3731,10 +3666,14 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
             "get",
             "kind"
           ],
-          "water",
-          "drinking_water",
+          "park",
+          "park",
+          "castle",
+          "castle",
           "hut",
           "lodging",
+          "water",
+          "drinking_water",
           "shelter",
           "shelter",
           "parking",
@@ -3763,28 +3702,6 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "bicycle_rental",
           "trailhead",
           "entrance",
-          "bus_stop",
-          "bus",
-          "cable_car",
-          "aerialway",
-          "halt",
-          "railway",
-          "station",
-          "railway",
-          "tram_stop",
-          "railway_light",
-          "guest_house",
-          "lodging",
-          "hotel",
-          "lodging",
-          "pub",
-          "bar",
-          "town",
-          "town_hall",
-          "village",
-          "town_hall",
-          "hamlet",
-          "town_hall",
           "marker"
         ],
         "icon-size": 1,
@@ -3919,16 +3836,23 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "castle",
           "information",
           "parking",
-          "peak",
           "picnic_site",
           "shelter",
-          "viewpoint",
-          "alpine_hut",
-          "wilderness_hut",
-          "water_well",
-          "spring",
           "drinking_water",
-          "cave_entrance"
+          "park"
+        ],
+        [
+          "any",
+          [
+            "!=",
+            "class",
+            "park"
+          ],
+          [
+            "<=",
+            "rank",
+            6
+          ]
         ]
       ],
       "layout": {
@@ -3936,20 +3860,25 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "match",
           [
             "get",
-            "subclass"
-          ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
             "class"
-          ]
+          ],
+          "campsite",
+          "campsite",
+          "castle",
+          "castle",
+          "information",
+          "information",
+          "parking",
+          "parking",
+          "picnic_site",
+          "picnic_site",
+          "shelter",
+          "shelter",
+          "drinking_water",
+          "drinking_water",
+          "park",
+          "park",
+          "marker"
         ],
         "icon-size": 1,
         "text-field": [
@@ -3988,7 +3917,7 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "restaurant",
           "cafe",
           "fast_food",
-          "pub",
+          "beer",
           "bar",
           "grocery",
           "lodging",
@@ -3997,7 +3926,12 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "toilets",
           "fuel",
           "bus",
-          "ferry"
+          "ferry_terminal",
+          "ice_cream",
+          "doctors",
+          "bank",
+          "atm",
+          "post"
         ]
       ],
       "layout": {
@@ -4005,25 +3939,251 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "match",
           [
             "get",
-            "subclass"
-          ],
-          [
-            "florist",
-            "furniture"
-          ],
-          [
-            "get",
-            "subclass"
-          ],
-          [
-            "get",
             "class"
-          ]
+          ],
+          "restaurant",
+          "restaurant",
+          "cafe",
+          "cafe",
+          "fast_food",
+          "fast_food",
+          "beer",
+          "beer",
+          "bar",
+          "bar",
+          "grocery",
+          "grocery",
+          "lodging",
+          "lodging",
+          "hospital",
+          "hospital",
+          "pharmacy",
+          "pharmacy",
+          "toilets",
+          "toilets",
+          "fuel",
+          "fuel",
+          "bus",
+          "bus",
+          "ferry_terminal",
+          "ferry",
+          "ice_cream",
+          "ice_cream",
+          "doctors",
+          "doctors",
+          "bank",
+          "bank",
+          "atm",
+          "bank",
+          "post",
+          "post",
+          "marker"
         ],
         "icon-size": 1,
         "text-field": [
-          "get",
-          "name"
+          "case",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "restaurant"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "cafe"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "fast_food"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "beer"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "bar"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "grocery"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "lodging"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "hospital"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "pharmacy"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "toilets"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "fuel"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "bus"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "ferry_terminal"
+          ],
+          [
+            "get",
+            "name"
+          ],
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "ice_cream"
+          ],
+          "",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "doctors"
+          ],
+          "",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "bank"
+          ],
+          "",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "atm"
+          ],
+          "",
+          [
+            "==",
+            [
+              "get",
+              "class"
+            ],
+            "post"
+          ],
+          "",
+          ""
         ],
         "text-font": [
           "Noto Sans Regular"

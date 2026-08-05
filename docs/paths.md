@@ -1,6 +1,6 @@
 ---
-git_hash: "5b7b4b77899103fe42f997fd301da73de205eced"
-modified: "2026-08-03"
+git_hash: "1a3de67164cd1a53ca1fef4765db736655c68094"
+modified: "2026-08-05"
 ---
 
 # Low-Zoom Paths Overlay
@@ -109,7 +109,7 @@ Rebuilds of the planet PBF are cheap for this profile — a paths-only build is 
 
 Both the overlay (z9–13) and the promoted base layer (z14+) are styled from the **same shared constants**, so the two sources hand over seamlessly: same colour `#c05a2a`, same dash `[1, 0.7]`, same round cap/join, and matched widths at the seam (z13 ≈ z14 ≈ 2 px).
 
-1. **Toggle** `LOW_ZOOM_PATHS = true` (default) at [`scripts/build.mjs:57`](../scripts/build.mjs), placed in render order **between `PROMOTE_LIBERTY_POI` and `OUTDOOR_ROUTE`** (toggles follow the build sections bottom→top, so it sits where its section renders). `PROMOTE_PATHS` keeps its current meaning: prominent path styling for the base layer at z14+ ([`scripts/build.mjs:61`](../scripts/build.mjs)).
+1. **Toggle** `LOW_ZOOM_PATHS = true` (default) at [`scripts/build.mjs:57`](../scripts/build.mjs), placed in render order **between `REPLACE_LIBERTY_POIS` and `OUTDOOR_ROUTE`** (toggles follow the build sections bottom→top, so it sits where its section renders). `PROMOTE_PATHS` keeps its current meaning: prominent path styling for the base layer at z14+ ([`scripts/build.mjs:61`](../scripts/build.mjs)).
 2. **Config block** at [`scripts/build.mjs:471`](../scripts/build.mjs):
    - `PATHS_SOURCE_LAYER = "outdoor_paths"`, `PATHS_TILE_URL` = `` `${TILES_BASE_URL}/paths/{z}/{x}/{y}.pbf` `` ([`scripts/build.mjs:479`](../scripts/build.mjs))
    - `PATHS_SOURCE_MINZOOM = 9`, `PATHS_SOURCE_MAXZOOM = 13`
@@ -120,7 +120,7 @@ Both the overlay (z9–13) and the promoted base layer (z14+) are styled from th
      - `PATH_WIDTH` — the base layer's z14+ width (`["interpolate", ["exponential", 1.2], ["zoom"], 12, 1, 14, 2, 20, 8]`), moved out of the `PROMOTE_PATHS` section where it was previously a hard-coded literal ([`scripts/build.mjs:490`](../scripts/build.mjs))
      - `PATH_WIDTH_LOW_ZOOM` — the overlay's z9–13 width (`9 → 0.6, 11 → 1, 13 → 2`), tuned so **z13 (2 px) ≈ `PATH_WIDTH` at z14 (2 px)** for a seamless handoff ([`scripts/build.mjs:501`](../scripts/build.mjs))
      - `PATH_BASE_MINZOOM = 14` — `road_path_pedestrian` renders from here ([`scripts/build.mjs:512`](../scripts/build.mjs))
-3. **Build section "10. Low-zoom paths overlay"** ([`scripts/build.mjs:1226`](../scripts/build.mjs)), between promoted POIs (§9) and outdoor routes (§11):
+3. **Build section "10. Low-zoom paths overlay"** ([`scripts/build.mjs:1226`](../scripts/build.mjs)), between replaced liberty POIs (§9) and outdoor routes (§11):
    - Source `outdoor-paths` (vector, tiles `PATHS_TILE_URL`, minzoom 9, maxzoom 13, attribution `TILES_ATTRIBUTION` — `© OpenStreetMap contributors`, [`scripts/build.mjs:410`](../scripts/build.mjs))
    - Line layer `outdoor-paths`: source-layer `outdoor_paths`, `minzoom: 9`, `maxzoom: 14` (exclusive — renders z9–13), `line-cap` / `line-join: round`, paint `line-color: COLOURS.PATHS.PATH` (`#c05a2a`), `line-dasharray: PATH_DASHARRAY`, `line-width: PATH_WIDTH_LOW_ZOOM`
    - Spliced at the `poi_r20` anchor so the render stack stays **paths → routes → POIs** (paths below route lines, routes below POIs)
@@ -159,7 +159,7 @@ The pipeline (profile → pmtiles → served tiles → style) is live end-to-end
 - [Issue #271](https://github.com/openmaptiles/openmaptiles/issues/271) — "Show track/path sooner" — the overlay workaround
 - Mapzen/Tilezen zoom-by-network proposal: <https://github.com/mapzen/vector-datasource/issues/596>
 - Planetiler: <https://github.com/onthegomap/planetiler> · [BikeRouteOverlay example](https://github.com/onthegomap/planetiler/blob/main/planetiler-examples/src/main/java/com/onthegomap/planetiler/examples/BikeRouteOverlay.java)
-- Existing repo profiles: [FootpathOverlay.java](examples/FootpathOverlay.java) · [HikingRouteOverlay.java](examples/HikingRouteOverlay.java) · [pois-schema.yml](examples/pois-schema.yml) · generation history: [features.md](features.md) · contours: [contours.md](contours.md)
+- Existing repo profiles: [FootpathOverlay.java](examples/FootpathOverlay.java) · [HikingRouteOverlay.java](examples/HikingRouteOverlay.java) · [pois-schema.yml](../pois/pois-schema.yml) (generated from [pois/catalogue.yml](../pois/catalogue.yml)) · POI reference: [pois.md](pois.md) · generation history: [features.md](features.md) · contours: [contours.md](contours.md)
 - Data volume: <https://taginfo.openstreetmap.org/> (`highway=path/footway/track`) · Planet PBF: <https://planet.openstreetmap.org/>
 - OpenFreeMap (unmodified OMT schema, weekly Planetiler builds): <https://github.com/hyperknot/openfreemap> · styles: <https://github.com/hyperknot/openfreemap-styles> (Liberty `road_path_pedestrian` at `minzoom: 14`)
 - Planet-wide single-layer build precedent: <https://www.openstreetmap.org/user/pnorman/diary/408183> · tile-size/zoom scaling: <https://jeremymax.com/blog/offline-maps-pmtiles> · path-only pmtiles overlays: <https://blog.wxm.be/2023/11/25/osm-to-pmtiles-with-tilemaker.html>

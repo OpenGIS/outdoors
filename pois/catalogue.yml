@@ -1,0 +1,320 @@
+schema_name: Outdoors POI catalogue
+schema_description: Single source of truth for outdoor points of interest — which POIs the outdoors style wants, where they come from, and how they render. Drives scripts/build.mjs and scripts/check-poi-coverage.mjs.
+version: 2.0.0
+
+# Each POI:
+#   source: ofm    — rendered from the OpenMapTiles `poi` source-layer (OpenFreeMap tiles)
+#           custom  — rendered from the custom hosted tiles (tiles.ogis.app, source-layer outdoor_pois)
+#   ofm entries: class (OMT poi class), tier (1 = z12+ icon+name, 2 = z14+ icon+name), rank_max (optional density cap), icon (Maki sprite name), show_title
+#   custom entries: include_when (OSM tag match), kind, min_zoom (feature-level, used by the planetiler profile), icon (Maki sprite name), show_title
+
+pois:
+  # ── Tier 1 (z12+, icon + name) ──────────────────────────────
+  - id: campsite
+    source: ofm
+    class: campsite
+    tier: 1
+    icon: campsite
+    show_title: true
+  - id: castle
+    source: ofm
+    class: castle
+    tier: 1
+    icon: castle
+    show_title: true
+  - id: information
+    source: ofm
+    class: information
+    tier: 1
+    icon: information
+    show_title: true
+  - id: parking
+    source: ofm
+    class: parking
+    tier: 1
+    icon: parking
+    show_title: true
+  - id: picnic_site
+    source: ofm
+    class: picnic_site
+    tier: 1
+    icon: picnic_site
+    show_title: true
+  - id: shelter
+    source: ofm
+    class: shelter
+    tier: 1
+    icon: shelter
+    show_title: true
+  - id: drinking_water
+    source: ofm
+    class: drinking_water
+    tier: 1
+    icon: drinking_water
+    show_title: true
+
+  # ── Tier 2 (z14+, icon + name) ──────────────────────────────
+  - id: restaurant
+    source: ofm
+    class: restaurant
+    tier: 2
+    icon: restaurant
+    show_title: true
+  - id: cafe
+    source: ofm
+    class: cafe
+    tier: 2
+    icon: cafe
+    show_title: true
+  - id: fast_food
+    source: ofm
+    class: fast_food
+    tier: 2
+    icon: fast_food
+    show_title: true
+  - id: pub
+    source: ofm
+    class: beer
+    tier: 2
+    icon: beer
+    show_title: true
+  - id: bar
+    source: ofm
+    class: bar
+    tier: 2
+    icon: bar
+    show_title: true
+  - id: grocery
+    source: ofm
+    class: grocery
+    tier: 2
+    icon: grocery
+    show_title: true
+  - id: lodging
+    source: ofm
+    class: lodging
+    tier: 2
+    icon: lodging
+    show_title: true
+  - id: hospital
+    source: ofm
+    class: hospital
+    tier: 2
+    icon: hospital
+    show_title: true
+  - id: pharmacy
+    source: ofm
+    class: pharmacy
+    tier: 2
+    icon: pharmacy
+    show_title: true
+  - id: toilets
+    source: ofm
+    class: toilets
+    tier: 2
+    icon: toilets
+    show_title: true
+  - id: fuel
+    source: ofm
+    class: fuel
+    tier: 2
+    icon: fuel
+    show_title: true
+  - id: bus
+    source: ofm
+    class: bus
+    tier: 2
+    icon: bus
+    show_title: true
+  - id: ferry
+    source: ofm
+    class: ferry_terminal
+    tier: 2
+    icon: ferry
+    show_title: true
+  - id: ice_cream
+    source: ofm
+    class: ice_cream
+    tier: 2
+    icon: ice_cream
+    show_title: false
+  - id: doctors
+    source: ofm
+    class: doctors
+    tier: 2
+    icon: doctors
+    show_title: false
+  - id: bank
+    source: ofm
+    class: bank
+    tier: 2
+    icon: bank
+    show_title: false
+  - id: atm
+    source: ofm
+    class: atm
+    tier: 2
+    icon: bank
+    show_title: false
+  - id: post
+    source: ofm
+    class: post
+    tier: 2
+    icon: post
+    show_title: false
+
+  # ── Park (regression fix) ───────────────────────────────────
+  # City parks are dense — rank cap keeps pocket parks from flooding z12; matches Liberty's z15 top tier.
+  - id: park
+    source: ofm
+    class: park
+    tier: 1
+    rank_max: 6
+    icon: park
+    show_title: true
+
+  # ── Custom hosted (tiles.ogis.app /pois) ────────────────────
+  - id: park_custom
+    source: custom
+    include_when:
+      leisure: park
+    kind: park
+    min_zoom: 12
+    icon: park
+    show_title: true
+  - id: castle_custom
+    source: custom
+    include_when:
+      historic: castle
+    kind: castle
+    min_zoom: 12
+    icon: castle
+    show_title: true
+  - id: hut
+    source: custom
+    include_when:
+      tourism: [alpine_hut, wilderness_hut]
+    kind: hut
+    min_zoom: 8
+    icon: lodging
+    show_title: true
+  - id: water
+    source: custom
+    include_when:
+      amenity: drinking_water
+    kind: water
+    min_zoom: 10
+    icon: drinking_water
+    show_title: true
+  - id: shelter
+    source: custom
+    include_when:
+      amenity: shelter
+    kind: shelter
+    min_zoom: 10
+    icon: shelter
+    show_title: true
+  - id: parking
+    source: custom
+    include_when:
+      amenity: parking
+    kind: parking
+    min_zoom: 10
+    icon: parking
+    show_title: true
+  - id: viewpoint
+    source: custom
+    include_when:
+      tourism: viewpoint
+    kind: viewpoint
+    min_zoom: 10
+    icon: star_stroked
+    show_title: true
+  - id: pass
+    source: custom
+    include_when:
+      natural: saddle
+    kind: pass
+    min_zoom: 8
+    icon: mountain
+    show_title: true
+  - id: picnic_site
+    source: custom
+    include_when:
+      tourism: picnic_site
+    kind: picnic_site
+    min_zoom: 12
+    icon: picnic_site
+    show_title: true
+  - id: information
+    source: custom
+    include_when:
+      tourism: information
+    kind: information
+    min_zoom: 12
+    icon: information
+    show_title: true
+  - id: toilets
+    source: custom
+    include_when:
+      amenity: toilets
+    kind: toilets
+    min_zoom: 13
+    icon: toilets
+    show_title: true
+  - id: ranger_station
+    source: custom
+    include_when:
+      amenity: ranger_station
+    kind: ranger_station
+    min_zoom: 12
+    icon: ranger_station
+    show_title: true
+  - id: campsite
+    source: custom
+    include_when:
+      tourism: [camp_site, camp_pitch]
+    kind: campsite
+    min_zoom: 10
+    icon: campsite
+    show_title: true
+  - id: playground
+    source: custom
+    include_when:
+      leisure: playground
+    kind: playground
+    min_zoom: 13
+    icon: playground
+    show_title: true
+  - id: skiing
+    source: custom
+    include_when:
+      leisure: ski_resort
+    kind: skiing
+    min_zoom: 10
+    icon: skiing
+    show_title: true
+  - id: ferry
+    source: custom
+    include_when:
+      amenity: ferry_terminal
+    kind: ferry
+    min_zoom: 12
+    icon: ferry
+    show_title: true
+  - id: bicycle
+    source: custom
+    include_when:
+      amenity: bicycle_rental
+    kind: bicycle
+    min_zoom: 13
+    icon: bicycle_rental
+    show_title: true
+  - id: trailhead
+    source: custom
+    include_when:
+      highway: trailhead
+    kind: trailhead
+    min_zoom: 10
+    icon: entrance
+    show_title: true

@@ -1,5 +1,5 @@
 ---
-last_commit: "5b7b4b77899103fe42f997fd301da73de205eced"
+last_commit: "1a3de67164cd1a53ca1fef4765db736655c68094"
 ---
 
 # Outdoors
@@ -44,7 +44,7 @@ No external source — overrides the Liberty base-layer colours with muted, refe
 
 No external source — overrides the Liberty base-layer road colours with a muted warm-taupe palette, replacing Liberty's bright yellow/orange roads with an outdoor-first hierarchy in which local roads and forest tracks are the most visible. Local roads were lightened and desaturated so they read clearly against the brown contour lines, while the contours stay the saturated brown family.
 
-- Toggle: `ROAD_PALETTE` (default `true`) — applies the muted colour overrides to Liberty's road fills and casings via `applyRoadPalette()`
+- Toggle: `ROAD_PALETTE` (default `false` — superseded by `ROAD_SURFACE_AWARE`) — applies the muted colour overrides to Liberty's road fills and casings via `applyRoadPalette()`
 - Outdoor-first hierarchy (most visible → most recessive):
   - `COLOURS.ROADS.LOCAL` `rgb(255, 255, 255)` — minor/service/track/street fills (white core that pops against the brown contour lines)
   - `COLOURS.ROADS.MEDIUM` `rgb(223, 211, 188)` — secondary/tertiary/link fills
@@ -62,7 +62,7 @@ No external source — overrides the Liberty base-layer road colours with a mute
 - **[Mapterhorn](https://tiles.mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 17) with the required `© Mapterhorn` attribution. A single `demSource` raster-dem source is created when the `DEM` toggle below is enabled and feeds both the hillshade layer and 3D terrain. The same Mapterhorn DEM also feeds the ogis.app contour service server-side.
   - Toggle: `DEM` (default `true`) — the master switch; creates the shared `demSource` raster-dem source (Mapterhorn, Terrarium, 512 px, maxzoom 17). Hillshade and terrain both read from it.
   - Toggle: `DEM_HILLSHADE` (default `true`) — a 2D hillshade layer drawn from the DEM source. Fades in from z3 to z5 (hillshade exaggeration 0 → 0.2) and renders above landcover but below contours and water.
-  - Toggle: `DEM_TERRAIN` (default `false`) — 3D terrain elevation (`style.terrain.exaggeration`, 1.5) drawn from the DEM source.
+  - Toggle: `DEM_TERRAIN` (default `true`) — 3D terrain elevation (`style.terrain.exaggeration`, 1.5) drawn from the DEM source.
   - Configurable via `DEM_SOURCE_URL` — point it at any Terrarium-encoded DEM tile server by changing the constant. `TERRAIN_EXAGGERATION` (default 1.5) and `HILLSHADE_EXAGGERATION` (fade-in ramp `[[3, 0], [5, 0.2], [12, 0.2]]`) tune the two consumers.
 
 ### Contours
@@ -78,32 +78,18 @@ Gated by the `CONTOURS` boolean toggle in `scripts/build.mjs` (default `true`). 
 > [!NOTE]
 > The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `tiles.ogis.app`.
 
-### Waymarked Trails (raster overlays)
-
-- **[Waymarked Trails](https://waymarkedtrails.org/)** — raster tile overlays for hiking, cycling, and other activities. Used as semi-transparent overlay layers on top of the base map.
-  - Toggle: `WAYMARKED_ACTIVITIES` array (default `[]` — disabled)
-  - Add items like `'hiking'`, `'cycling'` to enable
-  - Free tile service with attribution: © waymarkedtrails.org
-
 ### Mountain peak labels
 
 No external source — peak name + elevation labels with a ▲ marker, drawn from Liberty's existing **OpenMapTiles `mountain_peak`** source-layer for the most prominent peaks (`rank == 1`), visible from z7.
 
 - Toggle: `PEAK_LABELS` (default `true`)
-- Text-only symbols (no sprite icon) — inserted just below the promoted POI layer in the render stack
-
-### Promoted Liberty POIs
-
-No external source — these are POI classes drawn from Liberty's existing **OpenMapTiles `poi`** source-layer, but promoted to appear at lower zoom (z12–14) instead of waiting for the regular POI layer at z15. Classes include restaurants, cafes, pubs, toilets, drinking water, shelters, picnic sites, parking, bus stops, fuel, pharmacies, and more.
-
-- Toggle: `PROMOTE_LIBERTY_POI` (default `true`)
-- Uses Liberty's own Maki sprite for icons — no additional data source
+- Text-only symbols (no sprite icon) — inserted just below the park-label / POI layers in the render stack
 
 ### Low-zoom paths overlay
 
 - **Vector tiles** of path/footway/track geometry from OpenStreetMap, filling the z9–13 gap where the OpenMapTiles base tiles carry no path data. Dashed brown lines (`#c05a2a`, matching the promoted base path style) so the overlay and the z14+ base layer render as one continuous visual family.
   - Source-layer: `outdoor_paths`, tile URL `https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z9–13
-  - Inserted at the `poi_r20` anchor — above the promoted POIs, below the outdoor route lines (routes stay on top of paths)
+  - Inserted at the `poi_r20` anchor — below the outdoor route lines so routes stay on top of paths
   - Toggle: `LOW_ZOOM_PATHS` (default `true`)
 
 See [docs/paths.md](docs/paths.md) for the full implementation reference.
@@ -117,16 +103,17 @@ See [docs/paths.md](docs/paths.md) for the full implementation reference.
 
 ### Outdoor POIs
 
-- **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, and more.
+- **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, parks, and more (17 kinds).
   - Source-layer: `outdoor_pois`, tile URL `https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–16
-  - Icons mapped from the Maki sprite set used by Liberty — kind→icon map in `POI_ICON_BY_KIND` (`POI_ICON_DEFAULT` = `"marker"`); icon/text size, opacity and halo widths tuned via the `POI_ICON_*` / `POI_TEXT_*` consts
+  - Icon map generated from the [POI catalogue](pois/catalogue.yml) — kind→Maki-sprite-icon match with `"marker"` fallback; all kinds carry name labels
   - Inserted at the `poi_r20` anchor — above the outdoor route lines, below base-map POIs and labels
   - Toggle: `OUTDOOR_POI` (default `true`)
+- The whole POI pipeline is catalogue-driven: `pois/catalogue.yml` → `npm run check:pois` (gap determination) → `npm run pois:schema` (generated planetiler schema) → remote build → hosted tiles → `style.json`. See [docs/pois.md](docs/pois.md) for the full reference.
 
 ### MTB scale & bicycle access
 
 - **OpenMapTiles `transportation`** source-layer overlays that highlight mountain bike difficulty (`mtb_scale`) and bicycle access on tracks.
-  - Toggle: `MTB_SCALE` (default `false`)
+  - Toggle: `MTB_SCALE` (default `true`)
   - MTB grades: 1 (blue), 2 (red), 3+ (black)
   - Bicycle access: purple overlay
   - Drawn from the base Liberty style's existing data source — no additional tile server
@@ -135,7 +122,7 @@ See [docs/paths.md](docs/paths.md) for the full implementation reference.
 
 No additional data source — this section restyles two existing Liberty layers (`road_path_pedestrian`, `highway-name-path`): the path layer renders in the outdoors orange (`#c05a2a`) from z14 (`PATH_BASE_MINZOOM`), while the [low-zoom paths overlay](#low-zoom-paths-overlay) owns z9–13; path name labels are promoted to minzoom 0.
 
-- Toggle: `PROMOTE_PATHS` (default `true`)
+- Toggle: `PATH_STYLING` (default `true`)
 - When MTB scale is enabled, paths with an `mtb_scale` tag are hidden under the MTB overlay to avoid double-drawing
 
 ---
@@ -162,6 +149,8 @@ Opens the compare app at [localhost:11000](http://localhost:11000) — a compari
 | `npm run dev`          | Vite dev server + file watcher. HMR on `style.json` change; auto-rebuild on `build.mjs` changes         |
 | `npm run build`        | One-shot build `style.json` from `build.mjs` feature flags                                              |
 | `npm run watch:build`  | Standalone file watcher (for separate terminal)                                                         |
+| `npm run pois:schema`  | Generate `pois/pois-schema.yml` from the POI catalogue (`--area=` / `POI_AREA` override)                |
+| `npm run check:pois`   | POI coverage check: catalogue vs OMT schema, style coverage, sprite icons, gap report (exit 0 only when green) |
 | `npm run demo:build`   | Build the compare app demo to `demo/` (`vite build`) |
 | `npm run demo:preview` | Preview the production build (`vite preview`)                                                           |
 
@@ -182,7 +171,7 @@ All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, b
 - Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service
 
 > [!NOTE]
-> The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tiles.ogis.app`. See [docs/features.md](docs/features.md) for how they were produced (YAML schema for POIs, Java profile for routes).
+> The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tiles.ogis.app`. POIs are catalogue-driven (see [docs/pois.md](docs/pois.md)); routes use a Java profile (see [docs/features.md](docs/features.md)).
 
 ### Project structure
 
@@ -207,7 +196,12 @@ All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, b
 ├── style.json           # Generated output (tracked in git)
 ├── scripts/
 │   ├── build.mjs        # Style build script — entry point for all feature flags
+│   ├── check-poi-coverage.mjs  # POI coverage check (npm run check:pois)
+│   ├── generate-poi-schema.mjs # Planetiler schema generator (npm run pois:schema)
 │   └── watch.mjs        # File watcher (auto-rebuild on build.mjs changes)
+├── pois/
+│   ├── catalogue.yml    # Single source of truth for outdoor POIs
+│   └── pois-schema.yml  # Generated planetiler schema (do not edit by hand)
 ├── demo/                # Production build output (tracked in git)
 ├── package.json
 └── vite.config.js
@@ -233,6 +227,7 @@ Providers that require an API key have `"apiKey": true` in their config. Their U
 
 ## Further Reading
 
+- [Outdoor POIs](docs/pois.md) - catalogue-driven POI implementation (catalogue → checker → generated schema → hosted tiles)
 - [Contours](docs/contours.md) - hosted PBF contour implementation reference
 - [Paths overlay](docs/paths.md) - low-zoom paths implementation reference (Planetiler profile + style handoff)
 - [Outdoor feature tiles](docs/features.md) - POIs & routes

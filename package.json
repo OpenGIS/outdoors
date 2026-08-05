@@ -7,6 +7,8 @@
     "dev": "concurrently --names dev,build --prefix-colors cyan,green \"vite\" \"node scripts/watch.mjs\"",
     "build": "node scripts/build.mjs",
     "watch:build": "node scripts/watch.mjs",
+    "pois:schema": "node scripts/generate-poi-schema.mjs",
+    "check:pois": "node scripts/check-poi-coverage.mjs",
     "demo:build": "vite build",
     "demo:preview": "vite preview"
   },
@@ -17,6 +19,7 @@
     "events": "^3.3.0",
     "maplibre-gl": "^5.0.0",
     "vite": "^6.0.7",
-    "vue": "^3.5.0"
+    "vue": "^3.5.0",
+    "yaml": "^2.9.0"
   }
 }

@@ -1,32 +1,39 @@
 ---
-git_hash: "5b7b4b77899103fe42f997fd301da73de205eced"
-modified: "2026-08-03"
+git_hash: "1a3de67164cd1a53ca1fef4765db736655c68094"
+modified: "2026-08-05"
 ---
 
 # Outdoor Feature Tiles (POIs & Routes)
 
-> The outdoor POI and hiking-route vector tiles were originally generated in this repository from OpenStreetMap data using [Planetiler](https://github.com/onthegomap/planetiler). The local generator has been removed — the layers are now served from the hosted `tiles.ogis.app` service. This page records how they were produced.
+> The outdoor POI and hiking-route vector tiles are generated outside this repository from OpenStreetMap data using [Planetiler](https://github.com/onthegomap/planetiler) and served from the hosted `tiles.ogis.app` service. POI tiles are now catalogue-driven: [`pois/catalogue.yml`](../pois/catalogue.yml) is the single source of truth, and the planetiler schema is generated from it. This page records how both layers are produced.
 
 ## Overview
 
 Two vector tile overlays are consumed by the style, both derived from OpenStreetMap:
 
-- **`outdoor_pois`** — point features: huts, shelters, water, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites and more (~16 kinds).
+- **`outdoor_pois`** — point features: huts, shelters, water, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites and more (17 kinds, including park).
 - **`outdoor_routes`** — line features for hiking route relations (hiking, foot, walking), classified by network tier (iwn/nwn/rwn/lwn).
 
 They are generated with two different approaches, because the underlying OSM data has two different shapes.
 
 ## The two approaches
 
-### POIs — YAML schema
+### POIs — generated YAML schema
 
 OSM POIs are individual point features (nodes) carrying tags such as `tourism=alpine_hut` or `amenity=drinking_water`. A declarative **YAML schema** matches each tag combination and maps it to a `kind` attribute:
 
 - `include_when` — the OSM tags that select a feature
-- `attributes` — the output properties (`kind`, plus optional `name`/`ele` from OSM tag values)
+- `attributes` — the output properties (`kind`, plus `name` and, for hut/shelter/viewpoint/pass, `ele`)
 - `min_zoom` — zoom at which the feature first appears
 
-Schema: [`pois-schema.yml`](examples/pois-schema.yml) — defines the `outdoor_pois` layer (point geometry).
+The schema is no longer hand-maintained. [`pois/catalogue.yml`](../pois/catalogue.yml) declares every POI (source, kind, icon, min_zoom, OSM tags) and [`scripts/generate-poi-schema.mjs`](../scripts/generate-poi-schema.mjs) derives the planetiler schema from its `custom` entries. The pipeline:
+
+```
+pois/catalogue.yml → npm run check:pois (gap determination) → npm run pois:schema
+  → pois/pois-schema.yml → remote planetiler build → hosted tiles → style.json
+```
+
+Schema: [`pois/pois-schema.yml`](../pois/pois-schema.yml) — defines the `outdoor_pois` layer (point geometry). It is generated — edit the catalogue, then run `npm run pois:schema`. See [Outdoor POIs (catalogue-driven)](pois.md) for the full reference.
 
 ### Routes — Java profile
 
@@ -52,10 +59,11 @@ The tiles are generated and hosted outside this project at **`https://tiles.ogis
 - `https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf` — source-layer `outdoor_pois`, z12–16
 - `https://tiles.ogis.app/routes/{z}/{x}/{y}.pbf` — source-layer `outdoor_routes`, z8–14
 
-The style consumes them as plain vector sources; both URLs derive from the single `TILES_BASE_URL` constant in [`scripts/build.mjs`](../scripts/build.mjs) (toggle `OUTDOOR_POI` / `OUTDOOR_ROUTE`, both default `true`). See the [Outdoor routes](../README.md#outdoor-routes) and [Outdoor POIs](../README.md#outdoor-pois) sections of the main README for layer styling details.
+The style consumes them as plain vector sources; both URLs derive from the single `TILES_BASE_URL` constant in [`scripts/build.mjs`](../scripts/build.mjs) (toggle `OUTDOOR_POI` / `OUTDOOR_ROUTE`, both default `true`). See the [Outdoor routes](../README.md#outdoor-routes) and [Outdoor POIs](../README.md#outdoor-pois) sections of the main README for layer styling details. The POI side is catalogue-driven end-to-end — see [Outdoor POIs (catalogue-driven)](pois.md).
 
 ## Related
 
 - [Docs index](README.md)
+- [Outdoor POIs (catalogue-driven)](pois.md) — POI catalogue, schema generation and coverage checker
 - [`scripts/build.mjs`](../scripts/build.mjs) — `TILES_BASE_URL`, overlay toggles and layers
 - [Contours](contours.md) — the third hosted tile overlay, a server-side contour service

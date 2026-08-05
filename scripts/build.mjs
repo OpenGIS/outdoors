@@ -35,9 +35,15 @@
  *  urban removal → terrain palette → road palette → DEM (hillshade, terrain) →
  *  landcover (rock, farmland, subclass) → landuse (military/quarry, recreation) →
  *  park differentiation → water palette → road surface-aware → building outlines →
- *  aerialway → ferry → rail simplified → contours → peak labels → park labels →
- *  replaced liberty pois → promoted liberty pois → low-zoom paths →
- *  outdoor routes → outdoor pois → mtb/bicycle → path styling
+ *  aerialway → ferry → rail simplified → contours → POI section
+ *  (peaks → park labels → replaced liberty pois) →
+ *  low-zoom paths → outdoor routes → custom outdoor pois → mtb/bicycle → path styling
+ *
+ * All POI code — constants, the pois/catalogue.yml load, helpers and apply
+ * functions — lives in ONE contiguous section near the bottom of this file
+ * (see the POI SECTION block), driven by the catalogue. The non-POI sections
+ * (paths, routes, mtb) render between the POI layers, so their build() calls
+ * stay interleaved with the POI calls to preserve the exact layer stack.
  *
  * Dependencies:
  *   - OSM Liberty (OpenFreeMap fork): https://raw.githubusercontent.com/hyperknot/openfreemap-styles/main/styles/liberty/style.json
@@ -49,6 +55,7 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import YAML from "yaml";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -81,7 +88,6 @@ const CONTOURS = true;
 const PEAK_LABELS = true;
 const PARK_LABELS = true;
 const REPLACE_LIBERTY_POIS = true;
-const PROMOTE_LIBERTY_POI = true;
 const LOW_ZOOM_PATHS = true;
 const OUTDOOR_ROUTE = true;
 const OUTDOOR_POI = true;
@@ -404,8 +410,6 @@ const PLAYGROUND_MINZOOM = 14;
 
 const PARK_MINZOOM = 6;
 const PARK_OUTLINE_MINZOOM = 10;
-const PARK_LABEL_MINZOOM = 8;
-const PARK_LABEL_MAX_RANK = 3;
 
 // ── BUILDINGS ───────────────────────────────────────────────────────
 // 2D stroke-only building outlines (applied by applyBuildingOutlines).
@@ -492,58 +496,6 @@ const CONTOUR_PBF_TILE_URL =
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
-// ── Mountain peak labels ─────────────────────────────────────────────
-// Peak name + elevation labels from the OpenMapTiles mountain_peak
-// source-layer. Text only — no icon-image. applyPeakLabels applies the
-// rank-1 tier plus the rank 2–3, saddle & volcano tiers.
-
-const PEAK_LABEL_MINZOOM = 7;
-const PEAK_LABEL_TEXT_SIZE = 11;
-const PEAK_LABEL_HALO_WIDTH = 1;
-const PEAK_LABEL_HALO_BLUR = 1;
-
-// Extended peak tiers
-const PEAK_RANK1_MINZOOM = 7;
-const PEAK_RANK23_MINZOOM = 10;
-const SADDLE_MINZOOM = 10;
-const VOLCANO_MINZOOM = 6;
-const PEAK_RANK1_SIZE = 12;
-const PEAK_RANK23_SIZE = 10;
-const SADDLE_SIZE = 9;
-
-// ── Promoted liberty POIs ────────────────────────────────────────────
-// Display selected base-map POIs at lower zooms (z12–14) rather than
-// waiting for the regular poi layer at z15.
-
-const PROMOTED_POI_MINZOOM = 12;
-const PROMOTED_POI_MAXZOOM = 15;
-const PROMOTED_POI_CLASSES = [
-  "restaurant",
-  "cafe",
-  "fast_food",
-  "pub",
-  "bar",
-  "grocery",
-  "ice_cream",
-  "toilets",
-  "drinking_water",
-  "information",
-  "shelter",
-  "picnic_site",
-  "parking",
-  "bus",
-  "ferry",
-  "fuel",
-  "pharmacy",
-  "hospital",
-  "doctors",
-  "bank",
-  "atm",
-  "post",
-  "lodging",
-  "campsite",
-];
-
 // ── Self-hosted outdoor vector tiles ────────────────────────────────
 // One configurable endpoint serves BOTH the outdoor POI and route tiles
 // (`/pois/...` and `/routes/...`).
@@ -561,55 +513,6 @@ const ROUTE_SOURCE_LAYER = "outdoor_routes";
 const ROUTE_TILE_URL = `${TILES_BASE_URL}/routes/{z}/{x}/{y}.pbf`;
 const ROUTE_SOURCE_MINZOOM = 8;
 const ROUTE_SOURCE_MAXZOOM = 14;
-
-// ── Outdoor POI ──────────────────────────────────────────────────────
-// Vector tiles with outdoor points of interest — huts, shelters, water,
-// parking, viewpoints, mountain passes, campsites, etc.
-// Source-layer: 'outdoor_pois'. Self-hosted Planetiler tiles (z12–16).
-
-const POI_SOURCE_LAYER = "outdoor_pois";
-const POI_TILE_URL = `${TILES_BASE_URL}/pois/{z}/{x}/{y}.pbf`;
-const POI_SOURCE_MINZOOM = 12;
-const POI_SOURCE_MAXZOOM = 16;
-
-// POI style settings — icon + label rendering for the outdoor-poi layer
-const POI_ICON_SIZE = 1;
-const POI_ICON_OPACITY = 0.85;
-const POI_TEXT_SIZE = 11;
-const POI_TEXT_OFFSET = [0, 1.5];
-const POI_TEXT_HALO_WIDTH = 1;
-// Icon shown per `kind` value (Liberty sprite icon names); POI_ICON_DEFAULT
-// is the fallback for unmapped kinds.
-const POI_ICON_BY_KIND = {
-  water: "drinking_water",
-  hut: "lodging",
-  shelter: "shelter",
-  parking: "parking",
-  viewpoint: "star_stroked",
-  pass: "mountain",
-  picnic_site: "picnic_site",
-  information: "information",
-  toilets: "toilets",
-  ranger_station: "ranger_station",
-  campsite: "campsite",
-  playground: "playground",
-  skiing: "skiing",
-  ferry: "ferry",
-  bicycle: "bicycle_rental",
-  trailhead: "entrance",
-  bus_stop: "bus",
-  cable_car: "aerialway",
-  halt: "railway",
-  station: "railway",
-  tram_stop: "railway_light",
-  guest_house: "lodging",
-  hotel: "lodging",
-  pub: "bar",
-  town: "town_hall",
-  village: "town_hall",
-  hamlet: "town_hall",
-};
-const POI_ICON_DEFAULT = "marker";
 
 // ── Low-zoom paths overlay ──────────────────────────────────────────
 // Vector tiles with path/footway/track geometry from OSM — fills the
@@ -854,14 +757,6 @@ function waterStackIndex(style) {
     (l) => l.id.startsWith("waterway") || l.id.startsWith("water"),
   );
 }
-
-/**
- * POI anchor layer id used by sections that insert layers relative to the
- * base-map POI stack. Defaults to Liberty's `poi_r20`; REPLACE_LIBERTY_POIS
- * swaps it to the first replacement layer (outdoor-poi-z1) when it removes
- * poi_r20, so later sections keep stacking correctly below the POI tiers.
- */
-let poiAnchorId = "poi_r20";
 
 // ═════════════════════════════════════════════════════════════════════════
 // Section functions (in render order, bottom→top)
@@ -1887,9 +1782,358 @@ function applyContours(style) {
 }
 
 /**
+ * Low-zoom paths overlay. Vector tiles with path/footway/track geometry
+ * from OSM — fills the z9–13 gap where the OpenMapTiles base tiles carry
+ * no path data (route-gated below z12, all paths at z12; tiers keep
+ * earlier zooms: iwn 9, nwn 10, rwn 11). Source-layer: 'outdoor_paths'.
+ * Self-hosted Planetiler tiles (z9–13). Renders below the outdoor route
+ * lines so routes stay on top of paths. See docs/paths.md.
+ */
+function applyLowZoomPaths(style) {
+  style.sources["outdoor-paths"] = {
+    type: "vector",
+    tiles: [PATHS_TILE_URL],
+    minzoom: PATHS_SOURCE_MINZOOM,
+    maxzoom: PATHS_SOURCE_MAXZOOM,
+    attribution: TILES_ATTRIBUTION,
+  };
+
+  const pathsLayer = {
+    id: "outdoor-paths",
+    type: "line",
+    source: "outdoor-paths",
+    "source-layer": PATHS_SOURCE_LAYER,
+    minzoom: PATHS_SOURCE_MINZOOM,
+    maxzoom: PATHS_LAYER_MAXZOOM,
+    layout: {
+      "line-cap": PATH_LINE_CAP,
+      "line-join": PATH_LINE_JOIN,
+    },
+    paint: {
+      "line-color": COLOURS.PATHS.PATH,
+      "line-dasharray": PATH_DASHARRAY,
+      "line-width": PATH_WIDTH_LOW_ZOOM,
+    },
+  };
+
+  // Insert at the POI anchor — below the outdoor route lines so routes
+  // stay on top of paths.
+  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
+  if (poiIdx !== -1) {
+    style.layers.splice(poiIdx, 0, pathsLayer);
+  } else {
+    style.layers.push(pathsLayer);
+  }
+}
+
+/**
+ * Outdoor routes (hiking route relations). Vector tiles with hiking route
+ * relations from OSM — line geometry with network classification
+ * (iwn/nwn/rwn/lwn), ref, name, etc. Source-layer: 'outdoor_routes'.
+ * Self-hosted Planetiler tiles (z8–14).
+ */
+function applyOutdoorRoute(style) {
+  style.sources["outdoor-route"] = {
+    type: "vector",
+    tiles: [ROUTE_TILE_URL],
+    minzoom: ROUTE_SOURCE_MINZOOM,
+    maxzoom: ROUTE_SOURCE_MAXZOOM,
+    attribution: TILES_ATTRIBUTION,
+  };
+
+  const routeLayers = createAllRouteLayers(
+    "outdoor-route",
+    ROUTE_SOURCE_LAYER,
+    ROUTE_TIERS,
+    ROUTE_TIER_DEFAULT,
+  );
+
+  // Insert below the base-map POI layers (POI anchor) so route lines
+  // render above roads/water but below POI icons & labels.
+  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
+  if (poiIdx !== -1) {
+    style.layers.splice(poiIdx, 0, ...routeLayers);
+  } else {
+    style.layers.push(...routeLayers);
+  }
+}
+
+/**
+ * MTB difficulty + bicycle access overlays from the OpenMapTiles
+ * transportation source-layer. Inserted before the POI block in the layer
+ * stack.
+ */
+function applyMtbScale(style) {
+  const mtbLayer = {
+    id: "mtb_scale-casing",
+    type: "line",
+    metadata: { "mapbox:group": "1444849345966.4436" },
+    source: "openmaptiles",
+    "source-layer": "transportation",
+    minzoom: 0,
+    maxzoom: 22,
+    filter: [
+      "all",
+      ["==", "$type", "LineString"],
+      ["!=", "brunnel", "tunnel"],
+      ["has", "mtb_scale"],
+    ],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": [
+        "match",
+        ["get", "mtb_scale"],
+        "1",
+        COLOURS.MTB.GRADE_1,
+        "2",
+        COLOURS.MTB.GRADE_2,
+        COLOURS.MTB.GRADE_3_PLUS,
+      ],
+      "line-opacity": 0.8,
+      "line-width": {
+        base: 1.2,
+        stops: [
+          [12, 0.5],
+          [16, 3],
+        ],
+      },
+    },
+  };
+
+  const bicycleLayer = {
+    id: "bicycle-access",
+    type: "line",
+    source: "openmaptiles",
+    "source-layer": "transportation",
+    minzoom: 0,
+    maxzoom: 22,
+    filter: [
+      "all",
+      ["==", "$type", "LineString"],
+      ["!=", "brunnel", "tunnel"],
+      ["has", "bicycle"],
+      ["in", "class", "track"],
+    ],
+    paint: {
+      "line-color": COLOURS.MTB.BICYCLE_ACCESS,
+      "line-opacity": 0.7,
+      "line-width": 2,
+    },
+  };
+
+  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
+  if (poiIdx !== -1) {
+    style.layers.splice(poiIdx, 0, bicycleLayer, mtbLayer);
+  } else {
+    style.layers.push(bicycleLayer, mtbLayer);
+  }
+}
+
+/**
+ * Restyle the base-layer road_path_pedestrian + highway-name-path layers
+ * so paths form one continuous visual family with the low-zoom overlay.
+ * Gated by PATH_STYLING.
+ */
+function applyPathStyling(style) {
+  const pathLayer = style.layers.find((l) => l.id === "road_path_pedestrian");
+  if (pathLayer) {
+    pathLayer.minzoom = PATH_BASE_MINZOOM; // the LOW_ZOOM_PATHS overlay owns z9–13
+    pathLayer.maxzoom = 22;
+    pathLayer.paint = pathLayer.paint || {};
+    pathLayer.paint["line-color"] = COLOURS.PATHS.PATH;
+    pathLayer.paint["line-dasharray"] = PATH_DASHARRAY;
+    if (MTB_SCALE) {
+      pathLayer.paint["line-opacity"] = ["case", ["has", "mtb_scale"], 0, 1];
+    }
+    pathLayer.paint["line-width"] = PATH_WIDTH;
+    pathLayer.layout = pathLayer.layout || {};
+    pathLayer.layout["line-cap"] = PATH_LINE_CAP;
+    pathLayer.layout["line-join"] = PATH_LINE_JOIN;
+  }
+
+  const nameLayer = style.layers.find((l) => l.id === "highway-name-path");
+  if (nameLayer) {
+    nameLayer.minzoom = 0;
+    nameLayer.maxzoom = 22;
+    nameLayer.paint = nameLayer.paint || {};
+    nameLayer.paint["text-color"] = COLOURS.PATHS.PATH;
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// POI SECTION — peak labels, park labels & point-of-interest layers
+// ═════════════════════════════════════════════════════════════════════════
+// All POI code lives here in one contiguous block: the catalogue load, the
+// derived class/icon lists, the style constants, the helpers and the apply
+// functions. The section reads in render order — bottom→top of the final
+// layer stack:
+//
+//   mountain-peak (+ secondary/saddle/volcano)   — OMT mountain_peak
+//   park-label                                   — OMT park
+//   outdoor-poi (custom tiles)                   — outdoor_pois
+//   outdoor-poi-z1 (z12+)                        — OMT poi
+//   outdoor-poi-z2 (z14+)                        — OMT poi
+//   poi_transit (railway/airport only)           — OMT poi
+//
+// Peaks and park-label are NOT catalogue-driven and are kept byte-identical
+// to their previous behaviour. Everything else is driven by
+// pois/catalogue.yml — the single source of truth for which POIs render, at
+// what zoom, with which icon, and whether they carry a name label. The
+// non-POI sections (low-zoom paths, outdoor routes, MTB scale) render
+// between outdoor-poi and outdoor-poi-z1 in the final stack, so their
+// calls in build() stay interleaved with the POI calls — see build() step 15.
+
+// ── Catalogue load ──────────────────────────────────────────────────────
+// pois/catalogue.yml is parsed once at build start. A missing or malformed
+// file (or one without a non-empty `pois` array) fails the build loudly.
+
+const CATALOGUE_FILE = resolve(ROOT, "pois", "catalogue.yml");
+
+let catalogue;
+try {
+  catalogue = YAML.parse(readFileSync(CATALOGUE_FILE, "utf8"));
+} catch (err) {
+  throw new Error(
+    `[poi] failed to parse POI catalogue ${CATALOGUE_FILE}: ${err.message}`,
+  );
+}
+if (
+  !catalogue ||
+  !Array.isArray(catalogue.pois) ||
+  catalogue.pois.length === 0
+) {
+  throw new Error(
+    `[poi] POI catalogue ${CATALOGUE_FILE} has no non-empty 'pois' array`,
+  );
+}
+
+// ── Derived class & icon lists ──────────────────────────────────────────
+// ofm entries render from the OpenMapTiles `poi` source-layer; custom
+// entries render from the self-hosted outdoor_pois tiles (POI_TILE_URL).
+
+const OFM_ENTRIES = catalogue.pois.filter((e) => e.source === "ofm");
+const CUSTOM_ENTRIES = catalogue.pois.filter((e) => e.source === "custom");
+
+// Zoom tiers from the catalogue: tier 1 → outdoor-poi-z1 (z12+), tier 2 →
+// outdoor-poi-z2 (z14+).
+const TIER1_ENTRIES = OFM_ENTRIES.filter((e) => e.tier === 1);
+const TIER2_ENTRIES = OFM_ENTRIES.filter((e) => e.tier === 2);
+const tier1Classes = TIER1_ENTRIES.map((e) => e.class);
+const tier2Classes = TIER2_ENTRIES.map((e) => e.class);
+
+// ── POI constants ───────────────────────────────────────────────────────
+// Peak name + elevation labels (applyPeakLabels). Text only — no icon.
+// Rank-1 tier plus the rank 2–3, saddle & volcano tiers.
+
+const PEAK_LABEL_MINZOOM = 7;
+const PEAK_LABEL_TEXT_SIZE = 11;
+const PEAK_LABEL_HALO_WIDTH = 1;
+const PEAK_LABEL_HALO_BLUR = 1;
+
+// Extended peak tiers
+const PEAK_RANK1_MINZOOM = 7;
+const PEAK_RANK23_MINZOOM = 10;
+const SADDLE_MINZOOM = 10;
+const VOLCANO_MINZOOM = 6;
+const PEAK_RANK1_SIZE = 12;
+const PEAK_RANK23_SIZE = 10;
+const SADDLE_SIZE = 9;
+
+// Park-label zoom/rank — shared with the park differentiation fills but
+// only consumed by the park-label layer in this section.
+const PARK_LABEL_MINZOOM = 8;
+const PARK_LABEL_MAX_RANK = 3;
+
+// Self-hosted outdoor POI tiles (outdoor-poi layer) — served from the
+// shared TILES_BASE_URL endpoint (see the self-hosted tiles block above).
+const POI_SOURCE_LAYER = "outdoor_pois";
+const POI_TILE_URL = `${TILES_BASE_URL}/pois/{z}/{x}/{y}.pbf`;
+const POI_SOURCE_MINZOOM = 12;
+const POI_SOURCE_MAXZOOM = 16;
+
+// Icon + label rendering for the POI layers. POI_ICON_DEFAULT is the
+// fallback class/kind → icon (unreachable in practice — layer filters only
+// allowlist catalogue classes/kinds).
+const POI_ICON_SIZE = 1;
+const POI_ICON_OPACITY = 0.85;
+const POI_TEXT_SIZE = 11;
+const POI_TEXT_OFFSET = [0, 1.5];
+const POI_TEXT_HALO_WIDTH = 1;
+const POI_ICON_DEFAULT = "marker";
+
+// ── POI helpers ─────────────────────────────────────────────────────────
+
+/**
+ * icon-image match for a group of catalogue entries: class/kind → sprite
+ * icon with POI_ICON_DEFAULT as the fallback.
+ */
+function poiIconMatch(entries, field) {
+  return [
+    "match",
+    ["get", field],
+    ...entries.flatMap((e) => [e[field], e.icon]),
+    POI_ICON_DEFAULT,
+  ];
+}
+
+/**
+ * text-field from a group's show_title flags: all true → the name field,
+ * none true → "" (icon-only), mixed → a per-entry case expression.
+ */
+function poiTextField(entries, field) {
+  if (entries.every((e) => e.show_title)) return ["get", "name"];
+  if (!entries.some((e) => e.show_title)) return "";
+  return [
+    "case",
+    ...entries.flatMap((e) => [
+      ["==", ["get", field], e[field]],
+      e.show_title ? ["get", "name"] : "",
+    ]),
+    "",
+  ];
+}
+
+/**
+ * Density cap for entries carrying a rank_max field (park). Returns null
+ * when no entry has one, so the filter keeps its plain shape.
+ */
+function rankCapCondition(entries) {
+  const capped = entries.filter((e) => e.rank_max);
+  if (capped.length === 0) return null;
+  if (capped.length === 1) {
+    const entry = capped[0];
+    return [
+      "any",
+      ["!=", ["get", "class"], entry.class],
+      ["<=", ["get", "rank"], entry.rank_max],
+    ];
+  }
+  const caps = capped.map((e) => [
+    "all",
+    ["==", ["get", "class"], e.class],
+    ["<=", ["get", "rank"], e.rank_max],
+  ]);
+  return [
+    "any",
+    ["!", ["in", ["get", "class"], ...capped.map((e) => e.class)]],
+    ...caps,
+  ];
+}
+
+/**
+ * POI anchor layer id used by sections that insert layers relative to the
+ * base-map POI stack. Defaults to Liberty's `poi_r20`; applyReplacePois
+ * swaps it to the first replacement layer (outdoor-poi-z1) when it removes
+ * poi_r20, so the interleaved non-POI sections keep stacking correctly.
+ */
+let poiAnchorId = "poi_r20";
+
+// ── Apply functions (in render order, bottom→top) ───────────────────────
+
+/**
  * Peak name + elevation labels from the OpenMapTiles `mountain_peak`
- * source-layer. Text only — no icon-image. Renders below the promoted
- * POIs so peaks stay below labels/icons.
+ * source-layer. Text only — no icon-image. Renders below the outdoor
+ * POI layers so peaks stay below labels/icons. Gated by PEAK_LABELS.
  */
 function applyPeakLabels(style) {
   const peakLayer = {
@@ -2047,27 +2291,66 @@ function applyParkLabels(style) {
 }
 
 /**
- * Outdoor-filtered POI tiers replacing the Liberty poi_r1/r7/r20 layers.
+ * Outdoor POIs from the self-hosted outdoor_pois tiles (huts, shelters,
+ * water, parking, viewpoints, passes, campsites, etc.). The icon-image
+ * match and text-field both come from the catalogue's custom entries.
+ * Gated by OUTDOOR_POI.
+ */
+function applyOutdoorPoi(style) {
+  style.sources["outdoor-poi"] = {
+    type: "vector",
+    tiles: [POI_TILE_URL],
+    minzoom: POI_SOURCE_MINZOOM,
+    maxzoom: POI_SOURCE_MAXZOOM,
+    attribution: TILES_ATTRIBUTION,
+  };
+
+  const poiLayer = {
+    id: "outdoor-poi",
+    type: "symbol",
+    source: "outdoor-poi",
+    "source-layer": POI_SOURCE_LAYER,
+    layout: {
+      "icon-image": poiIconMatch(CUSTOM_ENTRIES, "kind"),
+      "icon-size": POI_ICON_SIZE,
+      "text-field": poiTextField(CUSTOM_ENTRIES, "kind"),
+      "text-size": POI_TEXT_SIZE,
+      "text-font": ["Noto Sans Regular"],
+      "text-offset": POI_TEXT_OFFSET,
+      "text-anchor": "top",
+    },
+    paint: {
+      "text-color": COLOURS.POI.TEXT,
+      "text-halo-color": COLOURS.POI.HALO,
+      "text-halo-width": POI_TEXT_HALO_WIDTH,
+      "icon-opacity": POI_ICON_OPACITY,
+    },
+  };
+
+  // Insert at the POI anchor — above outdoor-route lines (so icons &
+  // labels stay readable) but below base-map POIs and place labels.
+  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
+  if (poiIdx !== -1) {
+    style.layers.splice(poiIdx, 0, poiLayer);
+  } else {
+    style.layers.push(poiLayer);
+  }
+}
+
+/**
+ * Outdoor-filtered base-map POI tiers replacing the Liberty poi_r1/r7/r20
+ * layers. Class allowlists, icon-image and the park rank cap all derive
+ * from the catalogue; poi_transit is re-filtered to rail & airport only.
  * Gated by REPLACE_LIBERTY_POIS.
  */
 function applyReplacePois(style) {
-  const OUTDOOR_POI_Z1 = [
-    "campsite", "castle", "information", "parking", "peak", "picnic_site",
-    "shelter", "viewpoint", "alpine_hut", "wilderness_hut", "water_well",
-    "spring", "drinking_water", "cave_entrance",
+  const z1Filter = [
+    "all",
+    ["match", ["geometry-type"], ["MultiPoint", "Point"], true, false],
+    ["match", ["get", "class"], tier1Classes, true, false],
   ];
-  const OUTDOOR_POI_Z2 = [
-    "restaurant", "cafe", "fast_food", "pub", "bar", "grocery", "lodging",
-    "hospital", "pharmacy", "toilets", "fuel", "bus", "ferry",
-  ];
-
-  const poiIconBySubclass = [
-    "match",
-    ["get", "subclass"],
-    ["florist", "furniture"],
-    ["get", "subclass"],
-    ["get", "class"],
-  ];
+  const rankCap = rankCapCondition(TIER1_ENTRIES);
+  if (rankCap) z1Filter.push(rankCap);
 
   const z1Layer = {
     id: "outdoor-poi-z1",
@@ -2075,26 +2358,22 @@ function applyReplacePois(style) {
     source: "openmaptiles",
     "source-layer": "poi",
     minzoom: 12,
-    filter: [
-      "all",
-      ["match", ["geometry-type"], ["MultiPoint", "Point"], true, false],
-      ["match", ["get", "class"], OUTDOOR_POI_Z1, true, false],
-    ],
+    filter: z1Filter,
     layout: {
-      "icon-image": poiIconBySubclass,
-      "icon-size": 1,
-      "text-field": ["get", "name"],
+      "icon-image": poiIconMatch(TIER1_ENTRIES, "class"),
+      "icon-size": POI_ICON_SIZE,
+      "text-field": poiTextField(TIER1_ENTRIES, "class"),
       "text-font": ["Noto Sans Regular"],
       "text-size": 10,
-      "text-offset": [0, 1.5],
+      "text-offset": POI_TEXT_OFFSET,
       "text-anchor": "top",
       "text-optional": true,
     },
     paint: {
-      "icon-opacity": 0.85,
+      "icon-opacity": POI_ICON_OPACITY,
       "text-color": COLOURS.POI.TEXT,
       "text-halo-color": COLOURS.POI.HALO,
-      "text-halo-width": 1,
+      "text-halo-width": POI_TEXT_HALO_WIDTH,
     },
   };
 
@@ -2107,15 +2386,15 @@ function applyReplacePois(style) {
     filter: [
       "all",
       ["match", ["geometry-type"], ["MultiPoint", "Point"], true, false],
-      ["match", ["get", "class"], OUTDOOR_POI_Z2, true, false],
+      ["match", ["get", "class"], tier2Classes, true, false],
     ],
     layout: {
-      "icon-image": poiIconBySubclass,
-      "icon-size": 1,
-      "text-field": ["get", "name"],
+      "icon-image": poiIconMatch(TIER2_ENTRIES, "class"),
+      "icon-size": POI_ICON_SIZE,
+      "text-field": poiTextField(TIER2_ENTRIES, "class"),
       "text-font": ["Noto Sans Regular"],
       "text-size": 10,
-      "text-offset": [0, 1.5],
+      "text-offset": POI_TEXT_OFFSET,
       "text-anchor": "top",
       "text-optional": true,
     },
@@ -2123,7 +2402,7 @@ function applyReplacePois(style) {
       "icon-opacity": 0.8,
       "text-color": COLOURS.POI.TEXT,
       "text-halo-color": COLOURS.POI.HALO,
-      "text-halo-width": 1,
+      "text-halo-width": POI_TEXT_HALO_WIDTH,
     },
   };
 
@@ -2159,283 +2438,9 @@ function applyReplacePois(style) {
     }
   }
 
-  // Re-anchor later sections (promoted POIs, routes, etc.) to the first
+  // Re-anchor later sections (routes, paths, MTB, etc.) to the first
   // replacement layer now that poi_r20 is gone.
   poiAnchorId = z1Layer.id;
-}
-
-/**
- * Promoted liberty POIs — selected base-map POI classes at lower zoom.
- * Promotes selected POI classes from the OpenMapTiles `poi` source-layer
- * (toilets, restaurants, pubs, grocery stores, etc.) so they appear at
- * z12–14 instead of waiting for the regular poi_r1 layer at z15.
- */
-function applyPromotedPois(style) {
-  const promotedLayer = {
-    id: "poi-outdoor-promoted",
-    type: "symbol",
-    source: "openmaptiles",
-    "source-layer": "poi",
-    minzoom: PROMOTED_POI_MINZOOM,
-    maxzoom: PROMOTED_POI_MAXZOOM,
-    filter: [
-      "all",
-      ["match", ["geometry-type"], ["MultiPoint", "Point"], true, false],
-      ["match", ["get", "class"], PROMOTED_POI_CLASSES, true, false],
-    ],
-    layout: {
-      "icon-image": [
-        "match",
-        ["get", "subclass"],
-        ["florist", "furniture"],
-        ["get", "subclass"],
-        ["get", "class"],
-      ],
-      "icon-size": 1,
-      "text-field": "",
-    },
-    paint: {
-      "icon-opacity": 0.85,
-    },
-  };
-
-  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
-  if (poiIdx !== -1) {
-    style.layers.splice(poiIdx, 0, promotedLayer);
-  } else {
-    style.layers.push(promotedLayer);
-  }
-}
-
-/**
- * Low-zoom paths overlay. Vector tiles with path/footway/track geometry
- * from OSM — fills the z9–13 gap where the OpenMapTiles base tiles carry
- * no path data (route-gated below z12, all paths at z12; tiers keep
- * earlier zooms: iwn 9, nwn 10, rwn 11). Source-layer: 'outdoor_paths'.
- * Self-hosted Planetiler tiles (z9–13). Renders below the outdoor route
- * lines so routes stay on top of paths. See docs/paths.md.
- */
-function applyLowZoomPaths(style) {
-  style.sources["outdoor-paths"] = {
-    type: "vector",
-    tiles: [PATHS_TILE_URL],
-    minzoom: PATHS_SOURCE_MINZOOM,
-    maxzoom: PATHS_SOURCE_MAXZOOM,
-    attribution: TILES_ATTRIBUTION,
-  };
-
-  const pathsLayer = {
-    id: "outdoor-paths",
-    type: "line",
-    source: "outdoor-paths",
-    "source-layer": PATHS_SOURCE_LAYER,
-    minzoom: PATHS_SOURCE_MINZOOM,
-    maxzoom: PATHS_LAYER_MAXZOOM,
-    layout: {
-      "line-cap": PATH_LINE_CAP,
-      "line-join": PATH_LINE_JOIN,
-    },
-    paint: {
-      "line-color": COLOURS.PATHS.PATH,
-      "line-dasharray": PATH_DASHARRAY,
-      "line-width": PATH_WIDTH_LOW_ZOOM,
-    },
-  };
-
-  // Insert at the POI anchor — above the promoted POIs, below the
-  // outdoor route lines so routes stay on top of paths.
-  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
-  if (poiIdx !== -1) {
-    style.layers.splice(poiIdx, 0, pathsLayer);
-  } else {
-    style.layers.push(pathsLayer);
-  }
-}
-
-/**
- * Outdoor routes (hiking route relations). Vector tiles with hiking route
- * relations from OSM — line geometry with network classification
- * (iwn/nwn/rwn/lwn), ref, name, etc. Source-layer: 'outdoor_routes'.
- * Self-hosted Planetiler tiles (z8–14).
- */
-function applyOutdoorRoute(style) {
-  style.sources["outdoor-route"] = {
-    type: "vector",
-    tiles: [ROUTE_TILE_URL],
-    minzoom: ROUTE_SOURCE_MINZOOM,
-    maxzoom: ROUTE_SOURCE_MAXZOOM,
-    attribution: TILES_ATTRIBUTION,
-  };
-
-  const routeLayers = createAllRouteLayers(
-    "outdoor-route",
-    ROUTE_SOURCE_LAYER,
-    ROUTE_TIERS,
-    ROUTE_TIER_DEFAULT,
-  );
-
-  // Insert below the base-map POI layers (POI anchor) so route lines
-  // render above roads/water but below POI icons & labels.
-  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
-  if (poiIdx !== -1) {
-    style.layers.splice(poiIdx, 0, ...routeLayers);
-  } else {
-    style.layers.push(...routeLayers);
-  }
-}
-
-/**
- * Outdoor POIs (external vector tiles). Vector tiles with outdoor points
- * of interest — huts, shelters, water, parking, viewpoints, mountain
- * passes, campsites, etc. Source-layer: 'outdoor_pois'. Self-hosted
- * Planetiler tiles (z12–16).
- */
-function applyOutdoorPoi(style) {
-  style.sources["outdoor-poi"] = {
-    type: "vector",
-    tiles: [POI_TILE_URL],
-    minzoom: POI_SOURCE_MINZOOM,
-    maxzoom: POI_SOURCE_MAXZOOM,
-    attribution: TILES_ATTRIBUTION,
-  };
-
-  const poiLayer = {
-    id: "outdoor-poi",
-    type: "symbol",
-    source: "outdoor-poi",
-    "source-layer": POI_SOURCE_LAYER,
-    layout: {
-      "icon-image": [
-        "match",
-        ["get", "kind"],
-        ...Object.entries(POI_ICON_BY_KIND).flat(),
-        POI_ICON_DEFAULT,
-      ],
-      "icon-size": POI_ICON_SIZE,
-      "text-field": ["get", "name"],
-      "text-size": POI_TEXT_SIZE,
-      "text-font": ["Noto Sans Regular"],
-      "text-offset": POI_TEXT_OFFSET,
-      "text-anchor": "top",
-    },
-    paint: {
-      "text-color": COLOURS.POI.TEXT,
-      "text-halo-color": COLOURS.POI.HALO,
-      "text-halo-width": POI_TEXT_HALO_WIDTH,
-      "icon-opacity": POI_ICON_OPACITY,
-    },
-  };
-
-  // Insert at the POI anchor — above outdoor-route lines (so icons &
-  // labels stay readable) but below base-map POIs and place labels.
-  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
-  if (poiIdx !== -1) {
-    style.layers.splice(poiIdx, 0, poiLayer);
-  } else {
-    style.layers.push(poiLayer);
-  }
-}
-
-/**
- * MTB difficulty + bicycle access overlays from the OpenMapTiles
- * transportation source-layer. Inserted before the POI block in the layer
- * stack.
- */
-function applyMtbScale(style) {
-  const mtbLayer = {
-    id: "mtb_scale-casing",
-    type: "line",
-    metadata: { "mapbox:group": "1444849345966.4436" },
-    source: "openmaptiles",
-    "source-layer": "transportation",
-    minzoom: 0,
-    maxzoom: 22,
-    filter: [
-      "all",
-      ["==", "$type", "LineString"],
-      ["!=", "brunnel", "tunnel"],
-      ["has", "mtb_scale"],
-    ],
-    layout: { "line-cap": "round", "line-join": "round" },
-    paint: {
-      "line-color": [
-        "match",
-        ["get", "mtb_scale"],
-        "1",
-        COLOURS.MTB.GRADE_1,
-        "2",
-        COLOURS.MTB.GRADE_2,
-        COLOURS.MTB.GRADE_3_PLUS,
-      ],
-      "line-opacity": 0.8,
-      "line-width": {
-        base: 1.2,
-        stops: [
-          [12, 0.5],
-          [16, 3],
-        ],
-      },
-    },
-  };
-
-  const bicycleLayer = {
-    id: "bicycle-access",
-    type: "line",
-    source: "openmaptiles",
-    "source-layer": "transportation",
-    minzoom: 0,
-    maxzoom: 22,
-    filter: [
-      "all",
-      ["==", "$type", "LineString"],
-      ["!=", "brunnel", "tunnel"],
-      ["has", "bicycle"],
-      ["in", "class", "track"],
-    ],
-    paint: {
-      "line-color": COLOURS.MTB.BICYCLE_ACCESS,
-      "line-opacity": 0.7,
-      "line-width": 2,
-    },
-  };
-
-  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
-  if (poiIdx !== -1) {
-    style.layers.splice(poiIdx, 0, bicycleLayer, mtbLayer);
-  } else {
-    style.layers.push(bicycleLayer, mtbLayer);
-  }
-}
-
-/**
- * Restyle the base-layer road_path_pedestrian + highway-name-path layers
- * so paths form one continuous visual family with the low-zoom overlay.
- * Gated by PATH_STYLING.
- */
-function applyPathStyling(style) {
-  const pathLayer = style.layers.find((l) => l.id === "road_path_pedestrian");
-  if (pathLayer) {
-    pathLayer.minzoom = PATH_BASE_MINZOOM; // the LOW_ZOOM_PATHS overlay owns z9–13
-    pathLayer.maxzoom = 22;
-    pathLayer.paint = pathLayer.paint || {};
-    pathLayer.paint["line-color"] = COLOURS.PATHS.PATH;
-    pathLayer.paint["line-dasharray"] = PATH_DASHARRAY;
-    if (MTB_SCALE) {
-      pathLayer.paint["line-opacity"] = ["case", ["has", "mtb_scale"], 0, 1];
-    }
-    pathLayer.paint["line-width"] = PATH_WIDTH;
-    pathLayer.layout = pathLayer.layout || {};
-    pathLayer.layout["line-cap"] = PATH_LINE_CAP;
-    pathLayer.layout["line-join"] = PATH_LINE_JOIN;
-  }
-
-  const nameLayer = style.layers.find((l) => l.id === "highway-name-path");
-  if (nameLayer) {
-    nameLayer.minzoom = 0;
-    nameLayer.maxzoom = 22;
-    nameLayer.paint = nameLayer.paint || {};
-    nameLayer.paint["text-color"] = COLOURS.PATHS.PATH;
-  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -2589,31 +2594,38 @@ async function build() {
   // 14. Contours — hosted PBF contour vector tiles + labels
   if (CONTOURS) applyContours(style);
 
-  // 15. Mountain peak labels
+  // 15. POI section (see the POI SECTION block above) — bottom→top:
+  //     peaks → park-label → z1/z2 replacement. Peaks & park-label
+  //     run before applyReplacePois (they need the Liberty poi_r20 anchor),
+  //     and applyReplacePois runs before the non-POI sections below so
+  //     outdoor-poi-z1/z2 anchor at the top of the POI stack. Custom
+  //     outdoor-poi (applyOutdoorPoi) stays with the non-POI sections below —
+  //     it must sit above routes but below MTB to preserve the layer stack.
   if (PEAK_LABELS) applyPeakLabels(style);
 
   // 16. Park labels — protected-area point labels
   if (PARK_LABELS) applyParkLabels(style);
 
-  // 17. Replaced liberty POIs — outdoor-filtered tiers
+  // 17. Replaced liberty POIs — catalogue-driven outdoor-filtered tiers
   if (REPLACE_LIBERTY_POIS) applyReplacePois(style);
 
-  // 18. Promoted liberty POIs — outdoor-relevant POIs at z12-14
-  if (PROMOTE_LIBERTY_POI) applyPromotedPois(style);
-
-  // 19. Low-zoom paths overlay (z9–13)
+  // 18. Low-zoom paths overlay (z9–13) — non-POI; sits below the route
+  //     layers and the custom outdoor-poi layer in the stack.
   if (LOW_ZOOM_PATHS) applyLowZoomPaths(style);
 
-  // 20. Outdoor routes (hiking route relations)
+  // 19. Outdoor routes (hiking route relations) — non-POI; sits between the
+  //     paths overlay and the custom outdoor-poi layer.
   if (OUTDOOR_ROUTE) applyOutdoorRoute(style);
 
-  // 21. Outdoor POIs (external vector tiles)
+  // 20. Custom outdoor POIs (external vector tiles) — part of the POI
+  //     section; called here (above routes, below MTB) to preserve the stack.
   if (OUTDOOR_POI) applyOutdoorPoi(style);
 
-  // 22. MTB scale + bicycle access
+  // 21. MTB scale + bicycle access — non-POI; sits between the custom
+  //     outdoor-poi layer and outdoor-poi-z1/z2.
   if (MTB_SCALE) applyMtbScale(style);
 
-  // 23. Path & trail styling
+  // 22. Path & trail styling
   if (PATH_STYLING) applyPathStyling(style);
 
   // ═════════════════════════════════════════════════════════════════════
