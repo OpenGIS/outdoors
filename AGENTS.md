@@ -3,7 +3,7 @@
 To best understand this project:
 
 1. Read the [`README.md`](README.md), then
-2. Read **all** of the [`docs/README.md`](Documentation).
+2. Read **all** of the [Documentation](docs/README.md).
 
 ## Making Changes
 
