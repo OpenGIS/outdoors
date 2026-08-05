@@ -1,5 +1,5 @@
 ---
-git_hash: "1a3de67164cd1a53ca1fef4765db736655c68094"
+git_hash: "b7695ba429f1267d7f4e697c9979e83142571555"
 modified: "2026-08-05"
 ---
 
@@ -11,7 +11,7 @@ modified: "2026-08-05"
 
 Two vector tile overlays are consumed by the style, both derived from OpenStreetMap:
 
-- **`outdoor_pois`** — point features: huts, shelters, water, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites and more (17 kinds, including park).
+- **`outdoor_pois`** — point features: huts, shelters, water, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, castles and more (18 kinds, including park).
 - **`outdoor_routes`** — line features for hiking route relations (hiking, foot, walking), classified by network tier (iwn/nwn/rwn/lwn).
 
 They are generated with two different approaches, because the underlying OSM data has two different shapes.

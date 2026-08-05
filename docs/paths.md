@@ -1,5 +1,5 @@
 ---
-git_hash: "1a3de67164cd1a53ca1fef4765db736655c68094"
+git_hash: "b7695ba429f1267d7f4e697c9979e83142571555"
 modified: "2026-08-05"
 ---
 
@@ -9,7 +9,7 @@ modified: "2026-08-05"
 
 ## 1. Problem
 
-Footpaths (`highway=path` and friends) are styled for high visibility — `road_path_pedestrian` is drawn in the red-brown `#c05a2a` line from z14 (`PATH_BASE_MINZOOM`, set by `PROMOTE_PATHS` at [`scripts/build.mjs:1430`](../scripts/build.mjs)) — but **nothing renders below z14** because the OpenFreeMap base tileset (unmodified OpenMapTiles schema) contains **no path geometry at low zoom**. For an outdoor map, paths are the bearings you need when zoomed out.
+Footpaths (`highway=path` and friends) are styled for high visibility — `road_path_pedestrian` is drawn in the red-brown `#c05a2a` line from z14 (`PATH_BASE_MINZOOM`, set by the `PATH_STYLING` section's `applyPathStyling()` at [`scripts/build.mjs:1940`](../scripts/build.mjs)) — but **nothing renders below z14** because the OpenFreeMap base tileset (unmodified OpenMapTiles schema) contains **no path geometry at low zoom**. For an outdoor map, paths are the bearings you need when zoomed out.
 
 OpenMapTiles zoom-gates path data (verified against `layers/transportation/transportation.sql` and the [schema docs](https://openmaptiles.org/schema/)):
 
@@ -41,7 +41,7 @@ The profile includes **`path` + `track` + `footway`** — the full recommended s
 | `path` + `track` only | ~46.2 M | The true outdoor subset (16.4 M + 29.8 M). Smallest footprint; urban footpaths absent at low zoom. |
 | `path` only | ~16.4 M | Trail focus only; misses forest tracks that are often the only "path" in a region. |
 
-The style draws `class ∈ {path, pedestrian}` for paths, and tracks via `road_service_track` — which the base palette promotes to render from z12 (the earliest zoom where OpenMapTiles tiles carry track geometry) with a dark casing (`ROAD_TRACK_CASING_WIDTH`, [`scripts/build.mjs:279`](../scripts/build.mjs)) and name labels from z13 (`ROAD_TRACK_LABEL_MINZOOM`, [`scripts/build.mjs:297`](../scripts/build.mjs)). The overlay including tracks simply means they appear from z9 (the overlay's minzoom) instead of z12 — consistent with the outdoor-first palette where tracks are already emphasised (`ROAD_TRACK_WIDTH`, [`scripts/build.mjs:261`](../scripts/build.mjs)).
+The style draws `class ∈ {path, pedestrian}` for paths, and tracks via `road_service_track` — which the base palette promotes to render from z12 (the earliest zoom where OpenMapTiles tiles carry track geometry) with a dark casing (`ROAD_TRACK_CASING_WIDTH`, [`scripts/build.mjs:322`](../scripts/build.mjs)) and name labels from z13 (`ROAD_TRACK_LABEL_MINZOOM`, [`scripts/build.mjs:340`](../scripts/build.mjs)). The overlay including tracks simply means they appear from z9 (the overlay's minzoom) instead of z12 — consistent with the outdoor-first palette where tracks are already emphasised (`ROAD_TRACK_WIDTH`, [`scripts/build.mjs:304`](../scripts/build.mjs)).
 
 ## 4. Planetiler profile — `FootpathOverlay.java`
 
@@ -109,22 +109,22 @@ Rebuilds of the planet PBF are cheap for this profile — a paths-only build is 
 
 Both the overlay (z9–13) and the promoted base layer (z14+) are styled from the **same shared constants**, so the two sources hand over seamlessly: same colour `#c05a2a`, same dash `[1, 0.7]`, same round cap/join, and matched widths at the seam (z13 ≈ z14 ≈ 2 px).
 
-1. **Toggle** `LOW_ZOOM_PATHS = true` (default) at [`scripts/build.mjs:57`](../scripts/build.mjs), placed in render order **between `REPLACE_LIBERTY_POIS` and `OUTDOOR_ROUTE`** (toggles follow the build sections bottom→top, so it sits where its section renders). `PROMOTE_PATHS` keeps its current meaning: prominent path styling for the base layer at z14+ ([`scripts/build.mjs:61`](../scripts/build.mjs)).
-2. **Config block** at [`scripts/build.mjs:471`](../scripts/build.mjs):
-   - `PATHS_SOURCE_LAYER = "outdoor_paths"`, `PATHS_TILE_URL` = `` `${TILES_BASE_URL}/paths/{z}/{x}/{y}.pbf` `` ([`scripts/build.mjs:479`](../scripts/build.mjs))
+1. **Toggle** `LOW_ZOOM_PATHS = true` (default) at [`scripts/build.mjs:91`](../scripts/build.mjs), placed in render order **between `REPLACE_LIBERTY_POIS` and `OUTDOOR_ROUTE`** (toggles follow the build sections bottom→top, so it sits where its section renders). `PATH_STYLING` (default `true`, [`scripts/build.mjs:95`](../scripts/build.mjs)) owns the prominent base-layer path styling at z14+.
+2. **Config block** at [`scripts/build.mjs:517`](../scripts/build.mjs):
+   - `PATHS_SOURCE_LAYER = "outdoor_paths"`, `PATHS_TILE_URL` = `` `${TILES_BASE_URL}/paths/{z}/{x}/{y}.pbf` `` ([`scripts/build.mjs:525`](../scripts/build.mjs))
    - `PATHS_SOURCE_MINZOOM = 9`, `PATHS_SOURCE_MAXZOOM = 13`
    - `PATHS_LAYER_MAXZOOM = 14` (exclusive — hands off to `road_path_pedestrian` at z14)
    - **Shared path style definitions** — referenced by both the overlay and the promoted base layer, so nothing is duplicated:
-     - `PATH_LINE_CAP` / `PATH_LINE_JOIN = "round"` ([`scripts/build.mjs:487`](../scripts/build.mjs))
-     - `PATH_DASHARRAY = [1, 0.7]` — matches the Liberty base `road_path_pedestrian` dash ([`scripts/build.mjs:489`](../scripts/build.mjs))
-     - `PATH_WIDTH` — the base layer's z14+ width (`["interpolate", ["exponential", 1.2], ["zoom"], 12, 1, 14, 2, 20, 8]`), moved out of the `PROMOTE_PATHS` section where it was previously a hard-coded literal ([`scripts/build.mjs:490`](../scripts/build.mjs))
-     - `PATH_WIDTH_LOW_ZOOM` — the overlay's z9–13 width (`9 → 0.6, 11 → 1, 13 → 2`), tuned so **z13 (2 px) ≈ `PATH_WIDTH` at z14 (2 px)** for a seamless handoff ([`scripts/build.mjs:501`](../scripts/build.mjs))
-     - `PATH_BASE_MINZOOM = 14` — `road_path_pedestrian` renders from here ([`scripts/build.mjs:512`](../scripts/build.mjs))
-3. **Build section "10. Low-zoom paths overlay"** ([`scripts/build.mjs:1226`](../scripts/build.mjs)), between replaced liberty POIs (§9) and outdoor routes (§11):
-   - Source `outdoor-paths` (vector, tiles `PATHS_TILE_URL`, minzoom 9, maxzoom 13, attribution `TILES_ATTRIBUTION` — `© OpenStreetMap contributors`, [`scripts/build.mjs:410`](../scripts/build.mjs))
+     - `PATH_LINE_CAP` / `PATH_LINE_JOIN = "round"` ([`scripts/build.mjs:533`](../scripts/build.mjs))
+     - `PATH_DASHARRAY = [1, 0.7]` — matches the Liberty base `road_path_pedestrian` dash ([`scripts/build.mjs:535`](../scripts/build.mjs))
+     - `PATH_WIDTH` — the base layer's z14+ width (`["interpolate", ["exponential", 1.2], ["zoom"], 12, 1, 14, 2, 20, 8]`), moved out of the path-styling section where it was previously a hard-coded literal ([`scripts/build.mjs:536`](../scripts/build.mjs))
+     - `PATH_WIDTH_LOW_ZOOM` — the overlay's z9–13 width (`9 → 0.6, 11 → 1, 13 → 2`), tuned so **z13 (2 px) ≈ `PATH_WIDTH` at z14 (2 px)** for a seamless handoff ([`scripts/build.mjs:547`](../scripts/build.mjs))
+     - `PATH_BASE_MINZOOM = 14` — `road_path_pedestrian` renders from here ([`scripts/build.mjs:558`](../scripts/build.mjs))
+3. **Build section — `applyLowZoomPaths()`** ([`scripts/build.mjs:1792`](../scripts/build.mjs), called from `build()` at [`scripts/build.mjs:2614`](../scripts/build.mjs)), between the replaced-liberty-POI step and the outdoor-routes step:
+   - Source `outdoor-paths` (vector, tiles `PATHS_TILE_URL`, minzoom 9, maxzoom 13, attribution `TILES_ATTRIBUTION` — `© OpenStreetMap contributors`, [`scripts/build.mjs:505`](../scripts/build.mjs))
    - Line layer `outdoor-paths`: source-layer `outdoor_paths`, `minzoom: 9`, `maxzoom: 14` (exclusive — renders z9–13), `line-cap` / `line-join: round`, paint `line-color: COLOURS.PATHS.PATH` (`#c05a2a`), `line-dasharray: PATH_DASHARRAY`, `line-width: PATH_WIDTH_LOW_ZOOM`
-   - Spliced at the `poi_r20` anchor so the render stack stays **paths → routes → POIs** (paths below route lines, routes below POIs)
-4. **§14 (was §13) `PROMOTE_PATHS` refactored** ([`scripts/build.mjs:1430`](../scripts/build.mjs)):
+   - Spliced at the POI anchor so the render stack stays **paths → routes → POIs** (paths below route lines, routes below POIs)
+4. **Path-styling section (was `PROMOTE_PATHS`, now `PATH_STYLING`) refactored** — `applyPathStyling()` at [`scripts/build.mjs:1937`](../scripts/build.mjs):
    - `road_path_pedestrian.minzoom` is now explicitly `PATH_BASE_MINZOOM` (**14**) — the overlay owns z9–13, the base layer owns z14+, same colour/width family, no double-draw (this also removes the previous useless render attempt below z14, where the OMT source has no data)
    - Paint/layout reference the shared `PATH_WIDTH` / `PATH_DASHARRAY` / `PATH_LINE_CAP` / `PATH_LINE_JOIN` — the width literal is no longer hard-coded in this section
    - `highway-name-path` unchanged (still promoted to `minzoom: 0`, `text-colour: COLOURS.PATHS.PATH`)
@@ -135,7 +135,7 @@ Both the overlay (z9–13) and the promoted base layer (z14+) are styled from th
 |---|---|---|---|
 | 1 | Profile correctness (tile source) | **Done** | `FootpathOverlay.java` verified locally on the Italy extract (Dolomites bounds — local-dev shortcut); tile contents follow the density strategy per zoom (z9 = iwn only → z12+ = all paths) |
 | 2 | Serving (tile source) | **Done** | `curl https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` returns HTTP 200 with gzipped MVT (source-layer `outdoor_paths`) from the planet-wide live service at all zooms z9–13 (sampled at Dolomites coords): z9/272/181 = 5660 B · z10/545/362 = 9244 B · z11/1091/725 = 4496 B · z12/2183/1450 = 9768 B · z13/4366/2900 = 2477 B |
-| 3 | Style build | **Done** | `npm run build` passes — style.json gains source `outdoor-paths` + layer; both project builds pass (`npm run build` — 126 layers / 7 sources; `npm run demo:build`) |
+| 3 | Style build | **Done** | `npm run build` passes — style.json gains source `outdoor-paths` + layer; both project builds pass (`npm run build` — 95 layers / 7 sources; `npm run demo:build`) |
 | 4 | Visual | **Done** | Chrome-verified z11–z13 in the Dolomites: dashed brown paths render, route lines above them, zero console errors |
 | 5 | Handoff | **Done** | Clean z13 → z14: no double-draw (overlay `maxzoom: 14` exclusive + base `minzoom: 14`), widths matched (z13 = z14 = 2 px) |
 | 6 | Docs | **Done** | This doc describes the shipped state; README + docs index in sync |

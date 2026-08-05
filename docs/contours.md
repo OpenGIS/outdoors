@@ -1,6 +1,6 @@
 ---
-git_hash: "5b7b4b77899103fe42f997fd301da73de205eced"
-modified: "2026-08-03"
+git_hash: "b7695ba429f1267d7f4e697c9979e83142571555"
+modified: "2026-08-05"
 ---
 
 # Contours
@@ -9,7 +9,7 @@ modified: "2026-08-03"
 
 ## Overview
 
-Contours are the only fully server-side feature in the style. The build script adds a standard Mapbox Vector Tile source pointing at the hosted ogis.app contour service, plus three layers that style it. The client does nothing beyond normal vector tile rendering — MapLibre fetches and draws the PBF tiles like any other vector source.
+Contours are the only fully server-side feature in the style. The build script adds a standard Mapbox Vector Tile source pointing at the hosted ogis.app contour service, plus two layers that style it. The client does nothing beyond normal vector tile rendering — MapLibre fetches and draws the PBF tiles like any other vector source.
 
 - Gated by the `CONTOURS` boolean in [`scripts/build.mjs`](../scripts/build.mjs) (default `true`)
 - No npm dependency or runtime registration — the vector source and layers are declared at build time
@@ -80,7 +80,7 @@ To replicate the ogis.app contour service against the Mapterhorn DEM, [contour-m
 
 - **Purpose** — contour-mvt-server (Express + maplibre-contour, Node ≥ 18, `npx contour-mvt-server config.json` or the npm CLI) generates gzipped MVT v2 contour tiles on demand from raster DEM sources. The style consumes it as a plain vector source — nothing client-side.
 - **Endpoint** — the source key `terrain` appears in the URL path, so the source serves `GET /terrain/{z}/{x}/{y}.pbf`, matching `CONTOUR_PBF_TILE_URL`. If the key were renamed, the style URL would change too.
-- **Source-layer & properties** — the server emits source-layer `contours` with properties `ele` (elevation in metres, key `elevationKey`) and `level` (0 = minor, 1 = major, key `levelKey`) — exactly what the style's three layers read.
+- **Source-layer & properties** — the server emits source-layer `contours` with properties `ele` (elevation in metres, key `elevationKey`) and `level` (0 = minor, 1 = major, key `levelKey`) — exactly what the style's two layers read.
 - **`tiles` + `encoding`** — Mapterhorn's own TileJSON confirms `encoding: "terrarium"` and 512 px WebP tiles, so the URL and encoding above are the only correct pairing.
 - **`maxzoom: 17`** — the service's maximum. Contour requests arrive at the DEM zoom (overzoom 0), and requests above the DEM maxzoom silently use the max-zoom tile. Since the style only requests z9–14, this provides full headroom.
 - **`blankTileSize: 512`** (important gotcha) — missing DEM tiles produce a blank tile at this size. The default is 256, which mismatches Mapterhorn's 512 px tiles and would render blank contour tiles at the wrong scale. `blankTileFormat: "webp"` matches the source format.
@@ -109,13 +109,12 @@ The same tile URL is therefore fetched twice — once by the client, once by the
 
 ## Layers
 
-Three layers are inserted at the water stack index (above landcover, below water):
+Two layers are inserted at the water stack index (above landcover, below water):
 
-| Layer | Type | Filter | Purpose |
-| --- | --- | --- | --- |
-| `contour-lines` | line | `ele % 100 != 0` and `ele > 0` | Minor contours |
-| `contour-lines-index` | line | `ele % 100 == 0` and `ele > 0` | Index contours (100 m) |
-| `contour-labels` | symbol | index lines only | Line-placed elevation text |
+| Layer | Type | Purpose |
+| --- | --- | --- |
+| `contour-lines` | line | Minor and index contours in a single layer — a `case` expression on `ele % 100` switches colour, opacity and width (index at 100 m intervals) |
+| `contour-labels` | symbol | Line-placed elevation text, emitted only on index lines via a conditional text-field |
 
 Styling constants (all in [`scripts/build.mjs`](../scripts/build.mjs)):
 

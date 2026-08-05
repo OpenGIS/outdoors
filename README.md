@@ -1,5 +1,5 @@
 ---
-last_commit: "1a3de67164cd1a53ca1fef4765db736655c68094"
+last_commit: "b7695ba429f1267d7f4e697c9979e83142571555"
 ---
 
 # Outdoors
@@ -89,7 +89,7 @@ No external source — peak name + elevation labels with a ▲ marker, drawn fro
 
 - **Vector tiles** of path/footway/track geometry from OpenStreetMap, filling the z9–13 gap where the OpenMapTiles base tiles carry no path data. Dashed brown lines (`#c05a2a`, matching the promoted base path style) so the overlay and the z14+ base layer render as one continuous visual family.
   - Source-layer: `outdoor_paths`, tile URL `https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z9–13
-  - Inserted at the `poi_r20` anchor — below the outdoor route lines so routes stay on top of paths
+  - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — below the outdoor route lines so routes stay on top of paths
   - Toggle: `LOW_ZOOM_PATHS` (default `true`)
 
 See [docs/paths.md](docs/paths.md) for the full implementation reference.
@@ -98,15 +98,15 @@ See [docs/paths.md](docs/paths.md) for the full implementation reference.
 
 - **Vector tiles** of hiking route relations from OpenStreetMap, with line geometry and network classification (iwn/nwn/rwn/lwn). Coloured per network tier using the Waymarked Trails colour scheme, with casing/halo layers for regional and local routes.
   - Source-layer: `outdoor_routes`, tile URL `https://tiles.ogis.app/routes/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z8–14
-  - Inserted at the `poi_r20` anchor — above roads/water but below base-map POI icons and labels
+  - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — above roads/water but below base-map POI icons and labels
   - Toggle: `OUTDOOR_ROUTE` (default `true`)
 
 ### Outdoor POIs
 
-- **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, parks, and more (17 kinds).
+- **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, parks, castles, and more (18 kinds).
   - Source-layer: `outdoor_pois`, tile URL `https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–16
   - Icon map generated from the [POI catalogue](pois/catalogue.yml) — kind→Maki-sprite-icon match with `"marker"` fallback; all kinds carry name labels
-  - Inserted at the `poi_r20` anchor — above the outdoor route lines, below base-map POIs and labels
+  - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — above the outdoor route lines, below base-map POIs and labels
   - Toggle: `OUTDOOR_POI` (default `true`)
 - The whole POI pipeline is catalogue-driven: `pois/catalogue.yml` → `npm run check:pois` (gap determination) → `npm run pois:schema` (generated planetiler schema) → remote build → hosted tiles → `style.json`. See [docs/pois.md](docs/pois.md) for the full reference.
 
@@ -173,6 +173,10 @@ All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, b
 > [!NOTE]
 > The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tiles.ogis.app`. POIs are catalogue-driven (see [docs/pois.md](docs/pois.md)); routes use a Java profile (see [docs/features.md](docs/features.md)).
 
+### Deployment
+
+The compare app demo is deployed to **GitHub Pages** by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — on every push to `master` (or manual `workflow_dispatch`), the workflow runs `npm ci` + `npm run demo:build` and publishes the `demo/` directory via `actions/deploy-pages`. CI does not rebuild the style: `style.json` is tracked in git and built locally (see [Scripts](#scripts)).
+
 ### Project structure
 
 ```
@@ -180,24 +184,26 @@ All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, b
 ├── .cache/              # Liberty style cache (auto-created, gitignored)
 │   ├── liberty.json               # Raw fetched style
 │   └── liberty-processed.json     # Resolved copy (domain substitutes baked in)
-├── index.html           # Compare app entry
 ├── dev/
-│   ├── index.html       # HTML entry
+│   ├── index.html       # Compare app entry
 │   ├── index.js         # Vue app bootstrap
-
 │   └── src/
 │       ├── App.vue              # Compare app UI
 │       ├── providers.json       # Provider configuration (styles, styleUrls, apiKey flags)
 │       ├── components/
 │       │   └── ProviderSelect.vue   # Grouped provider dropdown component
+│       ├── composables/
+│       │   └── useProviderSelection.js  # Provider selection state + localStorage persistence
 │       └── styles/
 │           ├── reset.css        # CSS reset
 │           └── style.css        # App styles
+├── docs/                # Developer documentation (index: docs/README.md)
 ├── style.json           # Generated output (tracked in git)
 ├── scripts/
 │   ├── build.mjs        # Style build script — entry point for all feature flags
 │   ├── check-poi-coverage.mjs  # POI coverage check (npm run check:pois)
 │   ├── generate-poi-schema.mjs # Planetiler schema generator (npm run pois:schema)
+│   ├── comparison.mjs   # Dev utility: Liberty + palette-only comparison style
 │   └── watch.mjs        # File watcher (auto-rebuild on build.mjs changes)
 ├── pois/
 │   ├── catalogue.yml    # Single source of truth for outdoor POIs
@@ -209,12 +215,12 @@ All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, b
 
 ## Comparison map provider system
 
-The compare app (`dev/src/App.vue`) lets you switch the left-hand reference map between multiple providers, configured in [`dev/src/providers.json`](dev/src/providers.json). Providers are grouped into three categories:
+The compare app (`dev/src/App.vue`) lets you switch the left-hand reference map between multiple providers, configured in [`dev/src/providers.json`](dev/src/providers.json). Providers are declared in two groups in `providers.json` and grouped by category (Misc, Outdoor, Topo, Satellite, Sports, Terrain, Waymarked Trails) into the dropdown:
 
-| Category          | Description                                                                      | Examples                              |
-| ----------------- | -------------------------------------------------------------------------------- | ------------------------------------- |
-| **Remote Vector** | Fetched via `styleUrl` at runtime                                                | Thunderforest Atlas, MapTiler Outdoor |
-| **Remote Raster** | Inline style definitions with raster tile URLs                                   | OpenTopoMap, Thunderforest Outdoors   |
+| Group            | Description                                              | Examples                                  |
+| ---------------- | -------------------------------------------------------- | ----------------------------------------- |
+| **Remote Vector** | Fetched via `styleUrl` at runtime                       | OpenFreeMap Liberty, Thunderforest Atlas, MapTiler Outdoor |
+| **Remote Raster** | Inline style definitions with raster tile URLs          | OpenTopoMap, Thunderforest Outdoors, Waymarked Trails Hiking |
 
 ### API key management
 

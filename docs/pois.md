@@ -1,5 +1,5 @@
 ---
-git_hash: "1a3de67164cd1a53ca1fef4765db736655c68094"
+git_hash: "b7695ba429f1267d7f4e697c9979e83142571555"
 modified: "2026-08-05"
 ---
 
@@ -43,7 +43,7 @@ flowchart LR
 
 ## Catalogue format
 
-[`pois/catalogue.yml`](../pois/catalogue.yml) — 43 entries, each with:
+[`pois/catalogue.yml`](../pois/catalogue.yml) — 44 entries (8 ofm tier-1, 18 ofm tier-2, 18 custom), each with:
 
 | Field          | Sources | Description                                                            |
 | -------------- | ------- | ---------------------------------------------------------------------- |
@@ -90,7 +90,7 @@ Example — the park is declared twice, once per source:
 
 ## How build.mjs consumes the catalogue
 
-The POI section of [`scripts/build.mjs`](../scripts/build.mjs) (lines 1964–2446) is one contiguous block: catalogue load → derived class/icon lists → constants → helpers → apply functions. The catalogue is parsed at build start; a missing or malformed `pois` array fails the build loudly.
+The POI section of [`scripts/build.mjs`](../scripts/build.mjs) (lines 1963–2444) is one contiguous block: catalogue load → derived class/icon lists → constants → helpers → apply functions. The catalogue is parsed at build start; a missing or malformed `pois` array fails the build loudly.
 
 Layers render bottom → top in catalogue order:
 
@@ -133,7 +133,9 @@ Exit code is 0 only when fully green: no dead ofm entries, no zero-coverage clas
 
 Desired data zoom: tier 1 → **z12**, plain tier 2 → z14 (no gap). Every ofm entry wanting z12 sits below the OMT `poi` data floor (z14), so it renders nothing at z12–13 unless a custom extract covers it. The report lists each entry's custom-coverage status and, when uncovered, an OSM-tag suggestion (`suggestOsmTag` — e.g. `leisure: park`).
 
-Currently 8 entries want z12 data and **1 is uncovered** (castle) — with a tag suggestion. This list is the roadmap for custom extracts: add an entry to the catalogue, regenerate the schema, rebuild the hosted tiles.
+Custom coverage is matched by kind name, with an equivalence map for the two kinds whose names differ from the OMT class they cover: `water` covers `drinking_water`, `ferry` covers `ferry_terminal`.
+
+Currently 8 entries want z12 data and **none is uncovered** — every tier-1 class has a custom-extract counterpart in the catalogue (`castle` → `castle_custom`, `drinking_water` → `water`, etc.). This list is the roadmap for custom extracts: add an entry to the catalogue, regenerate the schema, rebuild the hosted tiles.
 
 ## Known data realities
 
