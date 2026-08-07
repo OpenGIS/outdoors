@@ -343,12 +343,33 @@ const ROAD_TRACK_LABEL_MINZOOM = 13; // track/service road name labels (highway-
 // replaces the legacy Liberty road layers & ROAD_PALETTE when enabled.
 // Width stops for road surface fills. Each entry is [zoom, width_in_px].
 // Convert to expression with: roadStopsToExpr(stops)
-const ROAD_UNPAVED_STOPS = [[12, 0.8], [14, 1.5], [20, 4]];
+const ROAD_UNPAVED_STOPS = [
+  [12, 0.8],
+  [14, 1.5],
+  [20, 4],
+];
 const ROAD_UNPAVED_DASHARRAY = ["literal", [2, 1.5]];
-const ROAD_MAJOR_STOPS = [[5, 0.8], [12, 3], [20, 14]];
-const ROAD_MEDIUM_STOPS = [[8, 0.6], [12, 2], [20, 10]];
-const ROAD_LOCAL_STOPS = [[12, 1], [14, 2], [20, 8]];
-const ROAD_TRACK_WIDTH_V2_STOPS = [[12, 1], [13, 1.5], [14, 2], [20, 8]];
+const ROAD_MAJOR_STOPS = [
+  [5, 0.8],
+  [12, 3],
+  [20, 14],
+];
+const ROAD_MEDIUM_STOPS = [
+  [8, 0.6],
+  [12, 2],
+  [20, 10],
+];
+const ROAD_LOCAL_STOPS = [
+  [12, 1],
+  [14, 2],
+  [20, 8],
+];
+const ROAD_TRACK_WIDTH_V2_STOPS = [
+  [12, 1],
+  [13, 1.5],
+  [14, 2],
+  [20, 8],
+];
 
 // Build v5-valid zoom-interpolate expression from stops.  v5 requires
 // zoom-based expressions at the top level of a paint property — no nesting
@@ -491,8 +512,7 @@ const CONTOUR_LABEL_EXPR = [
 // DEM_SOURCE_URL — so the client and the tile server fetch the same
 // Mapterhorn tile; the CDN sees it twice and serves the second request
 // from cache.
-const CONTOUR_PBF_TILE_URL =
-  "https://tiles.ogis.app/terrain/{z}/{x}/{y}.pbf";
+const CONTOUR_PBF_TILE_URL = "https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
@@ -501,7 +521,7 @@ const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 // (`/pois/...` and `/routes/...`).
 // (prefixes `/pois/...` and `/routes/...` directly — the old `/features` prefix is retired)
 
-const TILES_BASE_URL = "https://tiles.ogis.app";
+const TILES_BASE_URL = "https://tile.ogis.app";
 const TILES_ATTRIBUTION = "© OpenStreetMap contributors";
 
 // ── Outdoor routes (hiking route relations) ──────────────────────────
@@ -605,7 +625,11 @@ function convertFilter(node) {
   // ["match", ["geometry-type"], ["v1","v2",...], true, false] → drop
   // v5 doesn't accept "MultiPoint"/"MultiLineString" as $type values.
   // Source-layers already filter by geometry at tile level, so this is redundant.
-  if (op === "match" && Array.isArray(node[1]) && node[1][0] === "geometry-type") {
+  if (
+    op === "match" &&
+    Array.isArray(node[1]) &&
+    node[1][0] === "geometry-type"
+  ) {
     return true;
   }
 
@@ -617,8 +641,10 @@ function convertFilter(node) {
     const values = node[2];
     const yesVal = node[3];
     const noVal = node[4];
-    if (Array.isArray(values) && yesVal === true && noVal === false) return ["in", input, ...values];
-    if (Array.isArray(values) && yesVal === false && noVal === true) return ["!in", input, ...values];
+    if (Array.isArray(values) && yesVal === true && noVal === false)
+      return ["in", input, ...values];
+    if (Array.isArray(values) && yesVal === false && noVal === true)
+      return ["!in", input, ...values];
     return node;
   }
 
@@ -630,11 +656,13 @@ function convertFilter(node) {
   }
 
   // ["==", ["typeof","prop"], "number"] → remove (always true for OMT data)
-  if (op === "==" && Array.isArray(node[1]) && node[1][0] === "typeof") return true;
+  if (op === "==" && Array.isArray(node[1]) && node[1][0] === "typeof")
+    return true;
 
   // ["geometry-type"] → "$type" in any filter position
   for (let i = 1; i < node.length; i++) {
-    if (Array.isArray(node[i]) && node[i][0] === "geometry-type") node[i] = "$type";
+    if (Array.isArray(node[i]) && node[i][0] === "geometry-type")
+      node[i] = "$type";
   }
 
   // Comparison: ["==", ["get","prop"], val] → ["==", "prop", val]
@@ -1013,7 +1041,9 @@ function applyLandcoverRock(style) {
     },
   };
 
-  const landcoverIdx = style.layers.findIndex((l) => l.id.startsWith("landcover_"));
+  const landcoverIdx = style.layers.findIndex((l) =>
+    l.id.startsWith("landcover_"),
+  );
   if (landcoverIdx !== -1) {
     style.layers.splice(landcoverIdx, 0, layer);
   } else {
@@ -1045,7 +1075,9 @@ function applyLandcoverFarmland(style) {
     },
   };
 
-  const landcoverIdx = style.layers.findIndex((l) => l.id.startsWith("landcover_"));
+  const landcoverIdx = style.layers.findIndex((l) =>
+    l.id.startsWith("landcover_"),
+  );
   if (landcoverIdx !== -1) {
     style.layers.splice(landcoverIdx, 0, layer);
   } else {
@@ -1253,7 +1285,11 @@ function applyWaterPalette(style) {
     // Exclude swimming_pool polygons from the main water fill.
     // Liberty's water filter uses expression syntax (["get","brunnel"])
     // which v5 rejects in filters — convert to legacy form.
-    waterLayer.filter = ["all", ["!=", "brunnel", "tunnel"], ["!=", "class", "swimming_pool"]];
+    waterLayer.filter = [
+      "all",
+      ["!=", "brunnel", "tunnel"],
+      ["!=", "class", "swimming_pool"],
+    ];
   }
 
   const poolLayer = {
@@ -1351,10 +1387,17 @@ function applyRoadSurfaceAware(style) {
     "track",
   ];
   const pathClasses = ["path", "pedestrian"];
-  const surfaceClasses = (classes) =>
-    ["all", ["in", "class", ...classes], ["!=", "brunnel", "bridge"], ["!=", "brunnel", "tunnel"]];
-  const brunnelFilter = (classes, brunnel) =>
-    ["all", ["in", "class", ...classes], ["==", "brunnel", brunnel]];
+  const surfaceClasses = (classes) => [
+    "all",
+    ["in", "class", ...classes],
+    ["!=", "brunnel", "bridge"],
+    ["!=", "brunnel", "tunnel"],
+  ];
+  const brunnelFilter = (classes, brunnel) => [
+    "all",
+    ["in", "class", ...classes],
+    ["==", "brunnel", brunnel],
+  ];
 
   // Build a v5-valid line-width expression where zoom is the top-level
   // interpolate and surface-awareness lives at each stop value.  Unpaved
@@ -1370,9 +1413,14 @@ function applyRoadSurfaceAware(style) {
     const sorted = [...zooms].sort((a, b) => a - b);
     // At each zoom, compute the paved/unpaved value via linear interpolation
     function lerp(stops, z) {
-      let lo = stops[0], hi = stops[stops.length - 1];
+      let lo = stops[0],
+        hi = stops[stops.length - 1];
       for (let i = 0; i < stops.length - 1; i++) {
-        if (stops[i][0] <= z && stops[i + 1][0] >= z) { lo = stops[i]; hi = stops[i + 1]; break; }
+        if (stops[i][0] <= z && stops[i + 1][0] >= z) {
+          lo = stops[i];
+          hi = stops[i + 1];
+          break;
+        }
       }
       if (hi[0] === lo[0]) return lo[1];
       return lo[1] + (hi[1] - lo[1]) * ((z - lo[0]) / (hi[0] - lo[0]));
@@ -1386,7 +1434,14 @@ function applyRoadSurfaceAware(style) {
     return expr;
   }
 
-  const surfaceFill = (id, classes, minzoom, pavedColor, pavedStops, unpavedColor) => ({
+  const surfaceFill = (
+    id,
+    classes,
+    minzoom,
+    pavedColor,
+    pavedStops,
+    unpavedColor,
+  ) => ({
     id,
     type: "line",
     source: "openmaptiles",
@@ -1437,7 +1492,15 @@ function applyRoadSurfaceAware(style) {
     layout: { "line-cap": "round", "line-join": "round" },
   });
 
-  const brunnelFill = (id, classes, brunnel, minzoom, color, width, opacity) => ({
+  const brunnelFill = (
+    id,
+    classes,
+    brunnel,
+    minzoom,
+    color,
+    width,
+    opacity,
+  ) => ({
     id,
     type: "line",
     source: "openmaptiles",
@@ -1477,17 +1540,15 @@ function applyRoadSurfaceAware(style) {
       20,
       18,
     ]),
-    brunnelFill("outdoor-tunnel-fill", roadClasses, "tunnel", undefined, COLOURS.ROADS.LOCAL, [
-      "interpolate",
-      ["exponential", 1.2],
-      ["zoom"],
-      5,
-      2,
-      12,
-      5,
-      20,
-      14,
-    ], ROAD_TUNNEL_OPACITY),
+    brunnelFill(
+      "outdoor-tunnel-fill",
+      roadClasses,
+      "tunnel",
+      undefined,
+      COLOURS.ROADS.LOCAL,
+      ["interpolate", ["exponential", 1.2], ["zoom"], 5, 2, 12, 5, 20, 14],
+      ROAD_TUNNEL_OPACITY,
+    ),
     brunnelCasing("outdoor-tunnel-path-casing", pathClasses, "tunnel", [
       "interpolate",
       ["exponential", 1.2],
@@ -1497,25 +1558,61 @@ function applyRoadSurfaceAware(style) {
       20,
       10,
     ]),
-    brunnelFill("outdoor-tunnel-path-fill", pathClasses, "tunnel", 14, COLOURS.PATHS.PATH, [
-      "interpolate",
-      ["exponential", 1.2],
-      ["zoom"],
+    brunnelFill(
+      "outdoor-tunnel-path-fill",
+      pathClasses,
+      "tunnel",
       14,
-      2,
-      20,
-      8,
-    ], ROAD_TUNNEL_OPACITY),
+      COLOURS.PATHS.PATH,
+      ["interpolate", ["exponential", 1.2], ["zoom"], 14, 2, 20, 8],
+      ROAD_TUNNEL_OPACITY,
+    ),
 
     // Surface road casings
-    casing("outdoor-major-casing", ["motorway", "trunk", "primary"], COLOURS.ROADS.CASING, roadStopsToExpr(ROAD_MAJOR_STOPS.map(([z, w]) => [z, w + 2]))),
-    casing("outdoor-medium-casing", ["secondary", "tertiary"], COLOURS.ROADS.CASING, roadStopsToExpr(ROAD_MEDIUM_STOPS.map(([z, w]) => [z, w + 1.5]))),
-    casing("outdoor-local-casing", ["minor", "service", "track"], COLOURS.ROADS.TRACK_CASING, roadStopsToExpr(ROAD_LOCAL_STOPS.map(([z, w]) => [z, w + 3]))),
+    casing(
+      "outdoor-major-casing",
+      ["motorway", "trunk", "primary"],
+      COLOURS.ROADS.CASING,
+      roadStopsToExpr(ROAD_MAJOR_STOPS.map(([z, w]) => [z, w + 2])),
+    ),
+    casing(
+      "outdoor-medium-casing",
+      ["secondary", "tertiary"],
+      COLOURS.ROADS.CASING,
+      roadStopsToExpr(ROAD_MEDIUM_STOPS.map(([z, w]) => [z, w + 1.5])),
+    ),
+    casing(
+      "outdoor-local-casing",
+      ["minor", "service", "track"],
+      COLOURS.ROADS.TRACK_CASING,
+      roadStopsToExpr(ROAD_LOCAL_STOPS.map(([z, w]) => [z, w + 3])),
+    ),
 
     // Surface road fills
-    surfaceFill("outdoor-major-fill", ["motorway", "trunk", "primary"], 5, COLOURS.ROADS.MAJOR, ROAD_MAJOR_STOPS, "rgb(210, 200, 180)"),
-    surfaceFill("outdoor-medium-fill", ["secondary", "tertiary"], 8, COLOURS.ROADS.MEDIUM, ROAD_MEDIUM_STOPS, "rgb(210, 197, 175)"),
-    surfaceFill("outdoor-local-fill", ["minor", "service", "track"], 12, COLOURS.ROADS.LOCAL, ROAD_LOCAL_STOPS, "rgb(237, 230, 218)"),
+    surfaceFill(
+      "outdoor-major-fill",
+      ["motorway", "trunk", "primary"],
+      5,
+      COLOURS.ROADS.MAJOR,
+      ROAD_MAJOR_STOPS,
+      "rgb(210, 200, 180)",
+    ),
+    surfaceFill(
+      "outdoor-medium-fill",
+      ["secondary", "tertiary"],
+      8,
+      COLOURS.ROADS.MEDIUM,
+      ROAD_MEDIUM_STOPS,
+      "rgb(210, 197, 175)",
+    ),
+    surfaceFill(
+      "outdoor-local-fill",
+      ["minor", "service", "track"],
+      12,
+      COLOURS.ROADS.LOCAL,
+      ROAD_LOCAL_STOPS,
+      "rgb(237, 230, 218)",
+    ),
 
     // Bridge casings
     brunnelCasing("outdoor-bridge-casing", roadClasses, "bridge", [
@@ -1529,17 +1626,14 @@ function applyRoadSurfaceAware(style) {
       20,
       18,
     ]),
-    brunnelFill("outdoor-bridge-fill", roadClasses, "bridge", undefined, COLOURS.ROADS.LOCAL, [
-      "interpolate",
-      ["exponential", 1.2],
-      ["zoom"],
-      5,
-      2,
-      12,
-      5,
-      20,
-      14,
-    ]),
+    brunnelFill(
+      "outdoor-bridge-fill",
+      roadClasses,
+      "bridge",
+      undefined,
+      COLOURS.ROADS.LOCAL,
+      ["interpolate", ["exponential", 1.2], ["zoom"], 5, 2, 12, 5, 20, 14],
+    ),
     brunnelCasing("outdoor-bridge-path-casing", pathClasses, "bridge", [
       "interpolate",
       ["exponential", 1.2],
@@ -1549,15 +1643,14 @@ function applyRoadSurfaceAware(style) {
       20,
       10,
     ]),
-    brunnelFill("outdoor-bridge-path-fill", pathClasses, "bridge", 14, COLOURS.PATHS.PATH, [
-      "interpolate",
-      ["exponential", 1.2],
-      ["zoom"],
+    brunnelFill(
+      "outdoor-bridge-path-fill",
+      pathClasses,
+      "bridge",
       14,
-      2,
-      20,
-      8,
-    ]),
+      COLOURS.PATHS.PATH,
+      ["interpolate", ["exponential", 1.2], ["zoom"], 14, 2, 20, 8],
+    ),
   ];
 
   let anchorIdx = style.layers.findIndex((l) => l.id === "road_major_rail");
@@ -1730,14 +1823,22 @@ function applyContours(style) {
         ],
         // v5 requires zoom at the top level — case at each stop, not interpolate inside case.
         "line-opacity": [
-          "interpolate", ["linear"], ["zoom"],
-          CONTOUR_PBF_SOURCE_MINZOOM, ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.4, 0.35],
-          14, ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.7, 0.5],
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          CONTOUR_PBF_SOURCE_MINZOOM,
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.4, 0.35],
+          14,
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.7, 0.5],
         ],
         "line-width": [
-          "interpolate", ["exponential", 1.2], ["zoom"],
-          CONTOUR_PBF_SOURCE_MINZOOM, ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.5, 0.4],
-          14, ["case", ["==", ["%", ["get", "ele"], 100], 0], 1.1, 1.0],
+          "interpolate",
+          ["exponential", 1.2],
+          ["zoom"],
+          CONTOUR_PBF_SOURCE_MINZOOM,
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.5, 0.4],
+          14,
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], 1.1, 1.0],
         ],
       },
     },

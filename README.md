@@ -69,14 +69,14 @@ No external source — overrides the Liberty base-layer road colours with a mute
 
 Gated by the `CONTOURS` boolean toggle in `scripts/build.mjs` (default `true`). See [docs/contours.md](docs/contours.md) for the full implementation reference.
 
-- **Hosted PBF vector tiles** — server-generated Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), serves z0–17): `https://tiles.ogis.app/terrain/{z}/{x}/{y}.pbf`
+- **Hosted PBF vector tiles** — server-generated Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), serves z0–17): `https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf`
   - The contour service renders tiles server-side from the Mapterhorn DEM — the same `tiles.mapterhorn.com` endpoint used by `DEM_SOURCE_URL` — so no client-side contour generation is needed
   - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`), served z9–14 (`CONTOUR_PBF_SOURCE_MINZOOM`/`MAXZOOM`)
   - Three layers — `contour-lines` (minor), `contour-lines-index` (index), `contour-labels` — share the styling constants (`CONTOUR_WIDTH_*`, `CONTOUR_OPACITY_*`, `COLOURS.CONTOURS`)
   - Labels are metric at build time; the compare app converts them to imperial via `applyImperialContours()` in [`dev/src/App.vue`](dev/src/App.vue)
 
 > [!NOTE]
-> The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `tiles.ogis.app`.
+> The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `tile.ogis.app`.
 
 ### Mountain peak labels
 
@@ -88,7 +88,7 @@ No external source — peak name + elevation labels with a ▲ marker, drawn fro
 ### Low-zoom paths overlay
 
 - **Vector tiles** of path/footway/track geometry from OpenStreetMap, filling the z9–13 gap where the OpenMapTiles base tiles carry no path data. Dashed brown lines (`#c05a2a`, matching the promoted base path style) so the overlay and the z14+ base layer render as one continuous visual family.
-  - Source-layer: `outdoor_paths`, tile URL `https://tiles.ogis.app/paths/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z9–13
+  - Source-layer: `outdoor_paths`, tile URL `https://tile.ogis.app/paths/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z9–13
   - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — below the outdoor route lines so routes stay on top of paths
   - Toggle: `LOW_ZOOM_PATHS` (default `true`)
 
@@ -97,14 +97,14 @@ See [docs/paths.md](docs/paths.md) for the full implementation reference.
 ### Outdoor routes
 
 - **Vector tiles** of hiking route relations from OpenStreetMap, with line geometry and network classification (iwn/nwn/rwn/lwn). Coloured per network tier using the Waymarked Trails colour scheme, with casing/halo layers for regional and local routes.
-  - Source-layer: `outdoor_routes`, tile URL `https://tiles.ogis.app/routes/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z8–14
+  - Source-layer: `outdoor_routes`, tile URL `https://tile.ogis.app/routes/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z8–14
   - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — above roads/water but below base-map POI icons and labels
   - Toggle: `OUTDOOR_ROUTE` (default `true`)
 
 ### Outdoor POIs
 
 - **Vector tiles** of outdoor points of interest: huts, shelters, water sources, parking, viewpoints, mountain passes, campsites, trailheads, ranger stations, picnic sites, parks, castles, and more (18 kinds).
-  - Source-layer: `outdoor_pois`, tile URL `https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–16
+  - Source-layer: `outdoor_pois`, tile URL `https://tile.ogis.app/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–16
   - Icon map generated from the [POI catalogue](pois/catalogue.yml) — kind→Maki-sprite-icon match with `"marker"` fallback; all kinds carry name labels
   - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — above the outdoor route lines, below base-map POIs and labels
   - Toggle: `OUTDOOR_POI` (default `true`)
@@ -144,15 +144,15 @@ Opens the compare app at [localhost:11000](http://localhost:11000) — a compari
 
 ### Scripts
 
-| Command                | Description                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------- |
-| `npm run dev`          | Vite dev server + file watcher. HMR on `style.json` change; auto-rebuild on `build.mjs` changes         |
-| `npm run build`        | One-shot build `style.json` from `build.mjs` feature flags                                              |
-| `npm run watch:build`  | Standalone file watcher (for separate terminal)                                                         |
-| `npm run pois:schema`  | Generate `pois/pois-schema.yml` from the POI catalogue (`--area=` / `POI_AREA` override)                |
+| Command                | Description                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`          | Vite dev server + file watcher. HMR on `style.json` change; auto-rebuild on `build.mjs` changes                |
+| `npm run build`        | One-shot build `style.json` from `build.mjs` feature flags                                                     |
+| `npm run watch:build`  | Standalone file watcher (for separate terminal)                                                                |
+| `npm run pois:schema`  | Generate `pois/pois-schema.yml` from the POI catalogue (`--area=` / `POI_AREA` override)                       |
 | `npm run check:pois`   | POI coverage check: catalogue vs OMT schema, style coverage, sprite icons, gap report (exit 0 only when green) |
-| `npm run demo:build`   | Build the compare app demo to `demo/` (`vite build`) |
-| `npm run demo:preview` | Preview the production build (`vite preview`)                                                           |
+| `npm run demo:build`   | Build the compare app demo to `demo/` (`vite build`)                                                           |
+| `npm run demo:preview` | Preview the production build (`vite preview`)                                                                  |
 
 ### Build Verification
 
@@ -165,13 +165,13 @@ npm run demo:build   # builds the Vue compare app to demo/ via Vite
 
 ### Hosted outdoor tiles
 
-All outdoor tile overlays are served from the hosted `tiles.ogis.app` service, built from the full planet with open CORS — no local tile servers are required:
+All outdoor tile overlays are served from the hosted `tile.ogis.app` service, built from the full planet with open CORS — no local tile servers are required:
 
-- Outdoor POI, route and path tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, pointing at `https://tiles.ogis.app` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs, `/paths/{z}/{x}/{y}.pbf` for the low-zoom paths overlay)
+- Outdoor POI, route and path tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, pointing at `https://tile.ogis.app` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs, `/paths/{z}/{x}/{y}.pbf` for the low-zoom paths overlay)
 - Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service
 
 > [!NOTE]
-> The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tiles.ogis.app`. POIs are catalogue-driven (see [docs/pois.md](docs/pois.md)); routes use a Java profile (see [docs/features.md](docs/features.md)).
+> The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tile.ogis.app`. POIs are catalogue-driven (see [docs/pois.md](docs/pois.md)); routes use a Java profile (see [docs/features.md](docs/features.md)).
 
 ### Deployment
 
@@ -217,10 +217,10 @@ The compare app demo is deployed to **GitHub Pages** by [`.github/workflows/depl
 
 The compare app (`dev/src/App.vue`) lets you switch the left-hand reference map between multiple providers, configured in [`dev/src/providers.json`](dev/src/providers.json). Providers are declared in two groups in `providers.json` and grouped by category (Misc, Outdoor, Topo, Satellite, Sports, Terrain, Waymarked Trails) into the dropdown:
 
-| Group            | Description                                              | Examples                                  |
-| ---------------- | -------------------------------------------------------- | ----------------------------------------- |
-| **Remote Vector** | Fetched via `styleUrl` at runtime                       | OpenFreeMap Liberty, Thunderforest Atlas, MapTiler Outdoor |
-| **Remote Raster** | Inline style definitions with raster tile URLs          | OpenTopoMap, Thunderforest Outdoors, Waymarked Trails Hiking |
+| Group             | Description                                    | Examples                                                     |
+| ----------------- | ---------------------------------------------- | ------------------------------------------------------------ |
+| **Remote Vector** | Fetched via `styleUrl` at runtime              | OpenFreeMap Liberty, Thunderforest Atlas, MapTiler Outdoor   |
+| **Remote Raster** | Inline style definitions with raster tile URLs | OpenTopoMap, Thunderforest Outdoors, Waymarked Trails Hiking |
 
 ### API key management
 
@@ -238,5 +238,3 @@ Providers that require an API key have `"apiKey": true` in their config. Their U
 - [Paths overlay](docs/paths.md) - low-zoom paths implementation reference (Planetiler profile + style handoff)
 - [Outdoor feature tiles](docs/features.md) - POIs & routes
 - [Full docs index](docs/README.md)
-
-

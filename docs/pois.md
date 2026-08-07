@@ -12,7 +12,7 @@ modified: "2026-08-05"
 Outdoor POIs render from two sources, and the split is deliberate:
 
 - **OpenFreeMap (OFM) tiles** — the OpenMapTiles `poi` source-layer that ships with the Liberty base style (z14+). Free, planet-wide and always current, so it is the default home for a POI.
-- **Hosted custom extracts** — Planetiler-built tiles at `tiles.ogis.app/pois/{z}/{x}/{y}.pbf` (source-layer `outdoor_pois`, z12–16), generated from an OSM extract. They fill the zooms and classes OFM cannot serve.
+- **Hosted custom extracts** — Planetiler-built tiles at `tile.ogis.app/pois/{z}/{x}/{y}.pbf` (source-layer `outdoor_pois`, z12–16), generated from an OSM extract. They fill the zooms and classes OFM cannot serve.
 
 Joe's design rule: **extract as much as possible from the OFM tiles (z14+), then fill the gaps with custom extracts (z12–13).** The catalogue is the declaration of that split — every POI is either `source: ofm` (rendered from OpenMapTiles data) or `source: custom` (rendered from the hosted extract).
 
@@ -30,7 +30,7 @@ flowchart LR
     A --> C["npm run pois:schema"]
     C --> D["pois/pois-schema.yml<br/>(generated)"]
     D --> E["remote planetiler build"]
-    E --> F["tiles.ogis.app/pois<br/>outdoor_pois tiles"]
+    E --> F["tile.ogis.app/pois<br/>outdoor_pois tiles"]
     F --> G["style.json<br/>(npm run build)"]
     A -->|ofm entries| G
 ```
@@ -38,25 +38,25 @@ flowchart LR
 1. **`pois/catalogue.yml`** — declare every POI the style wants.
 2. **`npm run check:pois`** — gap determination against the live OpenMapTiles `poi` schema, the built style, and the sprite sheet. The gap report ([section 6](#reading-the-gap-report)) lists ofm entries that cannot render below z14 and suggests the OSM tag for a custom entry that would cover them.
 3. **`npm run pois:schema`** — regenerate `pois/pois-schema.yml` from the catalogue's custom entries.
-4. **Remote planetiler build** — the generated schema is the drop-in input for the build that produces the hosted `tiles.ogis.app/pois` extracts (default area `geofabrik:italy`).
+4. **Remote planetiler build** — the generated schema is the drop-in input for the build that produces the hosted `tile.ogis.app/pois` extracts (default area `geofabrik:italy`).
 5. **`npm run build`** — `build.mjs` reads the catalogue and builds `style.json`: the tier layers and every icon map derive from it.
 
 ## Catalogue format
 
 [`pois/catalogue.yml`](../pois/catalogue.yml) — 44 entries (8 ofm tier-1, 18 ofm tier-2, 18 custom), each with:
 
-| Field          | Sources | Description                                                            |
-| -------------- | ------- | ---------------------------------------------------------------------- |
-| `id`           | both    | unique entry identifier                                                 |
+| Field          | Sources | Description                                                                       |
+| -------------- | ------- | --------------------------------------------------------------------------------- |
+| `id`           | both    | unique entry identifier                                                           |
 | `source`       | both    | `ofm` (OpenMapTiles `poi` source-layer) or `custom` (hosted `outdoor_pois` tiles) |
-| `class`        | ofm     | OMT `poi` class the entry renders (must exist in the OMT class universe) |
-| `tier`         | ofm     | `1` (priority classes) or `2` (amenities)                               |
-| `rank_max`     | ofm     | optional density cap on the OMT `rank` (park: `6`)                      |
-| `icon`         | both    | Maki sprite icon name                                                   |
-| `show_title`   | both    | whether the name label renders                                          |
-| `include_when` | custom  | OSM tag map that selects the feature                                    |
-| `kind`         | custom  | output `kind` attribute for the `outdoor_pois` layer                    |
-| `min_zoom`     | custom  | feature-level zoom in the generated schema                              |
+| `class`        | ofm     | OMT `poi` class the entry renders (must exist in the OMT class universe)          |
+| `tier`         | ofm     | `1` (priority classes) or `2` (amenities)                                         |
+| `rank_max`     | ofm     | optional density cap on the OMT `rank` (park: `6`)                                |
+| `icon`         | both    | Maki sprite icon name                                                             |
+| `show_title`   | both    | whether the name label renders                                                    |
+| `include_when` | custom  | OSM tag map that selects the feature                                              |
+| `kind`         | custom  | output `kind` attribute for the `outdoor_pois` layer                              |
+| `min_zoom`     | custom  | feature-level zoom in the generated schema                                        |
 
 Tier semantics:
 
@@ -115,17 +115,17 @@ peaks → park-label → custom outdoor-poi → tier 1 (z1) → tier 2 (z2) → 
 
 [`scripts/check-poi-coverage.mjs`](../scripts/check-poi-coverage.mjs) (`npm run check:pois`) cross-checks the catalogue against three upstreams: the live OpenMapTiles `poi` schema, the built `style.json`, and the sprite sheet. Sections (the script has no [7]):
 
-| Section | What it reports |
-| ------- | --------------- |
-| [1] Upstream schema | ETag-cached `mapping.yaml` / `poi.sql` / `class.sql` / `poi.yaml` from openmaptiles master; subclass universe; class universe (167 values) and how the class is computed |
-| [2] Dead ofm entries | catalogue classes OMT can never emit or remaps elsewhere (e.g. `pub` → `beer`, `ferry` → `ferry_terminal`) — these render nothing and must be fixed |
-| [3] OMT-equivalent custom entries | custom kinds whose OSM tags OMT already ingests — candidates for promotion to ofm instead of the hosted extract |
-| [4] Style coverage | ofm classes with no style layer filter (zero coverage = regression bug) |
-| [5] Sprite icon validation | fetches the style's sprite JSON and validates every icon-image literal — missing icons exit 1 |
-| [6] Gap report | advisory: ofm entries whose desired zoom is below the OMT data floor (z14) — see below |
-| [8] Custom kind style coverage | custom kinds missing from the `outdoor-poi` icon-image match |
-| [9] Dead icon mappings | kinds in the icon-image match with no catalogue entry |
-| [10] Summary | totals + exit code |
+| Section                           | What it reports                                                                                                                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [1] Upstream schema               | ETag-cached `mapping.yaml` / `poi.sql` / `class.sql` / `poi.yaml` from openmaptiles master; subclass universe; class universe (167 values) and how the class is computed |
+| [2] Dead ofm entries              | catalogue classes OMT can never emit or remaps elsewhere (e.g. `pub` → `beer`, `ferry` → `ferry_terminal`) — these render nothing and must be fixed                      |
+| [3] OMT-equivalent custom entries | custom kinds whose OSM tags OMT already ingests — candidates for promotion to ofm instead of the hosted extract                                                          |
+| [4] Style coverage                | ofm classes with no style layer filter (zero coverage = regression bug)                                                                                                  |
+| [5] Sprite icon validation        | fetches the style's sprite JSON and validates every icon-image literal — missing icons exit 1                                                                            |
+| [6] Gap report                    | advisory: ofm entries whose desired zoom is below the OMT data floor (z14) — see below                                                                                   |
+| [8] Custom kind style coverage    | custom kinds missing from the `outdoor-poi` icon-image match                                                                                                             |
+| [9] Dead icon mappings            | kinds in the icon-image match with no catalogue entry                                                                                                                    |
+| [10] Summary                      | totals + exit code                                                                                                                                                       |
 
 Exit code is 0 only when fully green: no dead ofm entries, no zero-coverage classes, no sprite-missing icons.
 

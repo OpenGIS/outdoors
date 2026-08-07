@@ -5,7 +5,7 @@ modified: "2026-08-05"
 
 # Outdoor Feature Tiles (POIs & Routes)
 
-> The outdoor POI and hiking-route vector tiles are generated outside this repository from OpenStreetMap data using [Planetiler](https://github.com/onthegomap/planetiler) and served from the hosted `tiles.ogis.app` service. POI tiles are now catalogue-driven: [`pois/catalogue.yml`](../pois/catalogue.yml) is the single source of truth, and the planetiler schema is generated from it. This page records how both layers are produced.
+> The outdoor POI and hiking-route vector tiles are generated outside this repository from OpenStreetMap data using [Planetiler](https://github.com/onthegomap/planetiler) and served from the hosted `tile.ogis.app` service. POI tiles are now catalogue-driven: [`pois/catalogue.yml`](../pois/catalogue.yml) is the single source of truth, and the planetiler schema is generated from it. This page records how both layers are produced.
 
 ## Overview
 
@@ -54,10 +54,10 @@ Profile: [`HikingRouteOverlay.java`](examples/HikingRouteOverlay.java) — emits
 
 ## Where it lives now
 
-The tiles are generated and hosted outside this project at **`https://tiles.ogis.app`**:
+The tiles are generated and hosted outside this project at **`https://tile.ogis.app`**:
 
-- `https://tiles.ogis.app/pois/{z}/{x}/{y}.pbf` — source-layer `outdoor_pois`, z12–16
-- `https://tiles.ogis.app/routes/{z}/{x}/{y}.pbf` — source-layer `outdoor_routes`, z8–14
+- `https://tile.ogis.app/pois/{z}/{x}/{y}.pbf` — source-layer `outdoor_pois`, z12–16
+- `https://tile.ogis.app/routes/{z}/{x}/{y}.pbf` — source-layer `outdoor_routes`, z8–14
 
 The style consumes them as plain vector sources; both URLs derive from the single `TILES_BASE_URL` constant in [`scripts/build.mjs`](../scripts/build.mjs) (toggle `OUTDOOR_POI` / `OUTDOOR_ROUTE`, both default `true`). See the [Outdoor routes](../README.md#outdoor-routes) and [Outdoor POIs](../README.md#outdoor-pois) sections of the main README for layer styling details. The POI side is catalogue-driven end-to-end — see [Outdoor POIs (catalogue-driven)](pois.md).
 

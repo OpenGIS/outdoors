@@ -5,7 +5,7 @@
  *
  * Reads pois/catalogue.yml (the single source of truth) and writes
  * pois/pois-schema.yml for the planetiler profile that builds the
- * self-hosted outdoor_pois tiles (tiles.ogis.app /pois).
+ * self-hosted outdoor_pois tiles (tile.ogis.app /pois).
  *
  * Only `source: custom` entries become features — one feature per entry,
  * in catalogue order. The OSM extract area defaults to `geofabrik:italy`

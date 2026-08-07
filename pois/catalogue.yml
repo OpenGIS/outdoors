@@ -4,7 +4,7 @@ version: 2.0.0
 
 # Each POI:
 #   source: ofm    — rendered from the OpenMapTiles `poi` source-layer (OpenFreeMap tiles)
-#           custom  — rendered from the custom hosted tiles (tiles.ogis.app, source-layer outdoor_pois)
+#           custom  — rendered from the custom hosted tiles (tile.ogis.app, source-layer outdoor_pois)
 #   ofm entries: class (OMT poi class), tier (1 = z12+ icon+name, 2 = z14+ icon+name), rank_max (optional density cap), icon (Maki sprite name), show_title
 #   custom entries: include_when (OSM tag match), kind, min_zoom (feature-level, used by the planetiler profile), icon (Maki sprite name), show_title
 
@@ -173,7 +173,7 @@ pois:
     icon: park
     show_title: true
 
-  # ── Custom hosted (tiles.ogis.app /pois) ────────────────────
+  # ── Custom hosted (tile.ogis.app /pois) ────────────────────
   - id: park_custom
     source: custom
     include_when:
