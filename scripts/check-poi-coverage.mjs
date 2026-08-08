@@ -41,11 +41,19 @@
  *       suggestion for uncovered ones. Informational — does not affect
  *       the exit code.
  *
+ *   [7] Rank caps — catalogue rank_max validation vs the built style.
+ *       Every rank_max must be an integer in 1..1000 on an ofm entry
+ *       (custom entries come from hosted tiles with no OMT rank) and must
+ *       appear as a `rank <= N` cap inside the correct tier layer's filter
+ *       (outdoor-poi-z1 for tier 1, outdoor-poi-z2 for tier 2); no cap may
+ *       exist without a catalogue entry. Failures exit 1.
+ *
  * Exit code:
  *   0 — every ofm entry is covered by the style AND no ofm entry is dead
- *       AND every icon-image exists in the sprite
- *   1 — any dead ofm entry, any zero-coverage entry, or any
- *       sprite-missing icon
+ *       AND every icon-image exists in the sprite AND all rank caps are
+ *       valid and present in the built style
+ *   1 — any dead ofm entry, any zero-coverage entry, any
+ *       sprite-missing icon, or any rank-cap failure
  *
  * Class-universe interpretation (documented against current master,
  * Feb 2025+): poi.sql no longer contains an inline
@@ -703,6 +711,87 @@ console.log(
 );
 console.log();
 
+// ---- [7] Rank caps — catalogue rank_max vs built style --------------------
+
+console.log("[7] Rank caps — catalogue rank_max vs built style.json");
+const rankCapIssues = [];
+const cappedEntries = [];
+for (const entry of pois) {
+  if (!Object.prototype.hasOwnProperty.call(entry, "rank_max")) continue;
+  if (entry.source !== "ofm") {
+    rankCapIssues.push(
+      `${entry.id}: rank_max is only valid on ofm entries (custom tiles have no OMT rank)`,
+    );
+    continue;
+  }
+  const rm = entry.rank_max;
+  if (!Number.isInteger(rm) || rm < 1 || rm > 1000) {
+    rankCapIssues.push(`${entry.id}: rank_max ${rm} must be an integer in 1..1000`);
+    continue;
+  }
+  cappedEntries.push(entry);
+}
+
+function extractRankCapValues(filter) {
+  const caps = new Set();
+  const walk = (node) => {
+    if (!Array.isArray(node)) return;
+    if (node[0] === "<=" && typeof node[2] === "number") {
+      const lhs = node[1];
+      const field = Array.isArray(lhs) && lhs[0] === "get" ? lhs[1] : lhs;
+      if (field === "rank") caps.add(node[2]);
+    }
+    for (const child of node.slice(1)) walk(child);
+  };
+  walk(filter);
+  return caps;
+}
+
+const rankMaxLayers = { 1: "outdoor-poi-z1", 2: "outdoor-poi-z2" };
+
+for (const tier of [1, 2]) {
+  const layerId = rankMaxLayers[tier];
+  const layer = style.layers.find((l) => l.id === layerId);
+  if (!layer) {
+    rankCapIssues.push(`${layerId} layer missing from built style`);
+    continue;
+  }
+  const capValues = extractRankCapValues(layer.filter);
+  for (const entry of cappedEntries.filter((e) => e.tier === tier)) {
+    if (!capValues.has(entry.rank_max)) {
+      rankCapIssues.push(
+        `${entry.id}: rank_max ${entry.rank_max} cap missing from ${layerId} filter`,
+      );
+    }
+  }
+  for (const value of capValues) {
+    if (!cappedEntries.some((e) => e.tier === tier && e.rank_max === value)) {
+      rankCapIssues.push(`rank <= ${value} cap in ${layerId} has no catalogue entry`);
+    }
+  }
+}
+
+if (cappedEntries.length === 0) {
+  console.log("  no rank_max caps in catalogue");
+} else {
+  for (const entry of cappedEntries) {
+    console.log(
+      `  ${entry.id}: rank_max ${entry.rank_max} → ${rankMaxLayers[entry.tier]}`,
+    );
+  }
+}
+if (rankCapIssues.length === 0) {
+  console.log("  all rank caps valid and present in the built style");
+} else {
+  for (const issue of rankCapIssues) {
+    console.log(`  FAIL ${issue}`);
+  }
+}
+console.log(
+  `  rank-cap issues (${rankCapIssues.length}): ${rankCapIssues.join("; ") || "none"}`,
+);
+console.log();
+
 // ---- [8] Style coverage — custom kinds ------------------------------------
 
 const outdoorLayers = style.layers.filter(
@@ -751,6 +840,7 @@ console.log(`  dead ofm entries:        ${deadOfm.length}  (${deadOfm.map((d) =>
 console.log(`  zero-coverage entries:   ${zeroCoverage.length}  (${zeroCoverage.join(", ") || "none"})`);
 console.log(`  sprite-missing icons:    ${spriteMissing.length}  (${spriteMissing.map((m) => m.name).join(", ") || "none"})`);
 console.log(`  gap uncovered:           ${gapUncovered.length}  (${gapUncovered.join(", ") || "none"})`);
+console.log(`  rank-cap issues:         ${rankCapIssues.length}  (${rankCapIssues.join("; ") || "none"})`);
 console.log(`  custom-only entries:     ${customOnly.length}  (${customOnly.join(", ")})`);
 console.log(`  OMT-equivalent custom:   ${omtEquivalent.length}`);
 console.log(`  dead icon mappings:      ${deadIcons.length}`);
@@ -758,19 +848,21 @@ console.log(`  dead icon mappings:      ${deadIcons.length}`);
 const exitCode =
   zeroCoverage.length === 0 &&
   deadOfm.length === 0 &&
-  spriteMissing.length === 0
+  spriteMissing.length === 0 &&
+  rankCapIssues.length === 0
     ? 0
     : 1;
 console.log();
 if (exitCode === 0) {
   console.log(
-    "✓ all ofm entries are alive and covered by the style; all icons present in sprite",
+    "✓ all ofm entries are alive and covered by the style; all icons present in sprite; all rank caps valid and present",
   );
 } else {
   const reasons = [];
   if (deadOfm.length > 0) reasons.push(`${deadOfm.length} dead ofm entr${deadOfm.length === 1 ? "y" : "ies"}`);
   if (zeroCoverage.length > 0) reasons.push(`${zeroCoverage.length} zero-coverage entr${zeroCoverage.length === 1 ? "y" : "ies"}`);
   if (spriteMissing.length > 0) reasons.push(`${spriteMissing.length} sprite-missing icon${spriteMissing.length === 1 ? "" : "s"}`);
+  if (rankCapIssues.length > 0) reasons.push(`${rankCapIssues.length} rank-cap issue${rankCapIssues.length === 1 ? "" : "s"}`);
   console.log(`✗ ${reasons.join(" and ")} — see sections above`);
 }
 process.exitCode = exitCode;

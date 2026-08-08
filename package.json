@@ -9,11 +9,13 @@
     "watch:build": "node scripts/watch.mjs",
     "pois:schema": "node scripts/generate-poi-schema.mjs",
     "check:pois": "node scripts/check-poi-coverage.mjs",
+    "validate:style": "node scripts/validate-style.mjs",
     "demo:build": "vite build",
     "demo:preview": "vite preview"
   },
   "devDependencies": {
     "@maplibre/maplibre-gl-compare": "^0.5.0",
+    "@maplibre/maplibre-gl-style-spec": "^26.2.1",
     "@vitejs/plugin-vue": "^5.2.0",
     "concurrently": "^10.0.4",
     "events": "^3.3.0",

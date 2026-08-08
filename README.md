@@ -1,12 +1,12 @@
 ---
-last_commit: "b7695ba429f1267d7f4e697c9979e83142571555"
+last_commit: "b38ed8a5dbedbff5fe73427a9150f1555919b42a"
 ---
 
 # Outdoors
 
 A map style for hiking, cycling, and outdoor activities. Built on the Liberty base style ([OpenFreeMap fork](https://github.com/hyperknot/openfreemap-styles)), it adds terrain hillshading, contour lines, outdoor POIs, hiking route overlays, a low-zoom paths overlay (z9–13), and trail/path visibility enhancements. The output follows the [MapLibre/Mapbox Style Spec](https://maplibre.org/maplibre-style-spec/) (version 8) and can be used with any compatible renderer — [MapLibre GL JS](https://maplibre.org/), [MapLibre Native](https://github.com/maplibre/maplibre-native), [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/), and others.
 
-The style is assembled by [`scripts/build.mjs`](scripts/build.mjs) — it downloads the Liberty base from GitHub (cached locally), then layers outdoor-specific sources and layers on top. The output is [`style.json`](style.json) at the project root.
+The style is assembled by [`scripts/build.mjs`](scripts/build.mjs) — it downloads the Liberty base from GitHub (cached locally), then layers outdoor-specific sources and layers on top. The output is [`style.json`](style.json) at the project root. Every build validates the generated style against the MapLibre Style Specification, so an invalid `style.json` fails the build.
 
 ## Style dependencies
 
@@ -108,7 +108,7 @@ See [docs/paths.md](docs/paths.md) for the full implementation reference.
   - Icon map generated from the [POI catalogue](pois/catalogue.yml) — kind→Maki-sprite-icon match with `"marker"` fallback; all kinds carry name labels
   - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — above the outdoor route lines, below base-map POIs and labels
   - Toggle: `OUTDOOR_POI` (default `true`)
-- The whole POI pipeline is catalogue-driven: `pois/catalogue.yml` → `npm run check:pois` (gap determination) → `npm run pois:schema` (generated planetiler schema) → remote build → hosted tiles → `style.json`. See [docs/pois.md](docs/pois.md) for the full reference.
+- The whole POI pipeline is catalogue-driven: `pois/catalogue.yml` → `npm run check:pois` (gap determination) → `npm run pois:schema` (generated planetiler schema) → remote build → hosted tiles → `style.json`. See [docs/pois-concepts.md](docs/pois-concepts.md) for how the POI system works and [docs/pois.md](docs/pois.md) for the implementation reference.
 
 ### MTB scale & bicycle access
 
@@ -151,6 +151,7 @@ Opens the compare app at [localhost:11000](http://localhost:11000) — a compari
 | `npm run watch:build`  | Standalone file watcher (for separate terminal)                                                                |
 | `npm run pois:schema`  | Generate `pois/pois-schema.yml` from the POI catalogue (`--area=` / `POI_AREA` override)                       |
 | `npm run check:pois`   | POI coverage check: catalogue vs OMT schema, style coverage, sprite icons, gap report (exit 0 only when green) |
+| `npm run validate:style` | Validate `style.json` against the MapLibre GL style spec (exit 1 listing errors; also runs automatically on every build) |
 | `npm run demo:build`   | Build the compare app demo to `demo/` (`vite build`)                                                           |
 | `npm run demo:preview` | Preview the production build (`vite preview`)                                                                  |
 
@@ -201,6 +202,7 @@ The compare app demo is deployed to **GitHub Pages** by [`.github/workflows/depl
 ├── style.json           # Generated output (tracked in git)
 ├── scripts/
 │   ├── build.mjs        # Style build script — entry point for all feature flags
+│   ├── validate-style.mjs # Style spec validation (npm run validate:style; also runs on every build)
 │   ├── check-poi-coverage.mjs  # POI coverage check (npm run check:pois)
 │   ├── generate-poi-schema.mjs # Planetiler schema generator (npm run pois:schema)
 │   ├── comparison.mjs   # Dev utility: Liberty + palette-only comparison style

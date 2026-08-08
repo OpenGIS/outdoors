@@ -120,10 +120,12 @@ pois:
     tier: 2
     icon: fuel
     show_title: true
+  # Dense bus stops outrank shops in the OMT rank — uncapped they'd flood city cells at z14; sparse cells keep every stop.
   - id: bus
     source: ofm
     class: bus
     tier: 2
+    rank_max: 30
     icon: bus
     show_title: true
   - id: ferry
@@ -156,15 +158,18 @@ pois:
     tier: 2
     icon: bank
     show_title: false
+  # Post boxes/parcel lockers outrank shops in the OMT rank — uncapped they'd flood city cells at z14; sparse cells keep every stop.
   - id: post
     source: ofm
     class: post
     tier: 2
+    rank_max: 30
     icon: post
     show_title: false
 
   # ── Park (regression fix) ───────────────────────────────────
-  # City parks are dense — rank cap keeps pocket parks from flooding z12; matches Liberty's z15 top tier.
+  # City parks are dense — rank cap keeps pocket parks from flooding the tier-1 layer. OMT poi data only
+  # exists from z14, so the cap operates at z14+ in practice; matches Liberty's z15 top tier.
   - id: park
     source: ofm
     class: park

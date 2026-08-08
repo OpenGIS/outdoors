@@ -56,6 +56,7 @@ import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
+import { validateStyle } from "./validate-style.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -71,11 +72,13 @@ const TERRAIN_PALETTE = true;
 const DEM = true;
 const DEM_HILLSHADE = true;
 const DEM_TERRAIN = true;
+
 const LANDCOVER_ROCK = true;
 const LANDCOVER_FARMLAND = true;
 const LANDCOVER_SUBCLASS = true;
 const LANDUSE_MILITARY_QUARRY = true;
 const LANDUSE_RECREATION = true;
+
 const PARK_DIFFERENTIATION = true;
 const WATER_PALETTE = true;
 const ROAD_SURFACE_AWARE = true;
@@ -84,14 +87,18 @@ const BUILDING_OUTLINES = true;
 const AERIALWAY = true;
 const FERRY = true;
 const RAIL_SIMPLIFIED = true;
+
 const CONTOURS = true;
+
 const PEAK_LABELS = true;
 const PARK_LABELS = true;
+
 const REPLACE_LIBERTY_POIS = true;
+
 const LOW_ZOOM_PATHS = true;
 const OUTDOOR_ROUTE = true;
-const OUTDOOR_POI = true;
-const MTB_SCALE = true;
+const OUTDOOR_POI = false;
+const MTB_SCALE = false;
 const PATH_STYLING = true;
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -2197,6 +2204,9 @@ function poiTextField(entries, field) {
 /**
  * Density cap for entries carrying a rank_max field (park). Returns null
  * when no entry has one, so the filter keeps its plain shape.
+ *
+ * Emits legacy filter syntax directly (bare string property keys, !in /
+ * all / any) so it passes through convertFilter() unchanged.
  */
 function rankCapCondition(entries) {
   const capped = entries.filter((e) => e.rank_max);
@@ -2205,20 +2215,16 @@ function rankCapCondition(entries) {
     const entry = capped[0];
     return [
       "any",
-      ["!=", ["get", "class"], entry.class],
-      ["<=", ["get", "rank"], entry.rank_max],
+      ["!=", "class", entry.class],
+      ["<=", "rank", entry.rank_max],
     ];
   }
   const caps = capped.map((e) => [
     "all",
-    ["==", ["get", "class"], e.class],
-    ["<=", ["get", "rank"], e.rank_max],
+    ["==", "class", e.class],
+    ["<=", "rank", e.rank_max],
   ]);
-  return [
-    "any",
-    ["!", ["in", ["get", "class"], ...capped.map((e) => e.class)]],
-    ...caps,
-  ];
+  return ["any", ["!in", "class", ...capped.map((e) => e.class)], ...caps];
 }
 
 /**
@@ -2440,9 +2446,9 @@ function applyOutdoorPoi(style) {
 
 /**
  * Outdoor-filtered base-map POI tiers replacing the Liberty poi_r1/r7/r20
- * layers. Class allowlists, icon-image and the park rank cap all derive
- * from the catalogue; poi_transit is re-filtered to rail & airport only.
- * Gated by REPLACE_LIBERTY_POIS.
+ * layers. Class allowlists, icon-image and the rank caps (park, bus, post)
+ * all derive from the catalogue; poi_transit is re-filtered to rail &
+ * airport only. Gated by REPLACE_LIBERTY_POIS.
  */
 function applyReplacePois(style) {
   const z1Filter = [
@@ -2452,6 +2458,14 @@ function applyReplacePois(style) {
   ];
   const rankCap = rankCapCondition(TIER1_ENTRIES);
   if (rankCap) z1Filter.push(rankCap);
+
+  const z2Filter = [
+    "all",
+    ["match", ["geometry-type"], ["MultiPoint", "Point"], true, false],
+    ["match", ["get", "class"], tier2Classes, true, false],
+  ];
+  const rankCapZ2 = rankCapCondition(TIER2_ENTRIES);
+  if (rankCapZ2) z2Filter.push(rankCapZ2);
 
   const z1Layer = {
     id: "outdoor-poi-z1",
@@ -2484,11 +2498,7 @@ function applyReplacePois(style) {
     source: "openmaptiles",
     "source-layer": "poi",
     minzoom: 14,
-    filter: [
-      "all",
-      ["match", ["geometry-type"], ["MultiPoint", "Point"], true, false],
-      ["match", ["get", "class"], tier2Classes, true, false],
-    ],
+    filter: z2Filter,
     layout: {
       "icon-image": poiIconMatch(TIER2_ENTRIES, "class"),
       "icon-size": POI_ICON_SIZE,
@@ -2741,6 +2751,15 @@ async function build() {
     `${JSON.stringify(builtStyle, null, 2)}\n`,
     "utf8",
   );
+
+  // Validate the built style against the MapLibre GL style spec so a
+  // build can never emit an invalid style.json.
+  try {
+    validateStyle(OUTDOOR_STYLE);
+  } catch (err) {
+    console.error(`\n✗ style.json failed spec validation:\n${err.message}`);
+    process.exit(1);
+  }
 
   console.log(`✓ outdoor style written to ${OUTDOOR_STYLE}`);
   console.log(
