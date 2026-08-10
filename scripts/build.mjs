@@ -118,6 +118,12 @@ const CACHE_FILE = resolve(CACHE_DIR, "liberty.json");
 const CACHE_META_FILE = resolve(CACHE_DIR, "liberty-etag.txt");
 const CACHE_PROCESSED_FILE = resolve(CACHE_DIR, "liberty-processed.json");
 
+// Root style identity — written into the generated style.json as the
+// `name` and `metadata` top-level properties (see the style spec's Root
+// section). `metadata` must stay stable and free of volatile flag state.
+const STYLE_NAME = "Outdoors";
+const STYLE_METADATA = {};
+
 const OFM_DOMAIN = "tiles.openfreemap.org";
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -2624,7 +2630,17 @@ async function build() {
     "utf8",
   );
 
-  const style = JSON.parse(JSON.stringify(liberty));
+  // Deep-clone the base style, declaring the root-level identity keys
+  // first so they are prepended in JSON output. (Assigning `style.name`
+  // to an existing object would append the key last instead.) `name` and
+  // `metadata` are root properties per the MapLibre style spec:
+  // https://maplibre.org/maplibre-style-spec/root/
+  // Liberty currently ships neither key, so the spread never overwrites.
+  const style = {
+    name: STYLE_NAME,
+    metadata: STYLE_METADATA,
+    ...JSON.parse(JSON.stringify(liberty)),
+  };
 
   // 1. Urban removal — one-way arrows + US shields
   if (REMOVE_URBAN_LAYERS) applyUrbanRemoval(style);
