@@ -1,12 +1,12 @@
 ---
-last_commit: "243f8059116f4428422d421331569d002203c41e"
+last_commit: "6f56e70659dcfa2102f35d7ee09b8f5bede73d7b"
 ---
 
 # Outdoors
 
 A map style for hiking, cycling, and outdoor activities, built on the [Liberty base style](https://github.com/hyperknot/openfreemap-styles) (OpenFreeMap fork). Where Liberty is a general-purpose street map, this style is tuned for being outside: the shape of the land comes through in terrain and contours, roads and paths read clearly at the scales you actually use, and the points of interest are the ones that matter on a walk or a ride.
 
-On top of the Liberty base the style adds terrain hillshading and 3D terrain, contour lines, outdoor POIs (huts, shelters, water sources, viewpoints, passes, and more), hiking route overlays, a low-zoom paths layer, and trail/path visibility enhancements. The output follows the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/) and works with any compatible renderer — [MapLibre GL JS](https://maplibre.org/), [MapLibre Native](https://github.com/maplibre/maplibre-native), [Mapbox GL JS](https://docs.mapbox.com/mapbox-gl-js/), and others.
+On top of the Liberty base the style adds terrain hillshading and 3D terrain, contour lines, outdoor POIs (huts, shelters, water sources, viewpoints, passes, and more), hiking route overlays, a low-zoom paths layer, and trail/path visibility enhancements. The output follows the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/) and is rendered by client mapping libraries such as [MapLibre GL JS](https://maplibre.org/); see [Client-side rendering](docs/client.md).
 
 [`scripts/build.mjs`](scripts/build.mjs) assembles the style: it fetches the Liberty base from GitHub (cached locally), layers the outdoor sections on top, and writes the result to [`style.json`](style.json) at the project root. Every build validates the output against the MapLibre spec, so an invalid style fails the build instead of shipping. How the build works — the pipeline, the knobs that control it, and why the style is assembled rather than hand-edited — is explained in [The Style Build](docs/build.md).
 

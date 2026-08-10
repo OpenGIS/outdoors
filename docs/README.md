@@ -1,5 +1,5 @@
 ---
-git_hash: "243f8059116f4428422d421331569d002203c41e"
+git_hash: "6f56e70659dcfa2102f35d7ee09b8f5bede73d7b"
 modified: "2026-08-10"
 ---
 
@@ -15,6 +15,7 @@ Developer-focused documentation for the [Outdoors](../README.md) codebase — a 
 4. [Outdoor feature tiles (POIs & routes)](features.md) — how the hosted POI and hiking-route tile overlays are produced
 5. [Outdoor POIs](pois.md) — the POI system: the conceptual model and the catalogue-driven implementation
 6. [Low-zoom paths overlay](paths.md) — the hosted paths overlay that fills the low-zoom gap in the base data
+7. [Client-side rendering](client.md) — how the style is rendered by client mapping libraries: renderer compatibility, metric/imperial unit switching, and the repository's consumers
 
 ## Quick Links
 
