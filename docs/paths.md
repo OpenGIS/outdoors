@@ -1,11 +1,11 @@
 ---
-git_hash: "54e9b5ff4be7f762624cc5e7eaa2903b1aaa276b"
+git_hash: "243f8059116f4428422d421331569d002203c41e"
 modified: "2026-08-10"
 ---
 
 # Low-Zoom Paths Overlay
 
-> The low-zoom paths overlay is implemented end-to-end and live: path/footway/track geometry is generated with Planetiler and served from the hosted `tile.ogis.app/paths` service (z9–13), styled as dashed brown lines that match the promoted base path layer at z14+ — the two sources render as one continuous style.
+> The low-zoom paths overlay is implemented in the tile service and the build pipeline: path/footway/track geometry is generated with Planetiler and served from the hosted `tile.ogis.app/paths` service (z9–13), styled as dashed brown lines that match the promoted base path layer at z14+ — the two sources render as one continuous style. The style-side overlay is gated by the `LOW_ZOOM_PATHS` toggle in [`scripts/build.mjs`](../scripts/build.mjs): with the toggle on, the build emits an `outdoor-paths` source and layer; with it off, neither is present.
 
 ## 1. Problem
 
@@ -28,7 +28,7 @@ The profile includes **`path` + `track` + `footway`** — the full recommended s
 
 ## 4. Planetiler profile — `FootpathOverlay.java`
 
-Profile: [`examples/FootpathOverlay.java`](examples/FootpathOverlay.java) — emits the `outdoor_paths` layer (z9–13), modelled on `HikingRouteOverlay.java`. `isOverlay() = true`, attribution `© OpenStreetMap contributors` (matches `TILES_ATTRIBUTION`). Built with Planetiler on the classpath: `java -cp <planetiler.jar> build/FootpathOverlay.java --area=<extract> --download`, with an optional `--bounds` for test regions.
+Profile: [`examples/FootpathOverlay.java`](examples/FootpathOverlay.java) — emits the `outdoor_paths` layer (z9–13), modelled on `HikingRouteOverlay.java`. `isOverlay() = true`, attribution `© OpenStreetMap contributors` — declared by the Java profile, while the style-side `TILES_ATTRIBUTION` constant is blank (`""` in [`scripts/build.mjs`](../scripts/build.mjs)) so the attribution control does not duplicate the OSM credit. Built with Planetiler on the classpath: `java -cp <planetiler.jar> build/FootpathOverlay.java --area=<extract> --download`, with an optional `--bounds` for test regions.
 
 ### Phase 1 — `preprocessOsmRelation`
 
@@ -56,11 +56,11 @@ Both the overlay (z9–13) and the promoted base layer (z14+) are styled from th
 
 ## 7. Verification
 
-Verified live on `tile.ogis.app`: the profile was checked locally on the Italy extract (Dolomites bounds), the hosted endpoint returns gzipped MVT at every zoom z9–13, both project builds pass, and the compare app shows dashed brown paths rendering below the route lines with zero console errors. The z13 → z14 handoff is clean: no double-draw, widths matched at the seam.
+The tile side is verified live on `tile.ogis.app`: the profile was checked locally on the Italy extract (Dolomites bounds), and the hosted endpoint returns gzipped MVT at every zoom z9–13. Both project builds pass. With the `LOW_ZOOM_PATHS` toggle on, the build emits the `outdoor-paths` source and layer and the compare app renders the dashed brown overlay; the z13 → z14 handoff code is built for no double-draw, with widths matched at the seam.
 
 ## 8. Decisions made
 
-The pipeline (profile → pmtiles → served tiles → style) is live end-to-end; the following choices are fixed facts rather than open questions:
+The pipeline (profile → pmtiles → served tiles → style) is fully implemented; the style-side overlay is included in `style.json` when the `LOW_ZOOM_PATHS` toggle is on. The following choices are fixed facts rather than open questions:
 
 1. **Scope:** `path` + `track` + `footway` — the full recommended set (flippable in one line of the profile if the tile source is ever rebuilt).
 2. **Route relations:** hiking/foot/walking only; cycling/mtb not included (parity with `outdoor_routes`).

@@ -1,5 +1,5 @@
 ---
-last_commit: "54e9b5ff4be7f762624cc5e7eaa2903b1aaa276b"
+last_commit: "243f8059116f4428422d421331569d002203c41e"
 ---
 
 # Outdoors
@@ -18,7 +18,7 @@ The style is best understood as a stack of layers rendered bottom to top. Each g
 - **Terrain** — hillshade and 3D terrain from a hosted DEM source, giving the map physical relief.
 - **Water** — Liberty's water fills and labels kept intact, with water styling that differentiates swimming pools.
 - **Roads** — Liberty's road network replaced with an outdoor-first hierarchy: roads grouped by class and distinguished by paved vs unpaved surface, so forest tracks and local roads stay readable.
-- **Outdoor overlays** — the outdoor-specific layers — contours, mountain peak labels, hiking routes, outdoor POIs, and the low-zoom paths overlay — inserted above the base.
+- **Outdoor overlays** — the outdoor-specific layers — contours, mountain peak labels, hiking routes, outdoor POIs, and the low-zoom paths overlay — inserted above the base. Outdoor POIs and the low-zoom paths overlay are gated by the `OUTDOOR_POI` and `LOW_ZOOM_PATHS` toggles in [`scripts/build.mjs`](scripts/build.mjs), so they appear in `style.json` only when their toggle is on.
 - **Labels** — Liberty's place, road, and water labels kept, extended with peak names and park labels.
 
 Sections are applied in this same order at build time, and each is gated by its own feature toggle, so any group can be switched on or off independently for comparison.
@@ -41,7 +41,7 @@ npm install            # install dependencies
 npm run dev            # start Vite dev server + auto-build watcher
 ```
 
-The dev server opens the compare app at [localhost:11000](http://localhost:11000) — the Outdoors style on the right, a selectable reference style on the left. The compare loop is the primary workflow, and it supports two edit paths:
+The dev server opens the compare app at [localhost:12345](http://localhost:12345) — the Outdoors style on the right, a selectable reference style on the left. The compare loop is the primary workflow, and it supports two edit paths:
 
 - **Knob edits** — change a feature toggle, colour, or config value in [`scripts/build.mjs`](scripts/build.mjs); the watcher rebuilds `style.json` and the app hot-reloads the result.
 - **Direct style edits** — edit `style.json` itself; Vite HMR applies the change instantly, no rebuild needed.

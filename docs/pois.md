@@ -1,5 +1,5 @@
 ---
-git_hash: "54e9b5ff4be7f762624cc5e7eaa2903b1aaa276b"
+git_hash: "243f8059116f4428422d421331569d002203c41e"
 modified: "2026-08-10"
 ---
 
@@ -13,7 +13,7 @@ Four layers, each a translation of the last:
 
 - **OpenStreetMap** — raw tags on nodes/ways: `tourism=alpine_hut`, `amenity=drinking_water`, `leisure=park`, `historic=castle`. The universe of possible POIs.
 - **OpenMapTiles schema (OMT)** — the translation layer. The `poi_class()` SQL function (see [`.cache/openmaptiles-poi-class.sql`](../.cache/openmaptiles-poi-class.sql)) maps tag combinations to classes (e.g. `amenity=pub`/`biergarten` → class `beer`; `leisure=park` → `park`); tag values with no explicit mapping fall through to the class itself.
-- **Vector tiles** — the data. Every POI feature carries `class`, `subclass`, `name` and `rank`. Critically, **OMT poi data only exists from z14** — below that the poi layer carries only stations and ferry terminals ([`.cache/openmaptiles-poi-poi.sql`](../.cache/openmaptiles-poi-poi.sql)).
+- **Vector tiles** — the data. Every POI feature carries `class`, `subclass`, `name` and `rank`. Critically, **OMT poi data only exists from z14** — below that the poi layer carries only stations and ferry terminals ([`.cache/openmaptiles-poi-poi.sql`](../.cache/openmaptiles-poi-poi.sql)). Both SQL links in this list live in `.cache/`, a generated, gitignored directory produced by the build/download step — on a fresh clone they resolve only after a build has run.
 - **The style** — decides what renders, at what zoom, with which icon. Liberty's style (our base) and this outdoor style are two different answers here. **This is the layer this repo works on.**
 
 > [!WARNING]
