@@ -1,5 +1,5 @@
 ---
-git_hash: "243f8059116f4428422d421331569d002203c41e"
+git_hash: "48536cf1e1d7b297033e2a6b53f8469596c96e44"
 modified: "2026-08-10"
 ---
 
@@ -51,7 +51,7 @@ Our catalogue deliberately decouples class/kind → icon with an explicit `"mark
 [`pois/catalogue.yml`](../pois/catalogue.yml) declares every POI the style cares about, in two kinds:
 
 - **`source: ofm`** — a class allowlist: "render OMT class X at this tier". Tier 1 (priority classes) → `outdoor-poi-z1`; tier 2 (amenities) → `outdoor-poi-z2`. An optional `rank_max` caps density for flood-prone classes: park, bus and post are dense in cities and outrank shops in the OMT rank, so uncapped they would crowd everything else out of a cell.
-- **`source: custom`** — an OSM tag selector (`include_when`) for the hosted extract tiles (`tile.ogis.app/pois`, source-layer `outdoor_pois`), rendered by the `outdoor-poi` layer. These are the POIs OMT cannot serve — either below z14 or classes it cannot emit.
+- **`source: custom`** — an OSM tag selector (`include_when`) for the hosted extract tiles ([Tile Server & Hosted Overlays](server.md) — `tile.ogis.app/pois`, source-layer `outdoor_pois`), rendered by the `outdoor-poi` layer. These are the POIs OMT cannot serve — either below z14 or classes it cannot emit.
 
 ## 5. The custom extract's real role (not just a "z12–13 gap filler")
 
@@ -80,7 +80,7 @@ Each step, and where it runs:
 1. **Catalogue** — declare every POI (local source of truth, hand-maintained).
 2. **`npm run check:pois`** — gap determination: dead ofm classes, zero-coverage classes, sprite-missing icons, rank caps; feeds the gap report back to the catalogue. Runs locally.
 3. **`npm run pois:schema`** — generates `pois/pois-schema.yml` from the custom entries. Runs locally.
-4. **Remote planetiler build** — the generated schema is the drop-in input; runs outside this repo (see [features.md](features.md)).
+4. **Remote planetiler build** — the generated schema is the drop-in input; runs outside this repo — the feed is documented in [server.md](server.md).
 5. **Hosted tiles** — `tile.ogis.app/pois`, source-layer `outdoor_pois`.
 6. **`npm run build`** — reads the catalogue's ofm allowlists and wires the extract's `outdoor_pois` layer into `style.json`.
 
@@ -90,18 +90,18 @@ Each step, and where it runs:
 
 Each entry in [`pois/catalogue.yml`](../pois/catalogue.yml):
 
-| Field          | Sources | Description                                                                       |
-| -------------- | ------- | --------------------------------------------------------------------------------- |
-| `id`           | both    | unique entry identifier                                                           |
-| `source`       | both    | `ofm` (OpenMapTiles `poi` layer) or `custom` (hosted `outdoor_pois` tiles)         |
-| `class`        | ofm     | OMT `poi` class the entry renders (must exist in the OMT class universe)           |
-| `tier`         | ofm     | `1` (priority classes) or `2` (amenities)                                         |
-| `rank_max`     | ofm     | optional density cap on the OMT `rank`                                            |
-| `icon`         | both    | Maki sprite icon name                                                             |
-| `show_title`   | both    | whether the name label renders                                                    |
-| `include_when` | custom  | OSM tag map that selects the feature                                              |
-| `kind`         | custom  | output `kind` attribute for the `outdoor_pois` layer                              |
-| `min_zoom`     | custom  | feature-level zoom in the generated schema                                        |
+| Field          | Sources | Description                                                                |
+| -------------- | ------- | -------------------------------------------------------------------------- |
+| `id`           | both    | unique entry identifier                                                    |
+| `source`       | both    | `ofm` (OpenMapTiles `poi` layer) or `custom` (hosted `outdoor_pois` tiles) |
+| `class`        | ofm     | OMT `poi` class the entry renders (must exist in the OMT class universe)   |
+| `tier`         | ofm     | `1` (priority classes) or `2` (amenities)                                  |
+| `rank_max`     | ofm     | optional density cap on the OMT `rank`                                     |
+| `icon`         | both    | Maki sprite icon name                                                      |
+| `show_title`   | both    | whether the name label renders                                             |
+| `include_when` | custom  | OSM tag map that selects the feature                                       |
+| `kind`         | custom  | output `kind` attribute for the `outdoor_pois` layer                       |
+| `min_zoom`     | custom  | feature-level zoom in the generated schema                                 |
 
 ### How build.mjs consumes the catalogue
 
@@ -147,7 +147,7 @@ Exit code is 0 only when fully green: no dead ofm entries, no zero-coverage clas
 ## Related
 
 - [Docs index](README.md)
-- [Outdoor feature tiles (POIs & routes)](features.md) — tile generation (planetiler YAML vs Java profile)
+- [Tile Server & Hosted Overlays](server.md) — tile generation (planetiler YAML vs Java profile)
 - [Style structure — §18 / §21](style.md) — layer-by-layer style details
 - [The Style Build](build.md) — how the catalogue plugs into the build pipeline
 - [`pois/catalogue.yml`](../pois/catalogue.yml) · [`pois/pois-schema.yml`](../pois/pois-schema.yml) · [`scripts/check-poi-coverage.mjs`](../scripts/check-poi-coverage.mjs) · [`scripts/generate-poi-schema.mjs`](../scripts/generate-poi-schema.mjs)

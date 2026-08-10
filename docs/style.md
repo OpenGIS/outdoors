@@ -1,5 +1,5 @@
 ---
-git_hash: "243f8059116f4428422d421331569d002203c41e"
+git_hash: "48536cf1e1d7b297033e2a6b53f8469596c96e44"
 modified: "2026-08-10"
 ---
 
@@ -20,40 +20,40 @@ Every build validates the assembled `style.json` against the [MapLibre Style Spe
 
 Lines (bottom → top) and symbols (bottom → top) combined:
 
-| #  | Layer Group                                               | Toggle                                  | Type         |
-| -- | --------------------------------------------------------- | --------------------------------------- | ------------ |
-| —  | [Urban Removal](#urban-removal--remove_urban_layers)      | `REMOVE_URBAN_LAYERS`                   | Remove       |
-| 1  | [Terrain palette](#1-terrain-palette--terrain_palette)    | `TERRAIN_PALETTE`                       | In-place     |
-| 2  | [Hillshade & Terrain](#2-terrain-source--relief--dem-dem_hillshade-dem_terrain) | `DEM` / `DEM_HILLSHADE` / `DEM_TERRAIN` | Add          |
-| 3  | [Landcover: Rock](#3-landcover-rock--landcover_rock)      | `LANDCOVER_ROCK`                        | Add          |
-| 4  | [Landcover: Farmland](#4-landcover-farmland--landcover_farmland) | `LANDCOVER_FARMLAND`              | Add          |
-| 5  | [Landcover: Subclass](#5-landcover-subclass--landcover_subclass) | `LANDCOVER_SUBCLASS`              | In-place     |
-| 6  | [Landuse: Military & Quarry](#6-landuse-military--quarry--landuse_military_quarry) | `LANDUSE_MILITARY_QUARRY` | Add          |
-| 7  | [Landuse: Recreation](#7-landuse-recreation--landuse_recreation) | `LANDUSE_RECREATION`             | Add          |
-| 8  | [Park Differentiation](#8-park-differentiation--park_differentiation) | `PARK_DIFFERENTIATION`       | Replace      |
-| 9  | [Water Palette](#9-water-palette--water_palette)          | `WATER_PALETTE`                         | In-place     |
-| 10 | [Road Surface-Aware](#10-road-surface-aware--road_surface_aware) | `ROAD_SURFACE_AWARE`             | Replace      |
-| 11 | [Building Outlines](#11-building-outlines--building_outlines) | `BUILDING_OUTLINES`                 | Replace      |
-| 12 | [Aerialway](#12-aerialway--aerialway)                     | `AERIALWAY`                             | Add          |
-| 13 | [Ferry](#13-ferry--ferry)                                 | `FERRY`                                 | Add          |
-| 14 | [Rail Simplified](#14-rail-simplified--rail_simplified)   | `RAIL_SIMPLIFIED`                       | Remove       |
-| —  | Liberty rail layers (surface)                             | —                                       | KEEP         |
-| —  | Liberty one-way arrows                                    | `REMOVE_URBAN_LAYERS`                   | Remove       |
-| 15 | [Contours](#15-contours--contours)                        | `CONTOURS`                              | Add          |
-| —  | Liberty boundaries                                        | —                                       | KEEP         |
-| —  | Liberty water labels                                      | —                                       | KEEP         |
-| —  | Liberty road name labels                                  | —                                       | KEEP         |
-| —  | Liberty road shields (non-US)                             | —                                       | KEEP         |
-| —  | Liberty place labels                                      | —                                       | KEEP         |
-| —  | Liberty aerodrome labels                                  | —                                       | KEEP         |
-| 16 | [Peak Labels](#16-peak-labels--peak_labels)               | `PEAK_LABELS`                           | Extend       |
-| 17 | [Park Labels](#17-park-labels--park_labels)               | `PARK_LABELS`                           | Add          |
-| 18 | [Replace Liberty POIs](#18-replace-liberty-pois--replace_liberty_pois) | `REPLACE_LIBERTY_POIS`      | Replace      |
-| 19 | [Low-Zoom Paths](#19-low-zoom-paths--low_zoom_paths)      | `LOW_ZOOM_PATHS`                        | Add          |
-| 20 | [Outdoor Routes](#20-outdoor-routes--outdoor_route)       | `OUTDOOR_ROUTE`                         | Add          |
-| 21 | [Outdoor POIs](#21-outdoor-pois--outdoor_poi)             | `OUTDOOR_POI`                           | Add          |
-| 22 | [MTB Scale](#22-mtb-scale--mtb_scale)                     | `MTB_SCALE`                             | Add          |
-| 23 | [Path Styling](#23-path-styling--path_styling)            | `PATH_STYLING`                          | In-place     |
+| #   | Layer Group                                                                        | Toggle                                  | Type     |
+| --- | ---------------------------------------------------------------------------------- | --------------------------------------- | -------- |
+| —   | [Urban Removal](#urban-removal--remove_urban_layers)                               | `REMOVE_URBAN_LAYERS`                   | Remove   |
+| 1   | [Terrain palette](#1-terrain-palette--terrain_palette)                             | `TERRAIN_PALETTE`                       | In-place |
+| 2   | [Hillshade & Terrain](#2-terrain-source--relief--dem-dem_hillshade-dem_terrain)    | `DEM` / `DEM_HILLSHADE` / `DEM_TERRAIN` | Add      |
+| 3   | [Landcover: Rock](#3-landcover-rock--landcover_rock)                               | `LANDCOVER_ROCK`                        | Add      |
+| 4   | [Landcover: Farmland](#4-landcover-farmland--landcover_farmland)                   | `LANDCOVER_FARMLAND`                    | Add      |
+| 5   | [Landcover: Subclass](#5-landcover-subclass--landcover_subclass)                   | `LANDCOVER_SUBCLASS`                    | In-place |
+| 6   | [Landuse: Military & Quarry](#6-landuse-military--quarry--landuse_military_quarry) | `LANDUSE_MILITARY_QUARRY`               | Add      |
+| 7   | [Landuse: Recreation](#7-landuse-recreation--landuse_recreation)                   | `LANDUSE_RECREATION`                    | Add      |
+| 8   | [Park Differentiation](#8-park-differentiation--park_differentiation)              | `PARK_DIFFERENTIATION`                  | Replace  |
+| 9   | [Water Palette](#9-water-palette--water_palette)                                   | `WATER_PALETTE`                         | In-place |
+| 10  | [Road Surface-Aware](#10-road-surface-aware--road_surface_aware)                   | `ROAD_SURFACE_AWARE`                    | Replace  |
+| 11  | [Building Outlines](#11-building-outlines--building_outlines)                      | `BUILDING_OUTLINES`                     | Replace  |
+| 12  | [Aerialway](#12-aerialway--aerialway)                                              | `AERIALWAY`                             | Add      |
+| 13  | [Ferry](#13-ferry--ferry)                                                          | `FERRY`                                 | Add      |
+| 14  | [Rail Simplified](#14-rail-simplified--rail_simplified)                            | `RAIL_SIMPLIFIED`                       | Remove   |
+| —   | Liberty rail layers (surface)                                                      | —                                       | KEEP     |
+| —   | Liberty one-way arrows                                                             | `REMOVE_URBAN_LAYERS`                   | Remove   |
+| 15  | [Contours](#15-contours--contours)                                                 | `CONTOURS`                              | Add      |
+| —   | Liberty boundaries                                                                 | —                                       | KEEP     |
+| —   | Liberty water labels                                                               | —                                       | KEEP     |
+| —   | Liberty road name labels                                                           | —                                       | KEEP     |
+| —   | Liberty road shields (non-US)                                                      | —                                       | KEEP     |
+| —   | Liberty place labels                                                               | —                                       | KEEP     |
+| —   | Liberty aerodrome labels                                                           | —                                       | KEEP     |
+| 16  | [Peak Labels](#16-peak-labels--peak_labels)                                        | `PEAK_LABELS`                           | Extend   |
+| 17  | [Park Labels](#17-park-labels--park_labels)                                        | `PARK_LABELS`                           | Add      |
+| 18  | [Replace Liberty POIs](#18-replace-liberty-pois--replace_liberty_pois)             | `REPLACE_LIBERTY_POIS`                  | Replace  |
+| 19  | [Low-Zoom Paths](#19-low-zoom-paths--low_zoom_paths)                               | `LOW_ZOOM_PATHS`                        | Add      |
+| 20  | [Outdoor Routes](#20-outdoor-routes--outdoor_route)                                | `OUTDOOR_ROUTE`                         | Add      |
+| 21  | [Outdoor POIs](#21-outdoor-pois--outdoor_poi)                                      | `OUTDOOR_POI`                           | Add      |
+| 22  | [MTB Scale](#22-mtb-scale--mtb_scale)                                              | `MTB_SCALE`                             | Add      |
+| 23  | [Path Styling](#23-path-styling--path_styling)                                     | `PATH_STYLING`                          | In-place |
 
 The Type column describes how each row touches Liberty's layers: **Remove** strips layers, **In-place** restyles kept layers, **Add** inserts new layers, **Replace** swaps a Liberty group for an outdoor version, **Extend** adds to an existing group, and **KEEP** marks untouched Liberty layers.
 
@@ -139,7 +139,7 @@ Fills the low-zoom gap where the base tiles carry no path data, so trails exist 
 
 ## 20. Outdoor routes — OUTDOOR_ROUTE
 
-Adds the hiking route network as overlays classified by tier — international, national, regional and local walking networks, plus a fallback tier for routes outside them — so long-distance routes read as a hierarchy. Data comes from the self-hosted route vector tiles; see [Outdoor feature tiles](features.md).
+Adds the hiking route network as overlays classified by tier — international, national, regional and local walking networks, plus a fallback tier for routes outside them — so long-distance routes read as a hierarchy. Data comes from the self-hosted route vector tiles; see [Tile Server & Hosted Overlays](server.md).
 
 ## 21. Outdoor POIs — OUTDOOR_POI
 
@@ -161,7 +161,7 @@ Around 46 Liberty layers are kept untouched, by category: **Background** (2), **
 
 - [Docs index](README.md)
 - [The Style Build](build.md) — toggles, the `COLOURS` object, per-feature config
-- [Outdoor feature tiles (POIs & routes)](features.md)
+- [Tile Server & Hosted Overlays](server.md)
 - [Outdoor POIs (catalogue-driven)](pois.md)
 - [Low-zoom paths overlay](paths.md)
 - [Contours](contours.md)

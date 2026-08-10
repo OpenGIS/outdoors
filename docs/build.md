@@ -1,5 +1,5 @@
 ---
-git_hash: "243f8059116f4428422d421331569d002203c41e"
+git_hash: "48536cf1e1d7b297033e2a6b53f8469596c96e44"
 modified: "2026-08-10"
 ---
 
@@ -75,10 +75,10 @@ These are the tuning knobs beyond colour: each section's behaviour (when it rend
 
 The hosted outdoor tile overlays — POIs, hiking routes, and the low-zoom paths overlay — derive their URLs from a **single** `TILES_BASE_URL` constant ([self-hosted tiles block](../scripts/build.mjs)). To point every overlay at a different server, change that one constant.
 
-The contour service is separate: a fixed tile URL constant ([`CONTOUR_PBF_TILE_URL`](../scripts/build.mjs)) pointing at the hosted ogis.app contour service. See [Contours](contours.md) for the full implementation.
+The contour service is separate: a fixed tile URL constant ([`CONTOUR_PBF_TILE_URL`](../scripts/build.mjs)) pointing at the hosted ogis.app contour service — the same host as the overlays (details in [Tile Server & Hosted Overlays](server.md)). See [Contours](contours.md) for the style-side implementation.
 
 > [!NOTE]
-> The tile overlays are generated outside this repository from OpenStreetMap data and hosted at `tile.ogis.app` — the build only wires their URLs into the style. See [Outdoor feature tiles](features.md).
+> The tile overlays are generated outside this repository from OpenStreetMap data and hosted at `tile.ogis.app` — the build only wires their URLs into the style. See [Tile Server & Hosted Overlays](server.md).
 
 ## The dev loop
 
@@ -93,7 +93,7 @@ The compare app ([`dev/src/App.vue`](../dev/src/App.vue)) shows the Outdoors sty
 
 - [docs index](README.md)
 - [Style structure](style.md) — layer-by-layer reference, toggle-by-toggle
-- [Outdoor feature tiles (POIs & routes)](features.md) — how the hosted overlays are produced
+- [Tile Server & Hosted Overlays](server.md) — the hosted tile services and how they are produced
 - [Outdoor POIs (catalogue-driven)](pois.md) — the catalogue-driven concept and implementation
 - [Low-zoom paths overlay](paths.md)
 - [Contours](contours.md)

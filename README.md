@@ -1,5 +1,5 @@
 ---
-last_commit: "6f56e70659dcfa2102f35d7ee09b8f5bede73d7b"
+last_commit: "48536cf1e1d7b297033e2a6b53f8469596c96e44"
 ---
 
 # Outdoors
@@ -50,16 +50,16 @@ See the [dev loop](docs/build.md#the-dev-loop) in the build doc for how the watc
 
 ### Scripts
 
-| Command                  | Description                                                            |
-| ------------------------ | ---------------------------------------------------------------------- |
-| `npm run dev`            | Vite dev server + file watcher — the compare loop                      |
-| `npm run build`          | One-shot build of `style.json` from `scripts/build.mjs`                |
-| `npm run watch:build`    | Standalone file watcher (for a separate terminal)                      |
-| `npm run pois:schema`    | Generate the POI tile schema from the POI catalogue                    |
-| `npm run check:pois`     | Cross-check POI coverage across catalogue, style, and sprite           |
-| `npm run validate:style` | Validate `style.json` against the MapLibre style spec                  |
-| `npm run demo:build`     | Build the compare app demo to `demo/`                                  |
-| `npm run demo:preview`   | Preview the production demo build locally                              |
+| Command                  | Description                                                  |
+| ------------------------ | ------------------------------------------------------------ |
+| `npm run dev`            | Vite dev server + file watcher — the compare loop            |
+| `npm run build`          | One-shot build of `style.json` from `scripts/build.mjs`      |
+| `npm run watch:build`    | Standalone file watcher (for a separate terminal)            |
+| `npm run pois:schema`    | Generate the POI tile schema from the POI catalogue          |
+| `npm run check:pois`     | Cross-check POI coverage across catalogue, style, and sprite |
+| `npm run validate:style` | Validate `style.json` against the MapLibre style spec        |
+| `npm run demo:build`     | Build the compare app demo to `demo/`                        |
+| `npm run demo:preview`   | Preview the production demo build locally                    |
 
 The POI commands form a pipeline: `pois:schema` regenerates the tile schema from the catalogue, and `check:pois` verifies coverage before the hosted tiles are rebuilt. See [Outdoor POIs](docs/pois.md).
 
@@ -83,7 +83,7 @@ The outdoor overlays are generated from OpenStreetMap data outside this reposito
 - **Routes** — hiking route lines classified by network tier, drawn as one visual family.
 - **Paths** — low-zoom path geometry styled to match the base path layer, so the two render continuously.
 
-All three tile URLs derive from a single `TILES_BASE_URL` constant in [`scripts/build.mjs`](scripts/build.mjs); the contour overlay is a separate fixed constant pointing at the same hosted service. See [Outdoor feature tiles](docs/features.md) for how the POI and route tiles are produced, and the [Low-zoom paths overlay](docs/paths.md) for the paths tile source.
+All three tile URLs derive from a single `TILES_BASE_URL` constant in [`scripts/build.mjs`](scripts/build.mjs); the contour overlay is a separate fixed constant pointing at the same hosted service. See [Tile Server & Hosted Overlays](docs/server.md) for the hosted services — POIs, routes, paths and contours — and how the tiles are produced.
 
 ### Deployment
 
@@ -105,5 +105,5 @@ To evaluate a change, pick the closest reference style, flip the relevant knob i
 - [Full docs index](docs/README.md) — reading order for all project docs
 - [The Style Build](docs/build.md) — how the style is assembled and the knobs that control it
 - [Style Structure](docs/style.md) — the layer stack, section by section
-- [Outdoor feature tiles](docs/features.md) — how the hosted POI and route tiles are produced
+- [Tile Server & Hosted Overlays](docs/server.md) — the hosted tile services and how they are produced
 - [Low-zoom paths overlay](docs/paths.md) — the hosted paths tile source
