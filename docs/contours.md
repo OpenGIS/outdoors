@@ -49,14 +49,40 @@ The same tile URL is therefore fetched twice — once by the client, once by the
 
 ## Layers
 
-Two layers are inserted at the water stack index (above landcover, below water):
+Two layers are added. `contour-lines` is inserted at the water stack index (above landcover, below water); `contour-labels` is inserted below the POI stack at build time and then repositioned by `reorderContourLabelStack()` in `build()` to its final slot above the POI tiers — see [Label placement](#label-placement-in-the-symbol-stack) below.
 
-| Layer            | Type   | Purpose                                                                                                        |
-| ---------------- | ------ | -------------------------------------------------------------------------------------------------------------- |
-| `contour-lines`  | line   | Minor and index contours in a single layer — a `case` expression on the elevation value switches style per line |
-| `contour-labels` | symbol | Line-placed elevation text, emitted only on index lines                                                        |
+| Layer            | Type   | Purpose                                                                                                                                                                              |
+| ---------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `contour-lines`  | line   | Minor and index contours in a single layer — a `case` expression on the elevation value switches style per line, hiding lines that fall off the 20 m minor cadence (`ele % 20 == 0`) |
+| `contour-labels` | symbol | Line-placed elevation text, emitted only on index lines                                                                                                                              |
 
-Both layers are styled from the central `COLOURS` object in [`scripts/build.mjs`](../scripts/build.mjs) — `COLOURS.CONTOURS` holds the minor/index/label colours — with width and opacity zoom ramps defined alongside the layer constants. See [The Style Build](build.md) for how the colour object and per-feature config work.
+Both layers are styled from the central `COLOURS` object in [`scripts/build.mjs`](../scripts/build.mjs) — `COLOURS.CONTOURS` holds the minor/index/label colours — with the width and opacity ramps below. See [The Style Build](build.md) for how the colour object and per-feature config work.
+
+### Line rendering — index vs minor hierarchy
+
+The single `contour-lines` layer distinguishes index contours (every 100 m, `ele % 100 === 0`) from the minor lines between them with a `case` expression, then paints both through three-stop zoom ramps (z9 → z13 → z14) defined in `applyContours()` and the `CONTOUR_OPACITY_*` / `CONTOUR_WIDTH_*` constants. `CONTOUR_MID_ZOOM` (z13) is the middle stop and sets ramp position only — it no longer gates visibility, since minors are drawn at every zoom again:
+
+| Zoom stop | Index opacity | Minor opacity | Index width | Minor width |
+| --------- | ------------- | ------------- | ----------- | ----------- |
+| z9        | 0.4           | 0.35          | 0.75 px     | 0.4 px      |
+| z13       | 0.64          | 0.47          | 1.1 px      | 0.45 px     |
+| z14       | 0.7           | 0.5           | 1.6 px      | 0.7 px      |
+
+Minor lines are decimated to a 20 m elevation cadence via `CONTOUR_MINOR_EVERY` in [`scripts/build.mjs`](../scripts/build.mjs) — the paint `case` built by `contourCase()` (conditions `contourIndexCond` / `contourMinorCond`, with the full rationale commented inline in the script) draws a line only when `ele % 20 == 0` (the `case`'s hidden branch paints opacity 0 / width 0 otherwise). Index lines (`ele % 100 === 0`) are unaffected. The 20 m cadence divides the 100 m index interval exactly (100 / 20 = 5), so minors land symmetric at 20/40/60/80 m between every index pair — the previous 40 m cadence could not split 100 m evenly (100 / 40 = 2.5) and left a ragged 40-40-20 m pattern between index lines. The condition's offset 0 keeps drawn lines on the server's 20 m grid, so per zoom the effective drawn cadence is: all lines at z9 (server emits an 80 m interval), all minors at z10–12 (20 m), every 2nd at z13 (10 m), every 4th at z14 (5 m). The decimation exists because the server's densest intervals draw too many lines — thinning the minors keeps the hierarchy legible while dropping sub-pixel clutter. Both ramps use the original opacities (0.4→0.7 index, 0.35→0.5 minor); emphasis now comes from width and line count rather than transparency. Index lines remain clearly stronger than minors at every zoom — bolder (0.75→1.6 px vs 0.4→0.7 px) and only slightly more opaque; both width ramps use exponential interpolation (base 1.2).
+
+### Label placement in the symbol stack
+
+MapLibre resolves symbol collisions from the top of the stack down — the highest label layer places first and wins the space. `contour-labels` is therefore inserted low at build time (below the POI stack) and then repositioned by `reorderContourLabelStack()`, a post-pass called in `build()` after the outdoor-POI steps, to sit directly above the POI tiers (`outdoor-poi-z1`/`z2`, `outdoor-poi`, `outdoor-paths`) and below the peak tiers (`mountain-peak`, `mountain-peak-secondary`, `mountain-saddle`, `mountain-volcano`) and `park-label`. The collision order this produces:
+
+- peaks and park labels win over contour labels;
+- contour labels win over POI labels;
+- town/place labels (above all of these) still win.
+
+Without the repositioning the layer would sit at the bottom of the symbol stack and lose to every other label layer, so elevation text only appeared when the map overzoomed past the label-dense zooms.
+
+### Label layout
+
+`contour-labels` places text along the line (`symbol-placement: line`) with `text-padding: 4` and a `text-size` ramp of 11 px @ z12 → 13 px @ z14 — the tighter padding lets elevation text fit along more of each line. Labels stay metric at build time (see [Units](#units)).
 
 ## Zoom ceiling
 

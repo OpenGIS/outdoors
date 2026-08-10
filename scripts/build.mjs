@@ -484,13 +484,22 @@ const CONTOUR_PBF_TILE_URL = "https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
-// Contour line rendering — width (px) and opacity at the zoom-ramp endpoints.
-// The ramp runs CONTOUR_PBF_SOURCE_MINZOOM → 14 (see applyContours). Index =
-// every 100 m (ele % 100 === 0), minor = intermediate contours.
-const CONTOUR_WIDTH_INDEX = { low: 0.5, high: 1.1 };
-const CONTOUR_WIDTH_MINOR = { low: 0.4, high: 1.0 };
-const CONTOUR_OPACITY_INDEX = { low: 0.4, high: 0.7 };
-const CONTOUR_OPACITY_MINOR = { low: 0.35, high: 0.5 };
+// Contour line rendering — width (px) and opacity at the zoom-ramp stops
+// (low = z9, mid = CONTOUR_MID_ZOOM, high = z14; see applyContours). Index =
+// every 100 m (ele % 100 === 0) drawn bold; minor = intermediate contours,
+// decimated to the CONTOUR_MINOR_EVERY cadence and drawn thin. Opacity uses
+// the original 0.4→0.7 (index) / 0.35→0.5 (minor) ramps — emphasis comes
+// from width and line count, not transparency.
+const CONTOUR_MID_ZOOM = 13;
+const CONTOUR_WIDTH_INDEX = { low: 0.75, mid: 1.1, high: 1.6 };
+const CONTOUR_WIDTH_MINOR = { low: 0.4, mid: 0.45, high: 0.7 };
+const CONTOUR_OPACITY_INDEX = { low: 0.4, mid: 0.64, high: 0.7 };
+const CONTOUR_OPACITY_MINOR = { low: 0.35, mid: 0.47, high: 0.5 };
+// Minor cadence — must divide the 100 m index interval evenly so minor lines
+// sit symmetric between index lines (100 / 20 = 5). The condition uses offset
+// 0 (ele % 20 === 0) so lines land on the server's 20 m grid at z10-12: all
+// minors there, every 2nd at z13 (10 m), every 4th at z14 (5 m).
+const CONTOUR_MINOR_EVERY = 20;
 
 // ── Externally hosted outdoor vector tiles ──────────────────────────
 // Attribution blank to avoid double OSM in attr control (Liberty adds OSM)
@@ -1768,7 +1777,33 @@ function applyRailSimplified(style) {
  * PBF vector contour tiles from the ogis.app hosted contour service
  * (contour-mvt-server), served as standard Mapbox Vector Tiles — no
  * client-side contour generation. See docs/contours.md.
+ *
+ * Tier conditions used by the paint `case` expressions:
+ * - contourIndexCond — index contours, every 100 m of elevation
+ *   (ele % 100 === 0). Drawn bold.
+ * - contourMinorCond — minor contours, drawn on a 20 m elevation cadence
+ *   (CONTOUR_MINOR_EVERY, offset 0 so lines land on the server's 20 m grid).
+ *   20 divides the 100 m index interval evenly (100 / 20 = 5), so minors sit
+ *   symmetric at 20/40/60/80 m between every index pair. A cadence that does
+ *   not divide 100 m (e.g. 40 m → 100 / 40 = 2.5) leaves minors ragged and
+ *   asymmetric against the index grid.
+ * - contourCase() — three-branch case per zoom stop: index style, minor
+ *   style, or hidden (opacity 0 / width 0). The hidden branch is what
+ *   decimates: features off the cadence are painted invisible rather than
+ *   filtered, because v5 filter syntax cannot express modulo.
  */
+const contourIndexCond = ["==", ["%", ["get", "ele"], 100], 0];
+const contourMinorCond = ["==", ["%", ["get", "ele"], CONTOUR_MINOR_EVERY], 0];
+// case(index → idxValue, minor → minorValue, hidden → 0)
+const contourCase = (idxValue, minorValue) => [
+  "case",
+  contourIndexCond,
+  idxValue,
+  contourMinorCond,
+  minorValue,
+  0,
+];
+
 function applyContours(style) {
   style.sources["contour-source"] = {
     type: "vector",
@@ -1777,103 +1812,138 @@ function applyContours(style) {
     maxzoom: CONTOUR_PBF_SOURCE_MAXZOOM,
   };
 
-  const contourLayers = [
+  const contourLinesLayer = {
     // Single contour line layer — v5 filter syntax doesn't support ["%",...]
     // expressions, so merge minor + index into one layer with expression-based paint.
-    {
-      id: "contour-lines",
-      type: "line",
-      source: "contour-source",
-      "source-layer": "contours",
-      minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
-      maxzoom: CONTOUR_LAYER_MAXZOOM,
-      filter: [">", ["get", "ele"], 0],
-      paint: {
-        "line-color": [
-          "case",
-          ["==", ["%", ["get", "ele"], 100], 0],
-          COLOURS.CONTOURS.INDEX,
-          COLOURS.CONTOURS.MINOR,
-        ],
-        // v5 requires zoom at the top level — case at each stop, not interpolate inside case.
-        "line-opacity": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          CONTOUR_PBF_SOURCE_MINZOOM,
-          [
-            "case",
-            ["==", ["%", ["get", "ele"], 100], 0],
-            CONTOUR_OPACITY_INDEX.low,
-            CONTOUR_OPACITY_MINOR.low,
-          ],
-          14,
-          [
-            "case",
-            ["==", ["%", ["get", "ele"], 100], 0],
-            CONTOUR_OPACITY_INDEX.high,
-            CONTOUR_OPACITY_MINOR.high,
-          ],
-        ],
-        "line-width": [
-          "interpolate",
-          ["exponential", 1.2],
-          ["zoom"],
-          CONTOUR_PBF_SOURCE_MINZOOM,
-          [
-            "case",
-            ["==", ["%", ["get", "ele"], 100], 0],
-            CONTOUR_WIDTH_INDEX.low,
-            CONTOUR_WIDTH_MINOR.low,
-          ],
-          14,
-          [
-            "case",
-            ["==", ["%", ["get", "ele"], 100], 0],
-            CONTOUR_WIDTH_INDEX.high,
-            CONTOUR_WIDTH_MINOR.high,
-          ],
-        ],
-      },
+    id: "contour-lines",
+    type: "line",
+    source: "contour-source",
+    "source-layer": "contours",
+    minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
+    maxzoom: CONTOUR_LAYER_MAXZOOM,
+    filter: [">", ["get", "ele"], 0],
+    paint: {
+      "line-color": [
+        "case",
+        contourIndexCond,
+        COLOURS.CONTOURS.INDEX,
+        contourMinorCond,
+        COLOURS.CONTOURS.MINOR,
+        COLOURS.CONTOURS.MINOR,
+      ],
+      // v5 requires zoom at the top level — case at each stop, not interpolate inside case.
+      "line-opacity": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        CONTOUR_PBF_SOURCE_MINZOOM,
+        contourCase(CONTOUR_OPACITY_INDEX.low, CONTOUR_OPACITY_MINOR.low),
+        CONTOUR_MID_ZOOM,
+        contourCase(CONTOUR_OPACITY_INDEX.mid, CONTOUR_OPACITY_MINOR.mid),
+        14,
+        contourCase(CONTOUR_OPACITY_INDEX.high, CONTOUR_OPACITY_MINOR.high),
+      ],
+      "line-width": [
+        "interpolate",
+        ["exponential", 1.2],
+        ["zoom"],
+        CONTOUR_PBF_SOURCE_MINZOOM,
+        contourCase(CONTOUR_WIDTH_INDEX.low, CONTOUR_WIDTH_MINOR.low),
+        CONTOUR_MID_ZOOM,
+        contourCase(CONTOUR_WIDTH_INDEX.mid, CONTOUR_WIDTH_MINOR.mid),
+        14,
+        contourCase(CONTOUR_WIDTH_INDEX.high, CONTOUR_WIDTH_MINOR.high),
+      ],
     },
-    {
-      id: "contour-labels",
-      type: "symbol",
-      source: "contour-source",
-      "source-layer": "contours",
-      minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
-      maxzoom: CONTOUR_LAYER_MAXZOOM,
-      filter: [">", ["get", "ele"], 0],
-      layout: {
-        "symbol-placement": "line",
-        "symbol-avoid-edges": true,
-        "text-rotation-alignment": "map",
-        "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10, 14, 12],
-        // Only show labels on index contours; v5 filter syntax can't express
-        // ["%", ["get","ele"], 100] so we use a conditional text-field.
-        "text-field": [
-          "case",
-          ["==", ["%", ["get", "ele"], 100], 0],
-          CONTOUR_LABEL_EXPR,
-          "",
-        ],
-        "text-font": ["Noto Sans Regular"],
-        "text-padding": 10,
-      },
-      paint: {
-        "text-color": COLOURS.CONTOURS.LABEL,
-        "text-halo-color": COLOURS.CONTOURS.HALO,
-        "text-halo-width": 1.25,
-      },
-    },
-  ];
+  };
 
   const contourIdx = waterStackIndex(style);
   if (contourIdx !== -1) {
-    style.layers.splice(contourIdx, 0, ...contourLayers);
+    style.layers.splice(contourIdx, 0, contourLinesLayer);
   } else {
-    style.layers.push(...contourLayers);
+    style.layers.push(contourLinesLayer);
   }
+}
+
+/**
+ * Contour elevation labels — index (100 m) labels placed along the contour
+ * lines. The layer is inserted below the POI stack and then repositioned by
+ * reorderContourLabelStack() so contour labels beat POI labels but still
+ * yield to peaks and park labels. Gated by CONTOURS.
+ */
+function applyContourLabels(style) {
+  const layer = {
+    id: "contour-labels",
+    type: "symbol",
+    source: "contour-source",
+    "source-layer": "contours",
+    minzoom: CONTOUR_PBF_SOURCE_MINZOOM,
+    maxzoom: CONTOUR_LAYER_MAXZOOM,
+    filter: [">", ["get", "ele"], 0],
+    layout: {
+      "symbol-placement": "line",
+      "symbol-avoid-edges": true,
+      "text-rotation-alignment": "map",
+      "text-size": ["interpolate", ["linear"], ["zoom"], 12, 11, 14, 13],
+      // Only show labels on index contours; v5 filter syntax can't express
+      // ["%", ["get","ele"], 100] so we use a conditional text-field.
+      "text-field": [
+        "case",
+        ["==", ["%", ["get", "ele"], 100], 0],
+        CONTOUR_LABEL_EXPR,
+        "",
+      ],
+      "text-font": ["Noto Sans Regular"],
+      "text-padding": 4,
+    },
+    paint: {
+      "text-color": COLOURS.CONTOURS.LABEL,
+      "text-halo-color": COLOURS.CONTOURS.HALO,
+      "text-halo-width": 1.25,
+    },
+  };
+
+  // Insert below the POI stack; reorderContourLabelStack() repositions the
+  // layer above the POI tiers in build().
+  const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
+  if (poiIdx !== -1) {
+    style.layers.splice(poiIdx, 0, layer);
+  } else {
+    style.layers.push(layer);
+  }
+}
+
+/**
+ * Reposition the contour-label / peak / park-label block directly above the
+ * base-map POI tiers (outdoor-poi-z2) so contour labels beat POI labels but
+ * still yield to peaks and park labels — peaks and park labels render on top
+ * of the outdoor section. The label functions insert below the POI stack (see
+ * applyContourLabels), so this post-pass re-inserts the block at its final
+ * position after the outdoor steps, preserving the layers' relative order
+ * (bottom→top: contour-labels, peaks, park-label). No-op when the anchor layer
+ * or any moved layer is absent (feature toggle off).
+ */
+function reorderContourLabelStack(style) {
+  const movedIds = [
+    "contour-labels",
+    "mountain-peak",
+    "mountain-peak-secondary",
+    "mountain-saddle",
+    "mountain-volcano",
+    "park-label",
+  ];
+
+  const anchorIdx = style.layers.findIndex((l) => l.id === "outdoor-poi-z2");
+  if (anchorIdx === -1) return;
+
+  const moved = movedIds
+    .map((id) => style.layers.find((l) => l.id === id))
+    .filter(Boolean);
+  if (!moved.length) return;
+
+  style.layers = style.layers.filter((l) => !moved.includes(l));
+  const insertAt = style.layers.findIndex((l) => l.id === "outdoor-poi-z2") + 1;
+  style.layers.splice(insertAt, 0, ...moved);
 }
 
 /**
@@ -2691,17 +2761,24 @@ async function build() {
   // 14. Contours — hosted PBF contour vector tiles + labels
   if (CONTOURS) applyContours(style);
 
-  // 15. POI section (see the POI SECTION block above) — bottom→top:
-  //     peaks → park-label → z1/z2 replacement. Peaks & park-label
+  // 15. POI section (see the POI SECTION block above) — the label functions
+  //     below insert below the POI stack: peaks, park-label and contour-labels
   //     run before applyReplacePois (they need the Liberty poi_r20 anchor),
   //     and applyReplacePois runs before the non-POI sections below so
-  //     outdoor-poi-z1/z2 anchor at the top of the POI stack. Custom
-  //     outdoor-poi (applyOutdoorPoi) stays with the non-POI sections below —
-  //     it must sit above routes but below MTB to preserve the layer stack.
+  //     outdoor-poi-z1/z2 anchor at the top of the POI stack.
+  //     reorderContourLabelStack (step 23) then repositions the
+  //     contour/peak/park block above the POI tiers. Custom outdoor-poi
+  //     (applyOutdoorPoi) stays with the non-POI sections below — it must sit
+  //     above routes but below MTB to preserve the layer stack.
   if (PEAK_LABELS) applyPeakLabels(style);
 
   // 16. Park labels — protected-area point labels
   if (PARK_LABELS) applyParkLabels(style);
+
+  // 16b. Contour labels — inserted below the POI stack here; step 23 moves it
+  //      above the POI tiers so contour labels beat POIs but lose to peaks
+  //      and park labels.
+  if (CONTOURS) applyContourLabels(style);
 
   // 17. Replaced liberty POIs — catalogue-driven outdoor-filtered tiers
   if (REPLACE_LIBERTY_POIS) applyReplacePois(style);
@@ -2724,6 +2801,10 @@ async function build() {
 
   // 22. Path & trail styling
   if (PATH_STYLING) applyPathStyling(style);
+
+  // 23. Label-stack fix-up — reposition contour-labels / peaks / park-label
+  //     directly above the POI tiers (see reorderContourLabelStack).
+  reorderContourLabelStack(style);
 
   // ═════════════════════════════════════════════════════════════════════
   // Write — substitute tile domain placeholders at build time so the

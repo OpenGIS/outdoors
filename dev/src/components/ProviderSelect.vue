@@ -19,15 +19,12 @@ function onChange(e) {
 
 <template>
   <select :value="modelValue" @change="onChange" class="provider-select">
-    <button type="button">
-      <selectedcontent></selectedcontent>
-    </button>
+    <selectedcontent></selectedcontent>
     <optgroup
       v-for="section in sections"
       :key="section.label"
       :label="section.label"
     >
-      <legend>{{ section.label }}</legend>
       <option
         v-for="provider in section.providers"
         :key="provider.key"
@@ -101,22 +98,6 @@ function onChange(e) {
 optgroup {
   padding: 0;
   margin: 0;
-}
-
-optgroup legend {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #888;
-  padding: 8px 10px 2px;
-  border-top: 1px solid #eee;
-  width: 100%;
-}
-
-optgroup:first-of-type legend {
-  border-top: none;
 }
 
 /* ── Options ── */
