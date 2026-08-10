@@ -94,7 +94,7 @@ const PARK_LABELS = true;
 
 const REPLACE_LIBERTY_POIS = true;
 
-const LOW_ZOOM_PATHS = true;
+const LOW_ZOOM_PATHS = false;
 const OUTDOOR_ROUTE = true;
 const OUTDOOR_POI = false;
 const MTB_SCALE = false;
@@ -383,12 +383,11 @@ function roadStopsToExpr(stops) {
 // ── DEM (raster-dem source) ──────────────────────────────────────────
 // The raster-dem source feeds the hillshade layer and 3D terrain.
 // Mapterhorn (Terrarium-encoded WebP, 512px, maxzoom 17 — service max; z0-12 global, z13-17 regional only):
-//   https://tiles.mapterhorn.com/{z}/{x}/{y}.webp
 
 const DEM_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 const DEM_SOURCE_ENCODING = "terrarium";
 const DEM_SOURCE_TILESIZE = 512;
-const DEM_SOURCE_ATTRIBUTION = "© Mapterhorn"; // required by Mapterhorn TileJSON attribution
+const DEM_SOURCE_ATTRIBUTION = `<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>`;
 const DEM_SOURCE_MAXZOOM = 17;
 // style.terrain.exaggeration — ratio by which the terrain is exaggerated relative to real world
 const TERRAIN_EXAGGERATION = 1.5;
@@ -488,12 +487,10 @@ const CONTOUR_OPACITY_INDEX = { low: 0.4, high: 0.7 };
 const CONTOUR_OPACITY_MINOR = { low: 0.35, high: 0.5 };
 
 // ── Externally hosted outdoor vector tiles ──────────────────────────
-// A single production endpoint (https://tile.ogis.app) serves BOTH the
-// outdoor POI and route tiles (`/pois/...` and `/routes/...`).
-// (prefixes `/pois/...` and `/routes/...` directly — the old `/features` prefix is retired)
+// Attribution blank to avoid double OSM in attr control (Liberty adds OSM)
 
 const TILES_BASE_URL = "https://tile.ogis.app";
-const TILES_ATTRIBUTION = "© OpenStreetMap contributors";
+const TILES_ATTRIBUTION = "";
 
 // ── Outdoor routes (hiking route relations) ──────────────────────────
 // Vector tiles with hiking route relations from OSM — line geometry
@@ -1798,18 +1795,38 @@ function applyContours(style) {
           ["linear"],
           ["zoom"],
           CONTOUR_PBF_SOURCE_MINZOOM,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_OPACITY_INDEX.low, CONTOUR_OPACITY_MINOR.low],
+          [
+            "case",
+            ["==", ["%", ["get", "ele"], 100], 0],
+            CONTOUR_OPACITY_INDEX.low,
+            CONTOUR_OPACITY_MINOR.low,
+          ],
           14,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_OPACITY_INDEX.high, CONTOUR_OPACITY_MINOR.high],
+          [
+            "case",
+            ["==", ["%", ["get", "ele"], 100], 0],
+            CONTOUR_OPACITY_INDEX.high,
+            CONTOUR_OPACITY_MINOR.high,
+          ],
         ],
         "line-width": [
           "interpolate",
           ["exponential", 1.2],
           ["zoom"],
           CONTOUR_PBF_SOURCE_MINZOOM,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_WIDTH_INDEX.low, CONTOUR_WIDTH_MINOR.low],
+          [
+            "case",
+            ["==", ["%", ["get", "ele"], 100], 0],
+            CONTOUR_WIDTH_INDEX.low,
+            CONTOUR_WIDTH_MINOR.low,
+          ],
           14,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_WIDTH_INDEX.high, CONTOUR_WIDTH_MINOR.high],
+          [
+            "case",
+            ["==", ["%", ["get", "ele"], 100], 0],
+            CONTOUR_WIDTH_INDEX.high,
+            CONTOUR_WIDTH_MINOR.high,
+          ],
         ],
       },
     },

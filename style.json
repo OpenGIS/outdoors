@@ -21,7 +21,7 @@
       "encoding": "terrarium",
       "tileSize": 512,
       "maxzoom": 17,
-      "attribution": "© Mapterhorn"
+      "attribution": "<a href=\"https://mapterhorn.com/attribution\">© Mapterhorn</a>"
     },
     "contour-source": {
       "type": "vector",
@@ -31,15 +31,6 @@
       ],
       "maxzoom": 14
     },
-    "outdoor-paths": {
-      "type": "vector",
-      "tiles": [
-        "https://tile.ogis.app/paths/{z}/{x}/{y}.pbf"
-      ],
-      "minzoom": 9,
-      "maxzoom": 13,
-      "attribution": "© OpenStreetMap contributors"
-    },
     "outdoor-route": {
       "type": "vector",
       "tiles": [
@@ -47,7 +38,7 @@
       ],
       "minzoom": 8,
       "maxzoom": 14,
-      "attribution": "© OpenStreetMap contributors"
+      "attribution": ""
     }
   },
   "sprite": "https://tiles.openfreemap.org/sprites/ofm_f384/ofm",
@@ -2611,41 +2602,6 @@
         "text-halo-color": "rgba(255, 255, 255, 0.8)",
         "text-halo-width": 1,
         "text-halo-blur": 1
-      }
-    },
-    {
-      "id": "outdoor-paths",
-      "type": "line",
-      "source": "outdoor-paths",
-      "source-layer": "outdoor_paths",
-      "minzoom": 9,
-      "maxzoom": 14,
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
-      "paint": {
-        "line-color": "#c05a2a",
-        "line-dasharray": [
-          1,
-          0.7
-        ],
-        "line-width": [
-          "interpolate",
-          [
-            "exponential",
-            1.2
-          ],
-          [
-            "zoom"
-          ],
-          9,
-          0.6,
-          11,
-          1,
-          13,
-          2
-        ]
       }
     },
     {

@@ -1,0 +1,169 @@
+---
+git_hash: "54e9b5ff4be7f762624cc5e7eaa2903b1aaa276b"
+modified: "2026-08-10"
+---
+
+# Style Structure
+
+The outdoor map style is assembled from the [OSM Liberty](https://github.com/hyperknot/openfreemap-styles) base (OpenFreeMap fork) by [`scripts/build.mjs`](../scripts/build.mjs), which replaces Liberty's visual layers with outdoor-first versions while keeping its label, water, boundary and rail infrastructure intact — 46 Liberty layers survive untouched (see [Liberty Layers We Keep](#liberty-layers-we-keep)). Landcover, landuse, roads, buildings and POIs are rebuilt for foot-based recreation: around 15 outdoor road layers replace roughly 46 Liberty road layers, and a stack of new outdoor-only layers is added on top.
+
+Sections are ordered **bottom → top**, matching the MapLibre rendering stack, and each is gated by a feature toggle. This page explains each section's purpose and data source; the knobs themselves — toggles, the `COLOURS` object, per-feature config — are documented in [The Style Build](build.md).
+
+## Validation Gate
+
+Every build validates the assembled `style.json` against the [MapLibre Style Specification](https://maplibre.org/maplibre-style-spec/) before exiting, via [`scripts/validate-style.mjs`](../scripts/validate-style.mjs). The same check runs in the one-shot build and in the dev watcher, and can be run standalone.
+
+> [!WARNING]
+> A style-spec violation fails the build, so an invalid `style.json` can never be emitted.
+
+## Rendering Order
+
+Lines (bottom → top) and symbols (bottom → top) combined:
+
+| #  | Layer Group                                               | Toggle                                  | Type         |
+| -- | --------------------------------------------------------- | --------------------------------------- | ------------ |
+| —  | [Urban Removal](#urban-removal--remove_urban_layers)      | `REMOVE_URBAN_LAYERS`                   | Remove       |
+| 1  | [Terrain palette](#1-terrain-palette--terrain_palette)    | `TERRAIN_PALETTE`                       | In-place     |
+| 2  | [Hillshade & Terrain](#2-terrain-source--relief--dem-dem_hillshade-dem_terrain) | `DEM` / `DEM_HILLSHADE` / `DEM_TERRAIN` | Add          |
+| 3  | [Landcover: Rock](#3-landcover-rock--landcover_rock)      | `LANDCOVER_ROCK`                        | Add          |
+| 4  | [Landcover: Farmland](#4-landcover-farmland--landcover_farmland) | `LANDCOVER_FARMLAND`              | Add          |
+| 5  | [Landcover: Subclass](#5-landcover-subclass--landcover_subclass) | `LANDCOVER_SUBCLASS`              | In-place     |
+| 6  | [Landuse: Military & Quarry](#6-landuse-military--quarry--landuse_military_quarry) | `LANDUSE_MILITARY_QUARRY` | Add          |
+| 7  | [Landuse: Recreation](#7-landuse-recreation--landuse_recreation) | `LANDUSE_RECREATION`             | Add          |
+| 8  | [Park Differentiation](#8-park-differentiation--park_differentiation) | `PARK_DIFFERENTIATION`       | Replace      |
+| 9  | [Water Palette](#9-water-palette--water_palette)          | `WATER_PALETTE`                         | In-place     |
+| 10 | [Road Surface-Aware](#10-road-surface-aware--road_surface_aware) | `ROAD_SURFACE_AWARE`             | Replace      |
+| 11 | [Building Outlines](#11-building-outlines--building_outlines) | `BUILDING_OUTLINES`                 | Replace      |
+| 12 | [Aerialway](#12-aerialway--aerialway)                     | `AERIALWAY`                             | Add          |
+| 13 | [Ferry](#13-ferry--ferry)                                 | `FERRY`                                 | Add          |
+| 14 | [Rail Simplified](#14-rail-simplified--rail_simplified)   | `RAIL_SIMPLIFIED`                       | Remove       |
+| —  | Liberty rail layers (surface)                             | —                                       | KEEP         |
+| —  | Liberty one-way arrows                                    | `REMOVE_URBAN_LAYERS`                   | Remove       |
+| 15 | [Contours](#15-contours--contours)                        | `CONTOURS`                              | Add          |
+| —  | Liberty boundaries                                        | —                                       | KEEP         |
+| —  | Liberty water labels                                      | —                                       | KEEP         |
+| —  | Liberty road name labels                                  | —                                       | KEEP         |
+| —  | Liberty road shields (non-US)                             | —                                       | KEEP         |
+| —  | Liberty place labels                                      | —                                       | KEEP         |
+| —  | Liberty aerodrome labels                                  | —                                       | KEEP         |
+| 16 | [Peak Labels](#16-peak-labels--peak_labels)               | `PEAK_LABELS`                           | Extend       |
+| 17 | [Park Labels](#17-park-labels--park_labels)               | `PARK_LABELS`                           | Add          |
+| 18 | [Replace Liberty POIs](#18-replace-liberty-pois--replace_liberty_pois) | `REPLACE_LIBERTY_POIS`      | Replace      |
+| 19 | [Low-Zoom Paths](#19-low-zoom-paths--low_zoom_paths)      | `LOW_ZOOM_PATHS`                        | Add          |
+| 20 | [Outdoor Routes](#20-outdoor-routes--outdoor_route)       | `OUTDOOR_ROUTE`                         | Add          |
+| 21 | [Outdoor POIs](#21-outdoor-pois--outdoor_poi)             | `OUTDOOR_POI`                           | Add          |
+| 22 | [MTB Scale](#22-mtb-scale--mtb_scale)                     | `MTB_SCALE`                             | Add          |
+| 23 | [Path Styling](#23-path-styling--path_styling)            | `PATH_STYLING`                          | In-place     |
+
+The Type column describes how each row touches Liberty's layers: **Remove** strips layers, **In-place** restyles kept layers, **Add** inserts new layers, **Replace** swaps a Liberty group for an outdoor version, **Extend** adds to an existing group, and **KEEP** marks untouched Liberty layers.
+
+## Urban Removal — REMOVE_URBAN_LAYERS
+
+Strips the few Liberty layers that exist purely for driving — one-way arrows and US road shields — which add noise to a foot-based map. It runs before every other section, so the layers it removes never re-enter the stack. The layer ids are listed in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 1. Terrain palette — TERRAIN_PALETTE
+
+The base land palette: overrides the colours of Liberty's kept base layers — background, water, landcover and landuse fills, and buildings — with muted, low-saturation tones suited to long reading sessions, letting relief and trails stand out. Every other colour section builds on top of it, and it pairs with the terrain relief below for the topographic feel. Layers are targeted by id and skipped when absent, so the section survives upstream renames. Colours live in the [`COLOURS`](../scripts/build.mjs) object — see [The Style Build](build.md).
+
+## 2. Terrain source & relief — DEM, DEM_HILLSHADE, DEM_TERRAIN
+
+Adds a raster DEM source from the hosted Mapterhorn terrain tiles, powering two optional effects: a 2D hillshade layer that fades in across the low zooms and sits below the water stack, and 3D terrain relief via the style's terrain property. This is what gives the map its topographic depth. The master toggle gates all three; source URL, encoding and exaggeration are configured in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 3. Landcover: rock — LANDCOVER_ROCK
+
+Adds a fill for bare rock and scree — the alpine terrain that Liberty omits entirely. It renders below the other landcover fills so grass, wood and ice draw over it. Data comes from the openmaptiles landcover source-layer; colour and zoom are configured in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 4. Landcover: farmland — LANDCOVER_FARMLAND
+
+The rural lowland counterpart to rock: fills for farmland, orchards and vineyards, which Liberty also omits. It renders below the grass and wood fills so cultivated land sits quietly beneath the natural vegetation. Data comes from the openmaptiles landcover source-layer; configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 5. Landcover: subclass — LANDCOVER_SUBCLASS
+
+Replaces Liberty's flat grass colour with differentiation by subclass — heath, scrub and tundra render distinctly from mown grass and park — so semi-natural vegetation reads at a glance when navigating open countryside. The translucency set by the terrain palette is left untouched. Data comes from the openmaptiles landcover source-layer; colours live in the [`COLOURS`](../scripts/build.mjs) object.
+
+## 6. Landuse: military & quarry — LANDUSE_MILITARY_QUARRY
+
+Warning fills for military areas and quarries — the "do not enter" zones a walker needs to see before planning a route, and both absent from Liberty. They render above the landuse base fills. Data comes from the openmaptiles landuse source-layer; configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 7. Landuse: recreation — LANDUSE_RECREATION
+
+Adds playground fills — small recreation areas worth knowing about on family walks. They render above the military and quarry fills. Data comes from the openmaptiles landuse source-layer; configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 8. Park differentiation — PARK_DIFFERENTIATION
+
+Replaces Liberty's single park fill with differentiated fills by protection class — national parks, nature reserves and other greenspace each get their own tone, so designated protected land is visually distinct — and adds a point label layer on top. Data comes from the openmaptiles park source-layer; colours and zoom ranges are configured in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 9. Water palette — WATER_PALETTE
+
+Restyles the water layers and adds swimming-pool differentiation: pools get a distinct artificial blue so they read separately from natural water. Data comes from the openmaptiles water source-layer; colours live in the [`COLOURS`](../scripts/build.mjs) object.
+
+## 10. Road surface-aware — ROAD_SURFACE_AWARE
+
+The largest single change: removes all ~46 Liberty road layers and replaces them with ~15 outdoor-first layers that group roads by class and by surface, using case expressions on the surface tag. Unpaved roads and tracks render lighter and dashed, so the map instantly tells you whether the "road" ahead is drivable or a gravel track; tunnel and bridge variants (brunnels) get their own fills and casings, with dedicated layers for paths and pedestrian ways. Data comes from the openmaptiles transportation source-layer (class and surface fields). Colours, widths and zoom stops are configured in the [`COLOURS`](../scripts/build.mjs) object and the section constants — see [The Style Build](build.md).
+
+## 11. Building outlines — BUILDING_OUTLINES
+
+Replaces Liberty's filled buildings (2D fill and 3D extrusion) with a single 2D stroke-only outline layer. Buildings stay legible for orientation but stop dominating the map — terrain and trails are the subject. Data comes from the openmaptiles building source-layer; configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 12. Aerialway — AERIALWAY
+
+Adds aerialways — ski lifts, gondolas, cable cars and chairlifts — which Liberty does not render at all, yet are essential for planning mountain days. Data comes from the openmaptiles transportation source-layer (aerialway class); configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 13. Ferry — FERRY
+
+Adds dashed ferry route lines — again absent from Liberty — for foot-accessible lake and river crossings. Data comes from the openmaptiles transportation source-layer (ferry class); configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 14. Rail simplified — RAIL_SIMPLIFIED
+
+Strips Liberty's bridge and tunnel rail variants, keeping only the surface rail lines with their hatching. The bridge/tunnel rail stack is clutter for outdoor navigation. The removed layers are identified by id prefix in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 15. Contours — CONTOURS
+
+Adds contour lines and elevation labels from a server-generated PBF contour tile service — no client-side contour generation. Index lines are drawn stronger than the minor lines between them and carry the elevation labels, giving hillwalkers their most important planning layer. Tile URL, zoom limits and the styling ramps are configured in [`scripts/build.mjs`](../scripts/build.mjs); the tile service is documented in [Contours](contours.md).
+
+## 16. Peak labels — PEAK_LABELS
+
+Extends peak labelling beyond Liberty (which renders no mountain peaks at all): the primary peaks plus secondary peaks, saddles and volcanoes, sized and coloured by rank and class, with elevation in the label. Data comes from the openmaptiles mountain_peak source-layer; colours and sizes are configured in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 17. Park labels — PARK_LABELS
+
+Adds point labels for protected areas — Liberty draws park fills but no names — completing the park story started by the differentiation section. Data comes from the openmaptiles park source-layer; configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## 18. Replace Liberty POIs — REPLACE_LIBERTY_POIS
+
+Replaces Liberty's urban POI tiers with two catalogue-driven tiers of outdoor-relevant classes — campsites, shelters, drinking water, picnic sites and similar — with rank caps so minor POIs never flood the map, and simplifies the transit POI layer to rail stations and airports. The class allowlists, icons and caps all derive from [`pois/catalogue.yml`](../pois/catalogue.yml). Data comes from the openmaptiles poi source-layer; see [Outdoor POIs](pois.md).
+
+## 19. Low-zoom paths — LOW_ZOOM_PATHS
+
+Fills the low-zoom gap where the base tiles carry no path data, so trails exist on the map before the base path layer takes over. Data comes from the self-hosted path vector tiles; see [Low-zoom paths overlay](paths.md).
+
+## 20. Outdoor routes — OUTDOOR_ROUTE
+
+Adds the hiking route network as overlays classified by tier — international, national, regional and local walking networks, plus a fallback tier for routes outside them — so long-distance routes read as a hierarchy. Data comes from the self-hosted route vector tiles; see [Outdoor feature tiles](features.md).
+
+## 21. Outdoor POIs — OUTDOOR_POI
+
+Adds outdoor-specific POIs from the custom hosted tiles — huts, viewpoints, passes, trailheads and more — all declared in the [catalogue](../pois/catalogue.yml) with their icons and name labels. Data comes from the self-hosted outdoor POI tiles; see [Outdoor POIs](pois.md).
+
+## 22. MTB scale — MTB_SCALE
+
+Adds mountain-bike difficulty grades and bicycle-access lines drawn from the `mtb_scale` and `bicycle` fields of the transportation source — fields Liberty ignores entirely. Data comes from the openmaptiles transportation source-layer; colours live in the [`COLOURS`](../scripts/build.mjs) object.
+
+## 23. Path styling — PATH_STYLING
+
+The shared visual language for paths — dash pattern, stroke weight, line caps and joins — applied to Liberty's base path layer and its name labels, so trails read as trails everywhere. It owns the high-zoom range while the low-zoom paths section owns the gap below it. Configuration lives in [`scripts/build.mjs`](../scripts/build.mjs).
+
+## Liberty Layers We Keep
+
+Around 46 Liberty layers are kept untouched, by category: **Background** (2), **Landcover** (5), **Landuse** (6), **Water** (7), **Aeroway** (4), **Paths** (1), **Rail — surface** (4), **Boundaries** (3), **Road labels** (3), **Road shields** (1), **Place labels** (9) and **Transit POI** (1). They are kept because they are either already outdoor-suitable (the landcover and landuse fills, water and boundaries) or infrastructure the outdoor layers depend on (the label stack). A few receive small tweaks from earlier sections: the terrain and water palettes restyle their colours, path styling reworks the base path layer and its labels, and the POI replacement simplifies the transit POI layer.
+
+## Related
+
+- [Docs index](README.md)
+- [The Style Build](build.md) — toggles, the `COLOURS` object, per-feature config
+- [Outdoor feature tiles (POIs & routes)](features.md)
+- [Outdoor POIs (catalogue-driven)](pois.md)
+- [Low-zoom paths overlay](paths.md)
+- [Contours](contours.md)
+- [Build script: `scripts/build.mjs`](../scripts/build.mjs)
+- [Style validation: `scripts/validate-style.mjs`](../scripts/validate-style.mjs)

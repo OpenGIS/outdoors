@@ -1,0 +1,99 @@
+---
+git_hash: "54e9b5ff4be7f762624cc5e7eaa2903b1aaa276b"
+modified: "2026-08-10"
+---
+
+# The Style Build
+
+[`scripts/build.mjs`](../scripts/build.mjs) assembles `style.json` (project root) from the **Liberty base style** (OpenFreeMap fork) plus a stack of outdoor-first sections. This page explains the pipeline conceptually and describes the knobs that control it — feature toggles, colours, per-feature config, and tile endpoints. Implementation detail lives in the script; treat the code as the source of truth.
+
+## The pipeline
+
+Every build runs the same sequence, whichever way it is invoked:
+
+1. **Fetch the base** — the Liberty style is downloaded from GitHub and cached in `.cache/`. Cache invalidation uses the HTTP ETag from the response, so the base auto-updates when upstream changes, and the build works offline (with a warning) when a cache exists and the network is down. See [`fetchLiberty()`](../scripts/build.mjs#L2558-L2610).
+2. **Apply sections** — a sequence of section functions adds, replaces, removes, or restyles layers on a deep-cloned copy of the base. Sections are ordered **bottom → top**, matching the MapLibre rendering stack (background → land → water → roads → overlays → labels), and the section order mirrors the order of the toggles and config blocks above. Each section runs only when its toggle is enabled. See [`build()`](../scripts/build.mjs#L2619-L2744).
+3. **Migrate filters** — Liberty uses expression-style filters, but the output targets legacy filter syntax, so every layer's filter is converted at build time. See [`migrateLibertyFilters()`](../scripts/build.mjs#L570-L575).
+4. **Substitute domains** — Liberty ships with `__TILEJSON_DOMAIN__` placeholders in its tile URLs; these are replaced with the real tile domain while writing the output, so the runtime app never needs to. See [`finalizeStyle()`](../scripts/build.mjs#L558-L562).
+5. **Validate** — the written `style.json` is validated against the MapLibre Style Specification; a spec violation fails the build with exit 1, so an invalid style can never be emitted. See the [`validateStyle()` call](../scripts/build.mjs#L2728-L2735) and the [Validation Gate](style.md#validation-gate).
+
+> [!NOTE]
+> The POI section is **catalogue-driven**: which POIs render, and how, comes from [`pois/catalogue.yml`](../pois/catalogue.yml), parsed once at build start. See [Outdoor POIs (catalogue-driven)](pois.md) for the concept and the implementation.
+
+### The output
+
+The result is a single self-contained `style.json` at the project root — the only thing the style needs to ship. It is **tracked in git**: CI does not rebuild it, so the committed file is exactly what gets deployed (see [Deployment](../README.md#deployment)). Alongside it, the build writes a resolved copy of the base to `.cache/` for subsequent builds, so the domain substitution only has to happen once per upstream update.
+
+### Section anatomy
+
+Each section is one `apply…()` function that mutates the in-progress style in place. Four modes exist:
+
+- **Add** — inserts new layers/sources (hillshade, contours, overlays).
+- **Replace** — swaps out a Liberty layer group for an outdoor-first version (roads, buildings, POIs).
+- **Remove** — deletes layers that do not belong on an outdoor map (urban one-way arrows, rail bridge/tunnel variants).
+- **Restyle** — adjusts paint of a kept Liberty layer (terrain palette, water, path visibility).
+
+Sections that replace a Liberty group insert their layers at the anchor the base layer occupied, so the surrounding stack keeps its relative order. The POI and non-POI sections deliberately interleave their build calls to preserve the exact final layer stack. See the [section ordering comment](../scripts/build.mjs#L33-L45).
+
+### Why assemble at build time
+
+`style.json` could be hand-edited directly, but building it from a base plus sections buys three properties:
+
+- **Upstream tracking** — the Liberty base updates itself via ETag, so the style never silently drifts from upstream.
+- **Determinism** — the output is always a pure function of the base plus the current knobs; anyone can reproduce it with one command.
+- **Safety** — the validation gate guarantees the committed file is always spec-valid, and the build stays runnable offline thanks to the cache.
+
+The trade-off is that `style.json` is generated output, not source: edit the knobs in `build.mjs`, never the built file, and treat the committed `style.json` as an artifact.
+
+## The knobs
+
+Knobs are grouped by kind, in render order, so that flipping a toggle, retuning a colour, or adjusting a zoom range each happens in one predictable place. There are no style literals scattered through the section code — every tunable value lives in one of the four groups below.
+
+### Feature toggles
+
+A block of boolean constants at the top of [`build.mjs`](../scripts/build.mjs#L64-L101), one per section, listed in render order (bottom → top of the layer stack). Flipping a toggle enables or disables that section — `true` to include it in the output, `false` to leave the base style untouched for that feature.
+
+They are the primary "quick comparison" controls:
+
+1. Flip a toggle (or several).
+2. Rebuild — the watcher does this automatically in the dev loop, or run the one-shot build.
+3. Compare the result against reference styles in the compare app.
+
+### Colours
+
+One centralised `COLOURS` object holds **every** colour literal in the file, nested by feature (terrain, landcover, landuse, park, roads, buildings, aerialway, ferry, contours, peaks, POI, routes, MTB, paths). See [`COLOURS`](../scripts/build.mjs#L129-L233).
+
+Concept: one place to retune the whole palette. Section code never hard-codes a colour — it references `COLOURS.<FEATURE>.<KEY>`, so a palette change is a single edit, and the object's grouping doubles as a map of which feature owns which colour.
+
+### Per-feature config
+
+Each section's constants are grouped with its build logic, in the same render order as the toggles — zoom ranges, opacities, widths, tile URLs, label expressions. See the [per-feature config block](../scripts/build.mjs#L284-L549).
+
+These are the tuning knobs beyond colour: each section's behaviour (when it renders, how strong it is, how wide its geometry) is a named constant at the top of its block, next to the `apply…()` function that consumes it.
+
+### Tile endpoints
+
+The hosted outdoor tile overlays — POIs, hiking routes, and the low-zoom paths overlay — derive their URLs from a **single** `TILES_BASE_URL` constant ([self-hosted tiles block](../scripts/build.mjs#L490-L519)). To point every overlay at a different server, change that one constant.
+
+The contour service is separate: a fixed tile URL constant ([`CONTOUR_PBF_TILE_URL`](../scripts/build.mjs#L478)) pointing at the hosted ogis.app contour service. See [Contours](contours.md) for the full implementation.
+
+> [!NOTE]
+> The tile overlays are generated outside this repository from OpenStreetMap data and hosted at `tile.ogis.app` — the build only wires their URLs into the style. See [Outdoor feature tiles](features.md).
+
+## The dev loop
+
+`npm run dev` starts the Vite dev server and a file watcher together ([package.json](../package.json#L7)). The watcher ([`scripts/watch.mjs`](../scripts/watch.mjs)) polls `build.mjs` and auto-rebuilds `style.json` whenever it changes, so:
+
+- Knob edits in `build.mjs` → watcher rebuilds → compare app hot-reloads.
+- Direct edits to `style.json` → Vite HMR applies them instantly.
+
+The compare app ([`dev/src/App.vue`](../dev/src/App.vue)) shows the Outdoors style alongside a selectable reference style — the providers are declared in [`dev/src/providers.json`](../dev/src/providers.json), grouped by category (see the [Comparison App](../README.md#comparison-app) section of the README). Knob changes are instantly comparable. The one-shot command is `node scripts/build.mjs` (`npm run build`); `npm run watch:build` runs the watcher standalone. See the [README Development section](../README.md#development) for the full command list.
+
+## Related
+
+- [docs index](README.md)
+- [Style structure](style.md) — layer-by-layer reference, toggle-by-toggle
+- [Outdoor feature tiles (POIs & routes)](features.md) — how the hosted overlays are produced
+- [Outdoor POIs (catalogue-driven)](pois.md) — the catalogue-driven concept and implementation
+- [Low-zoom paths overlay](paths.md)
+- [Contours](contours.md)

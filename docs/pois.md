@@ -1,126 +1,153 @@
 ---
-git_hash: "b38ed8a5dbedbff5fe73427a9150f1555919b42a"
-modified: "2026-08-08"
+git_hash: "54e9b5ff4be7f762624cc5e7eaa2903b1aaa276b"
+modified: "2026-08-10"
 ---
 
 # Outdoor POIs (catalogue-driven)
 
-> Implementation reference for the outdoors style's POI system: the catalogue format, how `build.mjs` consumes it, the schema generator and the coverage checker.
+> The outdoors style's point-of-interest system is **catalogue-driven**: [`pois/catalogue.yml`](../pois/catalogue.yml) is the single source of truth for which POIs render, where their data comes from, and how they look. This page covers the conceptual model (where a POI comes from, what this repo controls) and the light implementation reference (catalogue format, build consumption, schema generation, coverage checking). How the catalogue plugs into the build pipeline is covered in [The Style Build](build.md).
 
-This page is the implementation reference. For the conceptual model — the layered OSM → OpenMapTiles → tiles → style flow, the Maki naming convention, what we keep from Liberty vs replace, what "promotion" means, and the custom extract's real role — see [How POIs Work](pois-concepts.md).
+## 1. The layered model — where a POI comes from
 
-## Catalogue format
+Four layers, each a translation of the last:
 
-[`pois/catalogue.yml`](../pois/catalogue.yml) — 44 entries (8 ofm tier-1, 18 ofm tier-2, 18 custom), each with:
+- **OpenStreetMap** — raw tags on nodes/ways: `tourism=alpine_hut`, `amenity=drinking_water`, `leisure=park`, `historic=castle`. The universe of possible POIs.
+- **OpenMapTiles schema (OMT)** — the translation layer. The `poi_class()` SQL function (see [`.cache/openmaptiles-poi-class.sql`](../.cache/openmaptiles-poi-class.sql)) maps tag combinations to classes (e.g. `amenity=pub`/`biergarten` → class `beer`; `leisure=park` → `park`); tag values with no explicit mapping fall through to the class itself.
+- **Vector tiles** — the data. Every POI feature carries `class`, `subclass`, `name` and `rank`. Critically, **OMT poi data only exists from z14** — below that the poi layer carries only stations and ferry terminals ([`.cache/openmaptiles-poi-poi.sql`](../.cache/openmaptiles-poi-poi.sql)).
+- **The style** — decides what renders, at what zoom, with which icon. Liberty's style (our base) and this outdoor style are two different answers here. **This is the layer this repo works on.**
+
+> [!WARNING]
+> **The z14 data floor.** OMT poi features simply do not exist below z14 (only railway stations/halts and ferry terminals do). Any POI that renders below z14 must get its data from elsewhere — in this style, from the custom extract (sections 4–5).
+
+Adding a POI to this style is never "add an icon to a style file". It is: declare the class in the catalogue (and optionally the tag map for the custom extract), make sure the Maki name exists, and the data flows from the right source.
+
+## 2. What we keep from Liberty vs what we replace
+
+- **Keep** — the openmaptiles tile source, the Maki sprite, the OMT schema mapping, and 46 of the Liberty base layers (all labels, roads, land, plus `poi_transit` re-filtered to railway + airport only, dropping bus stops).
+- **Replace** — Liberty's three rank-tiered symbol layers (`poi_r1`/`poi_r7`/`poi_r20`) and their rendering rules, with the catalogue-driven `outdoor-poi-z1`/`outdoor-poi-z2`. None of the outdoor style's POI symbol layers originate from Liberty — they are all built here from the catalogue in [`scripts/build.mjs`](../scripts/build.mjs).
+
+### Rank-based disclosure vs class allowlists — what "promotion" means
+
+Liberty renders the **full OMT class universe**, but late, urban-biased and ranked: its three tiers show progressively more POIs per grid cell as you zoom in (z15 → z17), ordered by class importance — hospitals, transit, shops and bars first. Dense city cells fill up tier by tier; sparse rural cells show whatever few POIs they have.
+
+Our catalogue replaces that per-cell ranking with **class allowlists**. When a Liberty POI "becomes ours", two things change:
+
+1. **Zoom** — Liberty's z15/16/17 tiers become z14 for both catalogue tiers (tier 1 nominally declares z12; the OMT data floor makes it z14 in practice, and the custom extract covers the z12–13 window).
+2. **Disclosure** — rank-based progressive disclosure is replaced by allowlists: every allowlisted class renders at its tier zoom regardless of importance, with only the flood-prone classes (park, bus, post) carrying optional density caps.
+
+Predictability over per-cell ranking: the same class renders the same way in every cell — a park icon at the tier zoom is a park icon, not a rank casualty of its neighbours.
+
+## 3. Maki icons: a naming convention, not a contract
+
+Liberty's icon lookup is fully data-driven — the icon name **is** the class name (`["get","class"]` with no fallback). Classes without a Maki glyph silently render icon-less (e.g. `atm`; Liberty's `rail` class was dead because the sprite has `railway`, not `rail`).
+
+Our catalogue deliberately decouples class/kind → icon with an explicit `"marker"` fallback (e.g. `atm` → `bank`, `hut` → `lodging`, `viewpoint` → `star_stroked`). The checker's sprite validation enforces that every icon name exists in the sprite, so a missing glyph fails the build instead of rendering silently.
+
+> [!NOTE]
+> **Maki is a naming convention, not a contract.** There is no promise that a class has a matching glyph. Liberty assumes it (and silently draws nothing when wrong); our catalogue maps explicitly, and the checker fails on any missing glyph.
+
+## 4. The catalogue: one file, two sources
+
+[`pois/catalogue.yml`](../pois/catalogue.yml) declares every POI the style cares about, in two kinds:
+
+- **`source: ofm`** — a class allowlist: "render OMT class X at this tier". Tier 1 (priority classes) → `outdoor-poi-z1`; tier 2 (amenities) → `outdoor-poi-z2`. An optional `rank_max` caps density for flood-prone classes: park, bus and post are dense in cities and outrank shops in the OMT rank, so uncapped they would crowd everything else out of a cell.
+- **`source: custom`** — an OSM tag selector (`include_when`) for the hosted extract tiles (`tile.ogis.app/pois`, source-layer `outdoor_pois`), rendered by the `outdoor-poi` layer. These are the POIs OMT cannot serve — either below z14 or classes it cannot emit.
+
+## 5. The custom extract's real role (not just a "z12–13 gap filler")
+
+8 of the 18 custom kinds render **only** from the extract at every zoom: hut, viewpoint, pass, ranger_station, playground, skiing, bicycle, trailhead — and 4 of those (pass, ranger_station, skiing, trailhead) are classes OMT's poi layer cannot emit at all.
+
+The other 10 kinds dual-source: the extract provides their below-z14 window, and at z14+ they render from both sources with identical icons and labels (harmless redundancy). They are park, castle, water (drinking_water), shelter, parking, picnic_site, information, toilets, campsite and ferry — each declared twice in the catalogue, once per source. Per-kind `min_zoom` gates when a kind appears within the extract's zoom range.
+
+Custom extracts are **area-limited** — `geofabrik:italy` unless overridden (the schema generator's `--area` / `POI_AREA` overrides control the region — see [The schema generator](#the-schema-generator)).
+
+## 6. The pipeline
+
+```mermaid
+flowchart LR
+    A["pois/catalogue.yml"] --> B["npm run check:pois<br/>gap determination"]
+    B -->|"gap report"| A
+    A --> C["npm run pois:schema"]
+    C --> D["pois/pois-schema.yml"]
+    D --> E["remote planetiler build"]
+    E --> F["tile.ogis.app/pois<br/>outdoor_pois tiles"]
+    F --> G["style.json (npm run build)"]
+    A -->|"ofm entries"| G
+```
+
+Each step, and where it runs:
+
+1. **Catalogue** — declare every POI (local source of truth, hand-maintained).
+2. **`npm run check:pois`** — gap determination: dead ofm classes, zero-coverage classes, sprite-missing icons, rank caps; feeds the gap report back to the catalogue. Runs locally.
+3. **`npm run pois:schema`** — generates `pois/pois-schema.yml` from the custom entries. Runs locally.
+4. **Remote planetiler build** — the generated schema is the drop-in input; runs outside this repo (see [features.md](features.md)).
+5. **Hosted tiles** — `tile.ogis.app/pois`, source-layer `outdoor_pois`.
+6. **`npm run build`** — reads the catalogue's ofm allowlists and wires the extract's `outdoor_pois` layer into `style.json`.
+
+## 7. Implementation reference (light)
+
+### Catalogue format
+
+Each entry in [`pois/catalogue.yml`](../pois/catalogue.yml):
 
 | Field          | Sources | Description                                                                       |
 | -------------- | ------- | --------------------------------------------------------------------------------- |
 | `id`           | both    | unique entry identifier                                                           |
-| `source`       | both    | `ofm` (OpenMapTiles `poi` source-layer) or `custom` (hosted `outdoor_pois` tiles) |
-| `class`        | ofm     | OMT `poi` class the entry renders (must exist in the OMT class universe)          |
+| `source`       | both    | `ofm` (OpenMapTiles `poi` layer) or `custom` (hosted `outdoor_pois` tiles)         |
+| `class`        | ofm     | OMT `poi` class the entry renders (must exist in the OMT class universe)           |
 | `tier`         | ofm     | `1` (priority classes) or `2` (amenities)                                         |
-| `rank_max`     | ofm     | optional density cap on the OMT `rank` (park: `6`; bus: `30`; post: `30`)         |
+| `rank_max`     | ofm     | optional density cap on the OMT `rank`                                            |
 | `icon`         | both    | Maki sprite icon name                                                             |
 | `show_title`   | both    | whether the name label renders                                                    |
 | `include_when` | custom  | OSM tag map that selects the feature                                              |
 | `kind`         | custom  | output `kind` attribute for the `outdoor_pois` layer                              |
 | `min_zoom`     | custom  | feature-level zoom in the generated schema                                        |
 
-Tier semantics:
+### How build.mjs consumes the catalogue
 
-- **tier 1** — priority classes (incl. park) render icon + name from z12. Data reality: OMT `poi` data starts at z14, so they effectively render from z14.
-- **tier 2** — amenities render icon + name from z14. `bus` and `post` carry a `rank_max: 30` cap: they outrank shops in the OMT rank, so uncapped they'd flood city cells at z14.
-
-Example — the park is declared twice, once per source:
-
-```yaml
-# ofm: rendered from the OpenMapTiles poi layer (class park). rank_max caps
-# the OMT rank at 6 so pocket parks don't flood the tier-1 layer; OMT poi
-# data only exists from z14, so the cap operates at z14+ in practice.
-- id: park
-  source: ofm
-  class: park
-  tier: 1
-  rank_max: 6
-  icon: park
-  show_title: true
-
-# custom: rendered from the hosted extract, covering the z12–13 window
-# OMT data does not provide.
-- id: park_custom
-  source: custom
-  include_when:
-    leisure: park
-  kind: park
-  min_zoom: 12
-  icon: park
-  show_title: true
-```
-
-## How build.mjs consumes the catalogue
-
-The POI section of [`scripts/build.mjs`](../scripts/build.mjs) (lines 2070–2557) is one contiguous block: catalogue load → derived class/icon lists → constants → helpers → apply functions. The catalogue is parsed at build start; a missing or malformed `pois` array fails the build loudly.
-
-Layers render bottom → top in catalogue order:
+The POI section of [`scripts/build.mjs`](../scripts/build.mjs) is one contiguous block: catalogue load → derived class/icon lists → constants → helpers → apply functions. The catalogue is parsed at build start; a missing or malformed `pois` array fails the build loudly. Layers render bottom → top:
 
 ```
-peaks → park-label → custom outdoor-poi → tier 1 (z1) → tier 2 (z2) → poi_transit
+peaks → park-label → custom outdoor-poi → outdoor-poi-z1 → outdoor-poi-z2 → poi_transit
 ```
 
-- `tier: 1` → `outdoor-poi-z1` (minzoom 12); `tier: 2` → `outdoor-poi-z2` (minzoom 14). The class allowlists are the catalogue's tier classes.
-- Icon maps are generated by `poiIconMatch()` — a `match` expression over `class`/`kind` → sprite icon with the `"marker"` fallback (`POI_ICON_DEFAULT`). `poiTextField()` emits the name when every entry in a group has `show_title: true` (mixed groups get a per-entry `case`).
-- `rankCapCondition()` appends the rank caps to both tier filters: park `rank <= 6` on z1, bus/post `rank <= 30` on z2 (returns null when a tier has no capped entries, keeping the plain filter shape).
-- Peaks and park-label are **not** catalogue-driven — they are kept byte-identical to their previous behaviour (see [§16 / §17](5.style-structure.md#16-peak_labels)).
+- `tier: 1` → `outdoor-poi-z1`; `tier: 2` → `outdoor-poi-z2`. The class allowlists are the catalogue's tier classes. (Peaks and park-label are **not** catalogue-driven — they are kept byte-identical to their previous behaviour.)
+- `poiIconMatch()` generates the icon-image match — class/kind → sprite icon with the `"marker"` fallback. `poiTextField()` emits the name label from a group's `show_title` flags (all true → plain name field; none → icon-only; mixed → a per-entry case).
+- `rankCapCondition()` appends the rank caps to both tier filters; it returns null when a tier has no capped entries, keeping the plain filter shape.
+- `poi_transit` is re-filtered to railway + airport only.
 
-## The schema generator
+### The schema generator
 
 [`scripts/generate-poi-schema.mjs`](../scripts/generate-poi-schema.mjs) (`npm run pois:schema`) writes [`pois/pois-schema.yml`](../pois/pois-schema.yml) from the catalogue's custom entries — one planetiler feature per entry, in catalogue order:
 
 - Layer `outdoor_pois`, geometry `point`, with `include_when` and `min_zoom` copied from the entry.
-- Attributes: `kind` (the entry's kind) and `name` (from the OSM `name` tag); kinds `hut`, `shelter`, `viewpoint`, `pass` also carry `ele` (from the `ele` tag).
-- Source: `osm` with the extract area — default `geofabrik:italy`, overridden with `--area=geofabrik:world` or the `POI_AREA` env var.
+- Attributes: `kind` (the entry's kind) and `name` (from the OSM `name` tag); kinds `hut`, `shelter`, `viewpoint`, `pass` also carry `ele`.
+- Source: `osm` with the extract area — `geofabrik:italy` unless overridden with `--area=geofabrik:world` or the `POI_AREA` env var.
 - The output file is marked GENERATED — change the catalogue, not the schema.
 
-## The coverage checker
+### The coverage checker
 
-[`scripts/check-poi-coverage.mjs`](../scripts/check-poi-coverage.mjs) (`npm run check:pois`) cross-checks the catalogue against three upstreams: the live OpenMapTiles `poi` schema, the built `style.json`, and the sprite sheet. Sections:
+[`scripts/check-poi-coverage.mjs`](../scripts/check-poi-coverage.mjs) (`npm run check:pois`) cross-checks the catalogue against the live OpenMapTiles `poi` schema, the built `style.json`, and the sprite sheet:
 
-| Section                           | What it reports                                                                                                                                                          |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [1] Upstream schema               | ETag-cached `mapping.yaml` / `poi.sql` / `class.sql` / `poi.yaml` from openmaptiles master; subclass universe; class universe (167 values) and how the class is computed |
-| [2] Dead ofm entries              | catalogue classes OMT can never emit or remaps elsewhere (e.g. `pub` → `beer`, `ferry` → `ferry_terminal`) — these render nothing and must be fixed                      |
-| [3] OMT-equivalent custom entries | custom kinds whose OSM tags OMT already ingests — candidates for promotion to ofm instead of the hosted extract                                                          |
-| [4] Style coverage                | ofm classes with no style layer filter (zero coverage = regression bug)                                                                                                  |
-| [5] Sprite icon validation        | fetches the style's sprite JSON and validates every icon-image literal — missing icons exit 1                                                                            |
-| [6] Gap report                    | advisory: ofm entries whose desired zoom is below the OMT data floor (z14) — see below                                                                                   |
-| [7] Rank caps                     | catalogue `rank_max` values: integers in 1..1000, on ofm entries only, and present in the built z1/z2 filters                                                            |
-| [8] Custom kind style coverage    | custom kinds missing from the `outdoor-poi` icon-image match                                                                                                             |
-| [9] Dead icon mappings            | kinds in the icon-image match with no catalogue entry                                                                                                                    |
-| [10] Summary                      | totals + exit code                                                                                                                                                       |
+- **Upstream schema sync** — ETag-cached OMT `poi` files; the class universe and how the class is computed.
+- **Dead/zero-coverage detection** — ofm classes OMT can never emit (these render nothing and must be fixed), custom kinds OMT already ingests (promotion candidates), and ofm classes the built style has no filter for (regression bug).
+- **Sprite icon validation** — fetches the style's sprite JSON and validates every icon-image literal; missing icons fail.
+- **Gap report** — advisory: ofm entries whose desired zoom sits below the OMT data floor, with each entry's custom-coverage status and an OSM-tag suggestion when uncovered.
 
 Exit code is 0 only when fully green: no dead ofm entries, no zero-coverage classes, no sprite-missing icons, no rank-cap issues.
 
-### Reading the gap report ([6])
+## 8. Known data realities
 
-Desired data zoom: tier 1 → **z12**, plain tier 2 → z14 (no gap). Every ofm entry wanting z12 sits below the OMT `poi` data floor (z14), so it renders nothing at z12–13 unless a custom extract covers it. The report lists each entry's custom-coverage status and, when uncovered, an OSM-tag suggestion (`suggestOsmTag` — e.g. `leisure: park`).
-
-Custom coverage is matched by kind name, with an equivalence map for the two kinds whose names differ from the OMT class they cover: `water` covers `drinking_water`, `ferry` covers `ferry_terminal`.
-
-Currently 8 entries want z12 data and **none is uncovered** — every tier-1 class has a custom-extract counterpart in the catalogue (`castle` → `castle_custom`, `drinking_water` → `water`, etc.). This list is the roadmap for custom extracts: add an entry to the catalogue, regenerate the schema, rebuild the hosted tiles.
-
-## Known data realities
-
-- **OMT `poi` data starts at z14.** Tier-1's z12 ambition renders from z14 in practice — still one zoom better than Liberty, which showed its park top tier at z15.
-- **`bus` and `post` carry `rank_max: 30`** — they outrank shops in the OMT rank, so uncapped they'd flood city cells at z14; sparse cells keep every stop.
-- **`atm` uses the `bank` icon** — the Maki sprite has no `atm` glyph; the sprite validation would fail on any icon name absent from the sheet.
-- **Custom extracts are area-limited** (default `geofabrik:italy`). Outside that area only the OFM path provides POIs.
-- **Custom `min_zoom` values below 12 are floored at 12** — the extract's data floor (see [pois-concepts.md §8](pois-concepts.md#8-the-custom-extracts-real-role-not-just-a-z1213-gap-filler)).
+- **OMT `poi` data starts at z14** — tier 1's z12 ambition renders from z14 in practice.
+- **Density caps** — park, bus and post carry `rank_max`; they outrank shops in the OMT rank, so uncapped they would flood city cells at the tier zoom.
+- **`atm` uses the `bank` icon** — the Maki sprite has no `atm` glyph.
+- **Custom extracts are area-limited** (`geofabrik:italy` unless overridden) — outside that area only the ofm path provides POIs.
+- **Custom `min_zoom` values below the extract floor are floored at 12** — the extract cannot serve earlier.
 
 ## Related
 
-- [How POIs Work](pois-concepts.md) — the conceptual model
 - [Docs index](README.md)
-- [Style structure — §18 / §21](5.style-structure.md)
-- [Outdoor feature tiles (POIs & routes)](features.md) — layer overview and tile endpoints
-- [`pois/catalogue.yml`](../pois/catalogue.yml) · [`pois/pois-schema.yml`](../pois/pois-schema.yml)
-- [`scripts/check-poi-coverage.mjs`](../scripts/check-poi-coverage.mjs) · [`scripts/generate-poi-schema.mjs`](../scripts/generate-poi-schema.mjs)
+- [Outdoor feature tiles (POIs & routes)](features.md) — tile generation (planetiler YAML vs Java profile)
+- [Style structure — §18 / §21](style.md) — layer-by-layer style details
+- [The Style Build](build.md) — how the catalogue plugs into the build pipeline
+- [`pois/catalogue.yml`](../pois/catalogue.yml) · [`pois/pois-schema.yml`](../pois/pois-schema.yml) · [`scripts/check-poi-coverage.mjs`](../scripts/check-poi-coverage.mjs) · [`scripts/generate-poi-schema.mjs`](../scripts/generate-poi-schema.mjs)

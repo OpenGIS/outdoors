@@ -10,6 +10,7 @@ import ProviderSelect from "./components/ProviderSelect.vue";
 import { useProviderSelection } from "./composables/useProviderSelection";
 
 // ── Constants ──
+const CONTOURS_TO_IMPERIAL = false;
 const API_KEYS_STORAGE = "outdoors_dev_apiKeys";
 
 // ── Provider selection state (sections, selectedKey, persistence) ──
@@ -122,7 +123,9 @@ onMounted(async () => {
   const rightStyle = JSON.parse(outdoorStyleRaw);
 
   // Patch contour labels to imperial units BEFORE the map parses
-  applyImperialContours(rightStyle);
+  if (CONTOURS_TO_IMPERIAL) {
+    applyImperialContours(rightStyle);
+  }
 
   // Resolve initial left-map style (with API key prompt if needed)
   const entry = selectedEntry.value;
