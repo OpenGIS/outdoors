@@ -1,6 +1,6 @@
 ---
-git_hash: "b38ed8a5dbedbff5fe73427a9150f1555919b42a"
-modified: "2026-08-08"
+git_hash: "c9d1316f40b858e30e1619f2aa40b4a36fb21a11"
+modified: "2026-08-10"
 ---
 
 # Outdoor Feature Tiles (POIs & Routes)
@@ -54,7 +54,7 @@ The tiles are generated and hosted outside this project at **`https://tile.ogis.
 - `https://tile.ogis.app/pois/{z}/{x}/{y}.pbf` — source-layer `outdoor_pois`, z12–16
 - `https://tile.ogis.app/routes/{z}/{x}/{y}.pbf` — source-layer `outdoor_routes`, z8–14
 
-The style consumes them as plain vector sources; both URLs derive from the single `TILES_BASE_URL` constant in [`scripts/build.mjs`](../scripts/build.mjs) (toggle `OUTDOOR_POI` / `OUTDOOR_ROUTE`, both default `true`). See the [Outdoor routes](../README.md#outdoor-routes) and [Outdoor POIs](../README.md#outdoor-pois) sections of the main README for layer styling details. The POI side is catalogue-driven end-to-end — see [How POIs Work](pois-concepts.md) and [Outdoor POIs (catalogue-driven)](pois.md).
+The style consumes them as plain vector sources; both URLs derive from the single `TILES_BASE_URL` constant in [`scripts/build.mjs`](../scripts/build.mjs) (toggles `OUTDOOR_ROUTE` default `true`, `OUTDOOR_POI` default `false`). See the [Outdoor routes](../README.md#outdoor-routes) and [Outdoor POIs](../README.md#outdoor-pois) sections of the main README for layer styling details. The POI side is catalogue-driven end-to-end — see [How POIs Work](pois-concepts.md) and [Outdoor POIs (catalogue-driven)](pois.md).
 
 ## Related
 

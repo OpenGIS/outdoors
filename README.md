@@ -1,5 +1,5 @@
 ---
-last_commit: "b38ed8a5dbedbff5fe73427a9150f1555919b42a"
+last_commit: "c9d1316f40b858e30e1619f2aa40b4a36fb21a11"
 ---
 
 # Outdoors
@@ -45,6 +45,10 @@ No external source — overrides the Liberty base-layer colours with muted, refe
 No external source — overrides the Liberty base-layer road colours with a muted warm-taupe palette, replacing Liberty's bright yellow/orange roads with an outdoor-first hierarchy in which local roads and forest tracks are the most visible. Local roads were lightened and desaturated so they read clearly against the brown contour lines, while the contours stay the saturated brown family.
 
 - Toggle: `ROAD_PALETTE` (default `false` — superseded by `ROAD_SURFACE_AWARE`) — applies the muted colour overrides to Liberty's road fills and casings via `applyRoadPalette()`
+
+> [!NOTE]
+> `ROAD_PALETTE` is disabled in the default build — everything below (including the `ROAD_TRACK_*` constants) describes this legacy feature and does **not** apply to the shipped style. The active road styling is `ROAD_SURFACE_AWARE` (see [docs/5.style-structure.md §10](docs/5.style-structure.md#10-road_surface_aware)).
+
 - Outdoor-first hierarchy (most visible → most recessive):
   - `COLOURS.ROADS.LOCAL` `rgb(255, 255, 255)` — minor/service/track/street fills (white core that pops against the brown contour lines)
   - `COLOURS.ROADS.MEDIUM` `rgb(223, 211, 188)` — secondary/tertiary/link fills
@@ -52,7 +56,7 @@ No external source — overrides the Liberty base-layer road colours with a mute
   - `COLOURS.ROADS.CASING` `rgb(183, 168, 145)` — non-track casing layers
   - `COLOURS.ROADS.TRACK_CASING` `rgb(146, 118, 86)` — track/service road casing (darker warm brown, applied with `ROAD_TRACK_CASING_WIDTH`)
 - Tunnel fills render at `ROAD_TUNNEL_OPACITY` (0.55) — faded so their dash patterns stay readable
-- Track width/zoom boost: `ROAD_TRACK_WIDTH` (`["interpolate", ["exponential", 1.2], ["zoom"], 12, 1, 13, 1.5, 14, 2, 15, 3, 16, 4, 20, 9.5]`) renders service/track fills from z12 — the earliest zoom where OpenMapTiles tiles include track geometry — roughly 2× thicker at low zoom than the previous ramp
+- Track width/zoom boost: `ROAD_TRACK_WIDTH` (`["interpolate", ["exponential", 1.2], ["zoom"], 12, 1, 13, 1.5, 14, 2, 15, 3, 16, 4, 20, 9.5]`) renders service/track fills from z12 — the earliest zoom where OpenMapTiles tiles include track geometry
 - Track casing: `ROAD_TRACK_CASING_WIDTH` (`["interpolate", ["exponential", 1.2], ["zoom"], 12, 2, 13, 3, 14, 4, 15, 5.5, 16, 7, 20, 12.5]`) draws a ~2px dark outline in `COLOURS.ROADS.TRACK_CASING` (`rgb(146, 118, 86)`) around the three service-track casing layers, so low-zoom tracks read clearly against land and contours
 - Track name labels: `ROAD_TRACK_LABEL_MINZOOM` (13) promotes `highway-name-minor` (minor/service/track name labels) from Liberty's z15, so forest roads are labelled as soon as they render
 - Paths/pedestrian styling is separate — the path promotion (`COLOURS.PATHS.PATH`, #c05a2a) is untouched by this section (see [Path & trail visibility](#path--trail-visibility))
@@ -72,7 +76,7 @@ Gated by the `CONTOURS` boolean toggle in `scripts/build.mjs` (default `true`). 
 - **Hosted PBF vector tiles** — server-generated Mapbox Vector Tiles from the **ogis.app hosted contour service** (self-hosted [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server), serves z0–17): `https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf`
   - The contour service renders tiles server-side from the Mapterhorn DEM — the same `tiles.mapterhorn.com` endpoint used by `DEM_SOURCE_URL` — so no client-side contour generation is needed
   - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`), served z9–14 (`CONTOUR_PBF_SOURCE_MINZOOM`/`MAXZOOM`)
-  - Three layers — `contour-lines` (minor), `contour-lines-index` (index), `contour-labels` — share the styling constants (`CONTOUR_WIDTH_*`, `CONTOUR_OPACITY_*`, `COLOURS.CONTOURS`)
+  - Two layers — `contour-lines` (minor + index merged into one layer via a `case` on `ele % 100`) and `contour-labels` — share `COLOURS.CONTOURS`; width and opacity ramps are inline in the layer paint
   - Labels are metric at build time; the compare app converts them to imperial via `applyImperialContours()` in [`dev/src/App.vue`](dev/src/App.vue)
 
 > [!NOTE]
@@ -107,13 +111,13 @@ See [docs/paths.md](docs/paths.md) for the full implementation reference.
   - Source-layer: `outdoor_pois`, tile URL `https://tile.ogis.app/pois/{z}/{x}/{y}.pbf` (via `TILES_BASE_URL`), zoom range z12–16
   - Icon map generated from the [POI catalogue](pois/catalogue.yml) — kind→Maki-sprite-icon match with `"marker"` fallback; all kinds carry name labels
   - Inserted at the base-map POI anchor (where Liberty's `poi_r20` sat) — above the outdoor route lines, below base-map POIs and labels
-  - Toggle: `OUTDOOR_POI` (default `true`)
+  - Toggle: `OUTDOOR_POI` (default `false`)
 - The whole POI pipeline is catalogue-driven: `pois/catalogue.yml` → `npm run check:pois` (gap determination) → `npm run pois:schema` (generated planetiler schema) → remote build → hosted tiles → `style.json`. See [docs/pois-concepts.md](docs/pois-concepts.md) for how the POI system works and [docs/pois.md](docs/pois.md) for the implementation reference.
 
 ### MTB scale & bicycle access
 
 - **OpenMapTiles `transportation`** source-layer overlays that highlight mountain bike difficulty (`mtb_scale`) and bicycle access on tracks.
-  - Toggle: `MTB_SCALE` (default `true`)
+  - Toggle: `MTB_SCALE` (default `false`)
   - MTB grades: 1 (blue), 2 (red), 3+ (black)
   - Bicycle access: purple overlay
   - Drawn from the base Liberty style's existing data source — no additional tile server
@@ -205,7 +209,6 @@ The compare app demo is deployed to **GitHub Pages** by [`.github/workflows/depl
 │   ├── validate-style.mjs # Style spec validation (npm run validate:style; also runs on every build)
 │   ├── check-poi-coverage.mjs  # POI coverage check (npm run check:pois)
 │   ├── generate-poi-schema.mjs # Planetiler schema generator (npm run pois:schema)
-│   ├── comparison.mjs   # Dev utility: Liberty + palette-only comparison style
 │   └── watch.mjs        # File watcher (auto-rebuild on build.mjs changes)
 ├── pois/
 │   ├── catalogue.yml    # Single source of truth for outdoor POIs

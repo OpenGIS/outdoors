@@ -22,14 +22,13 @@
  *   Slice 1 wires up the feature toggles, colour & config constants, and
  *   the section functions. Sections that are not yet implemented are
  *   stubbed with a `// TBD: Slice N` comment; sections that already
- *   existed keep their current implementation, so the default output
- *   (TERRAIN_PALETTE + ROAD_PALETTE only) is unchanged.
+ *   existed keep their current implementation.
  *
  * Feature toggles at the top enable/disable each section. Per-feature
- * config blocks follow in the same render order. Both outdoor overlay
- * sections (POIs & routes) derive their tile URLs from a single
- * configurable endpoint, TILES_BASE_URL — change that one constant to
- * point at the production tile server.
+ * config blocks follow in the same render order. The outdoor POI and
+ * route overlay sections derive their tile URLs from a single
+ * production endpoint, TILES_BASE_URL — which already points at the
+ * production tile server (https://tile.ogis.app).
  *
  * Sections are ordered from bottom to top in the render stack:
  *  urban removal → terrain palette → road palette → DEM (hillshade, terrain) →
@@ -371,12 +370,6 @@ const ROAD_LOCAL_STOPS = [
   [14, 2],
   [20, 8],
 ];
-const ROAD_TRACK_WIDTH_V2_STOPS = [
-  [12, 1],
-  [13, 1.5],
-  [14, 2],
-  [20, 8],
-];
 
 // Build v5-valid zoom-interpolate expression from stops.  v5 requires
 // zoom-based expressions at the top level of a paint property — no nesting
@@ -467,43 +460,6 @@ const FERRY_DASHARRAY = [4, 3];
 // the same tiles.mapterhorn.com endpoint used by DEM_SOURCE_URL.
 // Gated by the CONTOURS toggle. See docs/contours.md for details.
 
-// Styling shared by the minor/index/label contour layers
-const CONTOUR_WIDTH_MINOR = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  0.5,
-  14,
-  1.0,
-];
-const CONTOUR_WIDTH_INDEX = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  0.7,
-  14,
-  1.1,
-];
-const CONTOUR_OPACITY_MINOR = [
-  "interpolate",
-  ["linear"],
-  ["zoom"],
-  12,
-  0.4,
-  14,
-  0.5,
-];
-const CONTOUR_OPACITY_INDEX = [
-  "interpolate",
-  ["linear"],
-  ["zoom"],
-  12,
-  0.55,
-  14,
-  0.7,
-];
 const CONTOUR_LAYER_MAXZOOM = 20;
 
 // Label expression — always metric at build time.
@@ -523,9 +479,17 @@ const CONTOUR_PBF_TILE_URL = "https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf";
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
-// ── Self-hosted outdoor vector tiles ────────────────────────────────
-// One configurable endpoint serves BOTH the outdoor POI and route tiles
-// (`/pois/...` and `/routes/...`).
+// Contour line rendering — width (px) and opacity at the zoom-ramp endpoints.
+// The ramp runs CONTOUR_PBF_SOURCE_MINZOOM → 14 (see applyContours). Index =
+// every 100 m (ele % 100 === 0), minor = intermediate contours.
+const CONTOUR_WIDTH_INDEX = { low: 0.5, high: 1.1 };
+const CONTOUR_WIDTH_MINOR = { low: 0.4, high: 1.0 };
+const CONTOUR_OPACITY_INDEX = { low: 0.4, high: 0.7 };
+const CONTOUR_OPACITY_MINOR = { low: 0.35, high: 0.5 };
+
+// ── Externally hosted outdoor vector tiles ──────────────────────────
+// A single production endpoint (https://tile.ogis.app) serves BOTH the
+// outdoor POI and route tiles (`/pois/...` and `/routes/...`).
 // (prefixes `/pois/...` and `/routes/...` directly — the old `/features` prefix is retired)
 
 const TILES_BASE_URL = "https://tile.ogis.app";
@@ -1834,18 +1798,18 @@ function applyContours(style) {
           ["linear"],
           ["zoom"],
           CONTOUR_PBF_SOURCE_MINZOOM,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.4, 0.35],
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_OPACITY_INDEX.low, CONTOUR_OPACITY_MINOR.low],
           14,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.7, 0.5],
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_OPACITY_INDEX.high, CONTOUR_OPACITY_MINOR.high],
         ],
         "line-width": [
           "interpolate",
           ["exponential", 1.2],
           ["zoom"],
           CONTOUR_PBF_SOURCE_MINZOOM,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], 0.5, 0.4],
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_WIDTH_INDEX.low, CONTOUR_WIDTH_MINOR.low],
           14,
-          ["case", ["==", ["%", ["get", "ele"], 100], 0], 1.1, 1.0],
+          ["case", ["==", ["%", ["get", "ele"], 100], 0], CONTOUR_WIDTH_INDEX.high, CONTOUR_WIDTH_MINOR.high],
         ],
       },
     },
@@ -2139,7 +2103,6 @@ const PEAK_LABEL_HALO_WIDTH = 1;
 const PEAK_LABEL_HALO_BLUR = 1;
 
 // Extended peak tiers
-const PEAK_RANK1_MINZOOM = 7;
 const PEAK_RANK23_MINZOOM = 10;
 const SADDLE_MINZOOM = 10;
 const VOLCANO_MINZOOM = 6;
@@ -2622,16 +2585,6 @@ async function fetchLiberty() {
   writeFileSync(CACHE_FILE, text, "utf8");
   writeFileSync(CACHE_META_FILE, etag, "utf8");
   console.log(`[build] cached liberty style to ${CACHE_FILE}`);
-
-  const resolved = finalizeStyle(JSON.parse(text));
-  writeFileSync(
-    CACHE_PROCESSED_FILE,
-    `${JSON.stringify(resolved, null, 2)}\n`,
-    "utf8",
-  );
-  console.log(
-    `[build] cached resolved liberty style to ${CACHE_PROCESSED_FILE}`,
-  );
 
   return JSON.parse(text);
 }

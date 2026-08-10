@@ -1,6 +1,6 @@
 ---
-git_hash: "b7695ba429f1267d7f4e697c9979e83142571555"
-modified: "2026-08-05"
+git_hash: "c9d1316f40b858e30e1619f2aa40b4a36fb21a11"
+modified: "2026-08-10"
 ---
 
 # Contours
@@ -99,7 +99,7 @@ Mapterhorn is the adopted terrain tile provider for the project. The **same** Ma
 flowchart LR
     DEM["Mapterhorn DEM<br/>tiles.mapterhorn.com"] -->|"1. client fetch"| HILL["demSource raster-dem<br/>→ hillshade"]
     DEM -->|"2. server fetch"| SERVER["ogis.app contour-mvt-server<br/>marching squares"]
-    SERVER -->|"z/x/y.pbf"| STYLE["contour-source<br/>3 contour layers"]
+    SERVER -->|"z/x/y.pbf"| STYLE["contour-source<br/>2 contour layers"]
 ```
 
 The same tile URL is therefore fetched twice — once by the client, once by the tile server — but the CDN serves the second request from cache, so the extra fetch is effectively free. This is why the client and server can share a single provider.
@@ -118,11 +118,12 @@ Two layers are inserted at the water stack index (above landcover, below water):
 
 Styling constants (all in [`scripts/build.mjs`](../scripts/build.mjs)):
 
-- `CONTOUR_WIDTH_MINOR` / `CONTOUR_WIDTH_INDEX` — line widths (interpolated z12 → z14)
-- `CONTOUR_OPACITY_MINOR` / `CONTOUR_OPACITY_INDEX` — opacities (interpolated z12 → z14)
 - `CONTOUR_LAYER_MAXZOOM` — layer visibility ceiling (20)
 - `CONTOUR_LABEL_EXPR` — the metric label expression
 - `COLOURS.CONTOURS` — `MINOR` sand-brown `rgb(198, 170, 138)`, `INDEX` topo-brown `rgb(164, 130, 94)`, `LABEL` dark umber `#5c4634`, `HALO` semi-transparent white
+- `CONTOUR_WIDTH_INDEX` / `CONTOUR_WIDTH_MINOR` — index/minor line width (px) at the zoom-ramp endpoints: `{ low: 0.5, high: 1.1 }` / `{ low: 0.4, high: 1.0 }`
+- `CONTOUR_OPACITY_INDEX` / `CONTOUR_OPACITY_MINOR` — index/minor line opacity at the zoom-ramp endpoints: `{ low: 0.4, high: 0.7 }` / `{ low: 0.35, high: 0.5 }`
+- The `contour-lines` paint references these constants — a `case` on `ele % 100` picks index vs minor at each ramp stop, interpolated z9 → z14 (index = every 100 m, `ele % 100 === 0`)
 
 ## Zoom ceiling
 

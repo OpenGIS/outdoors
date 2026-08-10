@@ -1,5 +1,5 @@
 <script setup>
-import { ref, shallowRef, watch, onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MaplibreCompare from "@maplibre/maplibre-gl-compare";
@@ -60,109 +60,45 @@ async function ensureApiKey(provider) {
 }
 
 // ── Cache for fetched remote style JSONs ──
-const styleCache = shallowRef({});
+const styleCache = {};
 
 // ── Map state ──
 const compareEl = ref(null);
 let leftMap = null;
 let rightMap = null;
 
-function applyLeftStyle(style) {
-  if (leftMap) {
-    leftMap.setStyle(style, { diff: false });
-  }
-}
-
-function tileJsonToStyle(tj) {
-  // Convert a TileJSON response into a minimal MapLibre style
-  const sourceId = `remote-${tj.id || "source"}`;
-  const sourceType = tj.format === "pbf" ? "vector" : tj.type || "vector";
-  const layers = (tj.vector_layers || []).map((vl) => {
-    const id = vl.id || "";
-    let type = "line";
-    if (
-      /-area$/.test(id) ||
-      /^(landcover|landuse|park|water|ocean|glacier|wetland|building|golf|pitch|protected-area|railway-platform|road-area)/.test(
-        id,
-      )
-    ) {
-      type = "fill";
-    } else if (/-label$/.test(id)) {
-      type = "symbol";
-    } else if (/-(lowzoom|line)$/.test(id)) {
-      type = "line";
-    }
-    const layer = {
-      id,
-      type,
-      source: sourceId,
-      "source-layer": id,
-    };
-    if (type === "symbol") {
-      layer.layout = {
-        "text-field": ["get", "name"],
-        "text-font": ["Open Sans Regular"],
-        "text-size": 10,
-      };
-      layer.paint = { "text-color": "#333" };
-    }
-    if (type === "fill") {
-      layer.paint = { "fill-color": "#ccc", "fill-opacity": 0.3 };
-    }
-    if (type === "line") {
-      layer.paint = { "line-color": "#888", "line-width": 1 };
-    }
-    return layer;
-  });
-
-  return {
-    version: 8,
-    name: tj.name || "Remote TileJSON",
-    sources: {
-      [sourceId]: {
-        type: sourceType,
-        tiles: tj.tiles,
-        minzoom: tj.minzoom,
-        maxzoom: tj.maxzoom,
-        attribution: tj.attribution,
-      },
-    },
-    layers,
-  };
-}
-
 async function resolveStyle(entry) {
   if (entry?.style) return entry.style;
   if (entry?.styleUrl) {
-    const cached = styleCache.value[entry.key];
+    const cached = styleCache[entry.key];
     if (cached) return cached;
     try {
       const res = await fetch(entry.styleUrl);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      // Detect TileJSON vs MapLibre Style JSON
-      const style = json.tilejson ? tileJsonToStyle(json) : json;
-      styleCache.value[entry.key] = style;
+      const style = json;
+      styleCache[entry.key] = style;
       return style;
     } catch (e) {
       console.warn(`[App] Failed to fetch "${entry.label}":`, e);
       return null;
     }
   }
-  return null;
+}
+
+async function resolveProviderStyle(key) {
+  const provider = allProviders.value.find((p) => p.key === key);
+  if (!provider) return null;
+  const resolved = await ensureApiKey(provider);
+  if (!resolved) return null;
+  return resolveStyle(resolved);
 }
 
 // ── Apply style when selection changes ──
 watch(selectedKey, async (key) => {
   if (!leftMap) return;
-  const provider = allProviders.value.find((p) => p.key === key);
-  if (!provider) return;
-
-  const resolved = await ensureApiKey(provider);
-  if (!resolved) return;
-
-  const style = await resolveStyle(resolved);
-  if (style) applyLeftStyle(style);
+  const style = await resolveProviderStyle(key);
+  if (style) leftMap.setStyle(style, { diff: false });
 });
 
 /**
@@ -190,8 +126,7 @@ onMounted(async () => {
 
   // Resolve initial left-map style (with API key prompt if needed)
   const entry = selectedEntry.value;
-  const resolvedEntry = entry ? await ensureApiKey(entry) : null;
-  const leftStyle = resolvedEntry ? await resolveStyle(resolvedEntry) : null;
+  const leftStyle = entry ? await resolveProviderStyle(entry.key) : null;
 
   leftMap = new maplibregl.Map({
     container: "left",

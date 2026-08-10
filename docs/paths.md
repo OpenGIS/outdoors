@@ -1,6 +1,6 @@
 ---
-git_hash: "b7695ba429f1267d7f4e697c9979e83142571555"
-modified: "2026-08-05"
+git_hash: "c9d1316f40b858e30e1619f2aa40b4a36fb21a11"
+modified: "2026-08-10"
 ---
 
 # Low-Zoom Paths Overlay
@@ -41,7 +41,7 @@ The profile includes **`path` + `track` + `footway`** — the full recommended s
 | `path` + `track` only                             | ~46.2 M                           | The true outdoor subset (16.4 M + 29.8 M). Smallest footprint; urban footpaths absent at low zoom.                                                         |
 | `path` only                                       | ~16.4 M                           | Trail focus only; misses forest tracks that are often the only "path" in a region.                                                                         |
 
-The style draws `class ∈ {path, pedestrian}` for paths, and tracks via `road_service_track` — which the base palette promotes to render from z12 (the earliest zoom where OpenMapTiles tiles carry track geometry) with a dark casing (`ROAD_TRACK_CASING_WIDTH`, [`scripts/build.mjs:322`](../scripts/build.mjs)) and name labels from z13 (`ROAD_TRACK_LABEL_MINZOOM`, [`scripts/build.mjs:340`](../scripts/build.mjs)). The overlay including tracks simply means they appear from z9 (the overlay's minzoom) instead of z12 — consistent with the outdoor-first palette where tracks are already emphasised (`ROAD_TRACK_WIDTH`, [`scripts/build.mjs:304`](../scripts/build.mjs)).
+The style draws `class ∈ {path, pedestrian}` for paths, and tracks via the `outdoor-local-fill` layer (`minor`/`service`/`track`, minzoom 12 — the earliest zoom where OpenMapTiles tiles carry track geometry) with the darker `COLOURS.ROADS.TRACK_CASING` casing ([`scripts/build.mjs:1547`](../scripts/build.mjs)). The overlay including tracks simply means they appear from z9 (the overlay's minzoom) instead of z12. (The legacy `ROAD_PALETTE` track width/casing ramps and z13 label promotion — `ROAD_TRACK_WIDTH`, `ROAD_TRACK_CASING_WIDTH`, `ROAD_TRACK_LABEL_MINZOOM` — only take effect when that disabled feature is enabled.)
 
 ## 4. Planetiler profile — `FootpathOverlay.java`
 
