@@ -63,7 +63,7 @@ No external source — overrides the Liberty base-layer road colours with a mute
 
 ### DEM — hillshade & terrain
 
-- **[Mapterhorn](https://tiles.mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 17) with the required `© Mapterhorn` attribution. A single `demSource` raster-dem source is created when the `DEM` toggle below is enabled and feeds both the hillshade layer and 3D terrain. The same Mapterhorn DEM also feeds the ogis.app contour service server-side.
+- **[Mapterhorn](https://mapterhorn.com/)** — raster DEM tiles in Terrarium encoding (512 px, maxzoom 17) with the required `© Mapterhorn` attribution. A single `demSource` raster-dem source is created when the `DEM` toggle below is enabled and feeds both the hillshade layer and 3D terrain. The same Mapterhorn DEM also feeds the ogis.app contour service server-side.
   - Toggle: `DEM` (default `true`) — the master switch; creates the shared `demSource` raster-dem source (Mapterhorn, Terrarium, 512 px, maxzoom 17). Hillshade and terrain both read from it.
   - Toggle: `DEM_HILLSHADE` (default `true`) — a 2D hillshade layer drawn from the DEM source. Fades in from z3 to z5 (hillshade exaggeration 0 → 0.2) and renders above landcover but below contours and water.
   - Toggle: `DEM_TERRAIN` (default `true`) — 3D terrain elevation (`style.terrain.exaggeration`, 1.5) drawn from the DEM source.
@@ -78,9 +78,6 @@ Gated by the `CONTOURS` boolean toggle in `scripts/build.mjs` (default `true`). 
   - Tile URL is a fixed constant (`CONTOUR_PBF_TILE_URL`), served z9–14 (`CONTOUR_PBF_SOURCE_MINZOOM`/`MAXZOOM`)
   - Two layers — `contour-lines` (minor + index merged into one layer via a `case` on `ele % 100`) and `contour-labels` — share `COLOURS.CONTOURS`; width and opacity ramps are inline in the layer paint
   - Labels are metric at build time; the compare app converts them to imperial via `applyImperialContours()` in [`dev/src/App.vue`](dev/src/App.vue)
-
-> [!NOTE]
-> The local `contours/` tile server and the client-side contour generation plugin have been removed — contours are purely server-generated PBF tiles served from `tile.ogis.app`.
 
 ### Mountain peak labels
 
@@ -131,13 +128,7 @@ No additional data source — this section restyles two existing Liberty layers 
 
 ---
 
-## Development setup
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 20+ (ESM project)
-
-### Quick start
+## Development
 
 ```bash
 npm install            # install dependencies
@@ -175,71 +166,15 @@ All outdoor tile overlays are served from the hosted `tile.ogis.app` service, bu
 - Outdoor POI, route and path tile URLs derive from the single `TILES_BASE_URL` constant in `scripts/build.mjs`, pointing at `https://tile.ogis.app` (`/routes/{z}/{x}/{y}.pbf` for routes, `/pois/{z}/{x}/{y}.pbf` for POIs, `/paths/{z}/{x}/{y}.pbf` for the low-zoom paths overlay)
 - Contours are a separate fixed constant (`CONTOUR_PBF_TILE_URL`) pointing at the hosted ogis.app contour service
 
-> [!NOTE]
-> The local `features/` tile generator has been removed — POI and route tiles are now generated and hosted outside this project at `tile.ogis.app`. POIs are catalogue-driven (see [docs/pois.md](docs/pois.md)); routes use a Java profile (see [docs/features.md](docs/features.md)).
-
 ### Deployment
 
 The compare app demo is deployed to **GitHub Pages** by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) — on every push to `master` (or manual `workflow_dispatch`), the workflow runs `npm ci` + `npm run demo:build` and publishes the `demo/` directory via `actions/deploy-pages`. CI does not rebuild the style: `style.json` is tracked in git and built locally (see [Scripts](#scripts)).
 
-### Project structure
+## Comparison App
 
-```
-./
-├── .cache/              # Liberty style cache (auto-created, gitignored)
-│   ├── liberty.json               # Raw fetched style
-│   └── liberty-processed.json     # Resolved copy (domain substitutes baked in)
-├── dev/
-│   ├── index.html       # Compare app entry
-│   ├── index.js         # Vue app bootstrap
-│   └── src/
-│       ├── App.vue              # Compare app UI
-│       ├── providers.json       # Provider configuration (styles, styleUrls, apiKey flags)
-│       ├── components/
-│       │   └── ProviderSelect.vue   # Grouped provider dropdown component
-│       ├── composables/
-│       │   └── useProviderSelection.js  # Provider selection state + localStorage persistence
-│       └── styles/
-│           ├── reset.css        # CSS reset
-│           └── style.css        # App styles
-├── docs/                # Developer documentation (index: docs/README.md)
-├── style.json           # Generated output (tracked in git)
-├── scripts/
-│   ├── build.mjs        # Style build script — entry point for all feature flags
-│   ├── validate-style.mjs # Style spec validation (npm run validate:style; also runs on every build)
-│   ├── check-poi-coverage.mjs  # POI coverage check (npm run check:pois)
-│   ├── generate-poi-schema.mjs # Planetiler schema generator (npm run pois:schema)
-│   └── watch.mjs        # File watcher (auto-rebuild on build.mjs changes)
-├── pois/
-│   ├── catalogue.yml    # Single source of truth for outdoor POIs
-│   └── pois-schema.yml  # Generated planetiler schema (do not edit by hand)
-├── demo/                # Production build output (tracked in git)
-├── package.json
-└── vite.config.js
-```
-
-## Comparison map provider system
-
-The compare app (`dev/src/App.vue`) lets you switch the left-hand reference map between multiple providers, configured in [`dev/src/providers.json`](dev/src/providers.json). Providers are declared in two groups in `providers.json` and grouped by category (Misc, Outdoor, Topo, Satellite, Sports, Terrain, Waymarked Trails) into the dropdown:
+Switch the left-hand reference map between multiple providers, configured in [`dev/src/providers.json`](dev/src/providers.json). Providers are declared in two groups in `providers.json` and grouped by category (Misc, Outdoor, Topo, Satellite, Sports, Terrain, Waymarked Trails) into the dropdown:
 
 | Group             | Description                                    | Examples                                                     |
 | ----------------- | ---------------------------------------------- | ------------------------------------------------------------ |
 | **Remote Vector** | Fetched via `styleUrl` at runtime              | OpenFreeMap Liberty, Thunderforest Atlas, MapTiler Outdoor   |
 | **Remote Raster** | Inline style definitions with raster tile URLs | OpenTopoMap, Thunderforest Outdoors, Waymarked Trails Hiking |
-
-### API key management
-
-Providers that require an API key have `"apiKey": true` in their config. Their URLs contain a `{apiKey}` token replaced at runtime:
-
-- `ensureApiKey()` in `App.vue` checks `localStorage` (key `outdoors_dev_apiKeys`) for a stored key
-- If no key is found when the user **selects** a key-protected provider, a `window.prompt()` asks for one
-- The key is then stored in `localStorage` and injected into the provider config via `replaceApiKeyTokens()`
-- **No prompt appears on page load** — the default selection is explicitly OpenFreeMap Liberty (constant `DEFAULT_PROVIDER_KEY` in `dev/src/composables/useProviderSelection.js`), falling back to the first provider without `apiKey` if Liberty is unavailable. Stale or invalid saved selections are corrected to the default on load.
-
-## Further Reading
-
-- [Outdoor POIs](docs/pois.md) - catalogue-driven POI implementation (catalogue → checker → generated schema → hosted tiles)
-- [Contours](docs/contours.md) - hosted PBF contour implementation reference
-- [Paths overlay](docs/paths.md) - low-zoom paths implementation reference (Planetiler profile + style handoff)
-- [Outdoor feature tiles](docs/features.md) - POIs & routes
-- [Full docs index](docs/README.md)
