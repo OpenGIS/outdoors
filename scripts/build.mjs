@@ -463,7 +463,7 @@ const FERRY_DASHARRAY = [4, 3];
 // PBF vector contour tiles from the ogis.app hosted contour service
 // (contour-mvt-server), generated server-side from the Mapterhorn DEM —
 // the same tiles.mapterhorn.com endpoint used by DEM_SOURCE_URL.
-// Gated by the CONTOURS toggle. See docs/5.contours.md for details.
+// Gated by the CONTOURS toggle. See docs/5.dem.md for details.
 
 const CONTOUR_LAYER_MAXZOOM = 20;
 
@@ -533,7 +533,14 @@ const PATHS_LAYER_MAXZOOM = 14; // exclusive — hands off to road_path_pedestri
 // Path styling shared between the low-zoom overlay (z9–13) and the
 // promoted base layer road_path_pedestrian (z14+) so the two render as
 // one continuous visual family — no duplicated literals.
-const PATH_LINE_CAP = "round";
+// Cap for the path family. BUTT (not round): with round caps + a
+// zoom-interpolated line-width, MapLibre fails to apply line-dasharray —
+// paths render as solid red lines instead of dashed. Butt caps render the
+// dash correctly at every zoom; dash ends are square instead of rounded,
+// which is barely visible at these widths (the Liberty base style uses the
+// default butt cap). Constant-width dashed layers (e.g. ferry) are
+// unaffected and keep round caps.
+const PATH_LINE_CAP = "butt";
 const PATH_LINE_JOIN = "round";
 const PATH_DASHARRAY = [1, 0.7]; // matches the Liberty base road_path_pedestrian dash
 const PATH_WIDTH = [
@@ -559,6 +566,38 @@ const PATH_WIDTH_LOW_ZOOM = [
   2,
 ]; // overlay width z9–13; z13 ≈ PATH_WIDTH at z14 for a seamless handoff
 const PATH_BASE_MINZOOM = 14; // road_path_pedestrian renders from here; the overlay owns z9–13
+
+// Path/footway ways render from z9 (route-gated tiers keep earlier zooms);
+// track-class ways are handled separately below (PATHS_OVERLAY_TRACK_CLASSES).
+const PATHS_OVERLAY_CLASSES = ["path", "footway"];
+
+// Tracks are re-drawn from the overlay at z12–13 because OMT tiles carry
+// only a subset of track geometry below z14; styled as local roads (paved
+// look, no surface attribute).
+const PATHS_OVERLAY_TRACK_CLASSES = ["track"];
+const PATHS_TRACK_MINZOOM = 12; // below z12 nothing renders, matching the OMT local-road family's own start
+const PATH_TRACK_WIDTH_LOW_ZOOM = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  12,
+  1,
+  13,
+  2,
+  14,
+  2,
+]; // fill width; z13=2 matches OMT outdoor-local-fill at z14 (ROAD_LOCAL_STOPS gives 2 at z14) for a seamless handoff; final [14,2] stop keeps it flat right up to the exclusive maxzoom (avoids exponential extrapolation bulging)
+const PATH_TRACK_CASING_WIDTH_LOW_ZOOM = [
+  "interpolate",
+  ["exponential", 1.2],
+  ["zoom"],
+  12,
+  4,
+  13,
+  5,
+  14,
+  5,
+]; // casing = fill + ~3px outline (mirrors the OMT local casing ROAD_LOCAL_STOPS+3 → 5 at z14)
 
 // ═════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -1446,14 +1485,22 @@ function applyRoadSurfaceAware(style) {
         ["literal", [1]],
       ],
     },
-    layout: { "line-cap": "round", "line-join": "round" },
+    // BUTT cap: with round caps + an interpolated width, MapLibre fails to
+    // apply line-dasharray — unpaved roads would render solid instead of
+    // dashed (same quirk as the path family, see PATH_LINE_CAP).
+    layout: { "line-cap": "butt", "line-join": "round" },
   });
 
-  const casing = (id, classes, color, width) => ({
+  const casing = (id, classes, color, width, minzoom) => ({
     id,
     type: "line",
     source: "openmaptiles",
     "source-layer": "transportation",
+    // A casing must never render without its fill: during a zoom transition
+    // the next zoom's tiles render overzoomed before the camera crosses the
+    // fill's minzoom, which would flash roads as solid casing colour. Gate
+    // casing and fill together at the same minzoom (see the local casing call).
+    ...(minzoom !== undefined ? { minzoom } : {}),
     filter: surfaceClasses(classes),
     paint: {
       "line-color": color,
@@ -1563,12 +1610,14 @@ function applyRoadSurfaceAware(style) {
       ["secondary", "tertiary"],
       COLOURS.ROADS.CASING,
       roadStopsToExpr(ROAD_MEDIUM_STOPS.map(([z, w]) => [z, w + 1.5])),
+      8, // same minzoom as outdoor-medium-fill — casing must not render without its fill
     ),
     casing(
       "outdoor-local-casing",
       ["minor", "service", "track"],
       COLOURS.ROADS.TRACK_CASING,
       roadStopsToExpr(ROAD_LOCAL_STOPS.map(([z, w]) => [z, w + 3])),
+      12, // same minzoom as outdoor-local-fill — casing must not render without its fill
     ),
 
     // Surface road fills
@@ -1776,7 +1825,7 @@ function applyRailSimplified(style) {
 /**
  * PBF vector contour tiles from the ogis.app hosted contour service
  * (contour-mvt-server), served as standard Mapbox Vector Tiles — no
- * client-side contour generation. See docs/5.contours.md.
+ * client-side contour generation. See docs/5.dem.md.
  *
  * Tier conditions used by the paint `case` expressions:
  * - contourIndexCond — index contours, every 100 m of elevation
@@ -1970,6 +2019,7 @@ function applyLowZoomPaths(style) {
     "source-layer": PATHS_SOURCE_LAYER,
     minzoom: PATHS_SOURCE_MINZOOM,
     maxzoom: PATHS_LAYER_MAXZOOM,
+    filter: ["in", "class", ...PATHS_OVERLAY_CLASSES],
     layout: {
       "line-cap": PATH_LINE_CAP,
       "line-join": PATH_LINE_JOIN,
@@ -1981,13 +2031,59 @@ function applyLowZoomPaths(style) {
     },
   };
 
+  // Track-class ways — re-drawn from the overlay at z12–13 styled as local
+  // roads (paved look, no surface attribute), because OMT tiles carry only
+  // a subset of track geometry below z14. Casing renders lowest, then the
+  // fill, with the paths layer above.
+  const trackCasingLayer = {
+    id: "outdoor-paths-track-casing",
+    type: "line",
+    source: "outdoor-paths",
+    "source-layer": PATHS_SOURCE_LAYER,
+    minzoom: PATHS_TRACK_MINZOOM,
+    maxzoom: PATHS_LAYER_MAXZOOM,
+    filter: ["in", "class", ...PATHS_OVERLAY_TRACK_CLASSES],
+    layout: {
+      "line-cap": PATH_LINE_CAP,
+      "line-join": PATH_LINE_JOIN,
+    },
+    paint: {
+      "line-color": COLOURS.ROADS.TRACK_CASING,
+      "line-width": PATH_TRACK_CASING_WIDTH_LOW_ZOOM,
+    },
+  };
+
+  const trackFillLayer = {
+    id: "outdoor-paths-track-fill",
+    type: "line",
+    source: "outdoor-paths",
+    "source-layer": PATHS_SOURCE_LAYER,
+    minzoom: PATHS_TRACK_MINZOOM,
+    maxzoom: PATHS_LAYER_MAXZOOM,
+    filter: ["in", "class", ...PATHS_OVERLAY_TRACK_CLASSES],
+    layout: {
+      "line-cap": PATH_LINE_CAP,
+      "line-join": PATH_LINE_JOIN,
+    },
+    paint: {
+      "line-color": COLOURS.ROADS.LOCAL,
+      "line-width": PATH_TRACK_WIDTH_LOW_ZOOM,
+    },
+  };
+
   // Insert at the POI anchor — below the outdoor route lines so routes
   // stay on top of paths.
   const poiIdx = style.layers.findIndex((l) => l.id === poiAnchorId);
   if (poiIdx !== -1) {
-    style.layers.splice(poiIdx, 0, pathsLayer);
+    style.layers.splice(
+      poiIdx,
+      0,
+      trackCasingLayer,
+      trackFillLayer,
+      pathsLayer,
+    );
   } else {
-    style.layers.push(pathsLayer);
+    style.layers.push(trackCasingLayer, trackFillLayer, pathsLayer);
   }
 }
 

@@ -959,7 +959,7 @@
       ],
       "layout": {
         "line-join": "round",
-        "line-cap": "round"
+        "line-cap": "butt"
       },
       "paint": {
         "line-color": "#c05a2a",
@@ -1238,6 +1238,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
+      "minzoom": 8,
       "filter": [
         "all",
         [
@@ -1286,6 +1287,7 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
+      "minzoom": 12,
       "filter": [
         "all",
         [
@@ -1462,7 +1464,7 @@
         ]
       },
       "layout": {
-        "line-cap": "round",
+        "line-cap": "butt",
         "line-join": "round"
       }
     },
@@ -1597,7 +1599,7 @@
         ]
       },
       "layout": {
-        "line-cap": "round",
+        "line-cap": "butt",
         "line-join": "round"
       }
     },
@@ -1719,7 +1721,7 @@
         ]
       },
       "layout": {
-        "line-cap": "round",
+        "line-cap": "butt",
         "line-join": "round"
       }
     },
@@ -2457,14 +2459,92 @@
       }
     },
     {
+      "id": "outdoor-paths-track-casing",
+      "type": "line",
+      "source": "outdoor-paths",
+      "source-layer": "outdoor_paths",
+      "minzoom": 12,
+      "maxzoom": 14,
+      "filter": [
+        "in",
+        "class",
+        "track"
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgb(146, 118, 86)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          4,
+          13,
+          5,
+          14,
+          5
+        ]
+      }
+    },
+    {
+      "id": "outdoor-paths-track-fill",
+      "type": "line",
+      "source": "outdoor-paths",
+      "source-layer": "outdoor_paths",
+      "minzoom": 12,
+      "maxzoom": 14,
+      "filter": [
+        "in",
+        "class",
+        "track"
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgb(255, 255, 255)",
+        "line-width": [
+          "interpolate",
+          [
+            "exponential",
+            1.2
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1,
+          13,
+          2,
+          14,
+          2
+        ]
+      }
+    },
+    {
       "id": "outdoor-paths",
       "type": "line",
       "source": "outdoor-paths",
       "source-layer": "outdoor_paths",
       "minzoom": 9,
       "maxzoom": 14,
+      "filter": [
+        "in",
+        "class",
+        "path",
+        "footway"
+      ],
       "layout": {
-        "line-cap": "round",
+        "line-cap": "butt",
         "line-join": "round"
       },
       "paint": {
