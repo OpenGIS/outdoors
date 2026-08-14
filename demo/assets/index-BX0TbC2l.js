@@ -3281,6 +3281,12 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "source-layer": "outdoor_paths",
       "minzoom": 9,
       "maxzoom": 14,
+      "filter": [
+        "in",
+        "class",
+        "path",
+        "footway"
+      ],
       "layout": {
         "line-cap": "round",
         "line-join": "round"

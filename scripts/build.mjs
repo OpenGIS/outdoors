@@ -463,7 +463,7 @@ const FERRY_DASHARRAY = [4, 3];
 // PBF vector contour tiles from the ogis.app hosted contour service
 // (contour-mvt-server), generated server-side from the Mapterhorn DEM —
 // the same tiles.mapterhorn.com endpoint used by DEM_SOURCE_URL.
-// Gated by the CONTOURS toggle. See docs/contours.md for details.
+// Gated by the CONTOURS toggle. See docs/5.contours.md for details.
 
 const CONTOUR_LAYER_MAXZOOM = 20;
 
@@ -522,7 +522,7 @@ const ROUTE_SOURCE_MAXZOOM = 14;
 // z9–13 gap where the OpenMapTiles base tiles carry no path data
 // (route-gated below z12, all paths at z12; tiers keep earlier zooms:
 // iwn 9, nwn 10, rwn 11). Source-layer: 'outdoor_paths'.
-// Self-hosted Planetiler tiles (z9–13). See docs/paths.md.
+// Self-hosted Planetiler tiles (z9–13). See docs/3.paths.md.
 
 const PATHS_SOURCE_LAYER = "outdoor_paths";
 const PATHS_TILE_URL = `${TILES_BASE_URL}/paths/{z}/{x}/{y}.pbf`;
@@ -1776,7 +1776,7 @@ function applyRailSimplified(style) {
 /**
  * PBF vector contour tiles from the ogis.app hosted contour service
  * (contour-mvt-server), served as standard Mapbox Vector Tiles — no
- * client-side contour generation. See docs/contours.md.
+ * client-side contour generation. See docs/5.contours.md.
  *
  * Tier conditions used by the paint `case` expressions:
  * - contourIndexCond — index contours, every 100 m of elevation
@@ -1952,7 +1952,7 @@ function reorderContourLabelStack(style) {
  * no path data (route-gated below z12, all paths at z12; tiers keep
  * earlier zooms: iwn 9, nwn 10, rwn 11). Source-layer: 'outdoor_paths'.
  * Self-hosted Planetiler tiles (z9–13). Renders below the outdoor route
- * lines so routes stay on top of paths. See docs/paths.md.
+ * lines so routes stay on top of paths. See docs/3.paths.md.
  */
 function applyLowZoomPaths(style) {
   style.sources["outdoor-paths"] = {
