@@ -11,6 +11,8 @@ last_commit: "48536cf1e1d7b297033e2a6b53f8469596c96e44"
 
 [`scripts/build.mjs`](scripts/build.mjs) assembles the style: it fetches the Liberty base from GitHub (cached locally), layers the outdoor sections on top, and writes the result to [`style.json`](style.json) at the project root. Every build validates the output against the MapLibre spec, so an invalid style fails the build instead of shipping. How the build works — the pipeline, the toggles and constants that control it, and why the style is assembled rather than hand-edited — is explained in [The Style Build](docs/1.build.md).
 
+`npm run screenshots` renders the current style to PNGs in `screenshots/` with a headless-Chromium runner driven by an editable shot list — see [Screenshots](docs/9.screenshots.md).
+
 ## Aims
 
 This style aims to be an
@@ -23,7 +25,7 @@ This style does not
 
 - **[OpenFreeMap](https://openfreemap.org/)** -
 - **[Mapterhorn](https://mapterhorn.com/)** - Powers 3D terrain, hillshading & contour lines.
-- **[Open GIS](https://tile.ogis.app/)** - Additional outdoor-specific POIs and low-level paths.
+- **[Open GIS](https://tile.ogis.app/)** - Additional outdoor-specific POIs, low-level paths and hiking routes.
 
 ## Key Dependencies
 
@@ -58,6 +60,9 @@ npm run validate:style  # Validate `style.json` (MapLibre style spec)
 # Demo
 npm run demo:build      # Build demo (`demo/`)
 npm run demo:preview    # Preview demo
+
+# Screenshots
+npm run screenshots     # Render `style.json` to PNGs in `screenshots/` (see docs/9.screenshots.md)
 ```
 
 ## The Future

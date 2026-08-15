@@ -11,7 +11,8 @@
     "check:pois": "node scripts/check-poi-coverage.mjs",
     "validate:style": "node scripts/validate-style.mjs",
     "demo:build": "vite build",
-    "demo:preview": "vite preview"
+    "demo:preview": "vite preview",
+    "screenshots": "node scripts/screenshots/generate.mjs"
   },
   "devDependencies": {
     "@maplibre/maplibre-gl-compare": "^0.5.0",
@@ -20,9 +21,10 @@
     "concurrently": "^10.0.4",
     "events": "^3.3.0",
     "maplibre-gl": "^5.0.0",
+    "playwright": "^1.62.1",
+    "prettier": "^3.9.6",
     "vite": "^6.0.7",
     "vue": "^3.5.0",
-    "yaml": "^2.9.0",
-    "prettier": "^3.9.6"
+    "yaml": "^2.9.0"
   }
 }

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Screenshot harness</title>
+    <link rel="stylesheet" href="/maplibre-gl.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script src="/maplibre-gl.js"></script>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var center = (params.get("center") || "-3.23,54.45")
+          .split(",")
+          .map(Number);
+        var zoom = Number(params.get("zoom") || 13);
+        var bearing = Number(params.get("bearing") || 0);
+        var pitch = Number(params.get("pitch") || 0);
+
+        window.__mapErrors = [];
+
+        function recordError(message) {
+          window.__mapErrors.push(String(message));
+        }
+
+        window.addEventListener("error", function (event) {
+          recordError(event.message);
+        });
+
+        var map = new maplibregl.Map({
+          container: "map",
+          style: "/style.json",
+          center: [center[0], center[1]],
+          zoom: zoom,
+          bearing: bearing,
+          pitch: pitch,
+          interactive: false,
+          attributionControl: true,
+          fadeDuration: 0,
+        });
+
+        window.__map = map;
+
+        map.on("error", function (event) {
+          recordError(event.error ? event.error.message : event.message);
+        });
+
+        function markReady() {
+          if (window.__shotReady) return;
+          window.__shotReady = true;
+          console.log("[harness] shot ready", center.join(","), zoom);
+        }
+
+        map.once("idle", function () {
+          setTimeout(markReady, 400);
+        });
+
+        setTimeout(function () {
+          if (!window.__shotReady) {
+            recordError("timeout waiting for idle");
+            markReady();
+          }
+        }, 30000);
+      })();
+    </script>
+  </body>
+</html>
