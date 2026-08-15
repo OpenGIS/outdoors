@@ -25,7 +25,7 @@ This style does not
 
 - **[OpenFreeMap](https://openfreemap.org/)** -
 - **[Mapterhorn](https://mapterhorn.com/)** - Powers 3D terrain, hillshading & contour lines.
-- **[Open GIS](https://tile.ogis.app/)** - Additional outdoor-specific POIs, low-level paths and hiking routes.
+- **[Open GIS](https://tile.ogis.app/)** - Additional outdoor-specific POIs and low-level paths.
 
 ## Key Dependencies
 
