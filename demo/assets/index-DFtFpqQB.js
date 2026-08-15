@@ -2941,9 +2941,9 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
       "source-layer": "building",
       "minzoom": 13,
       "paint": {
-        "line-color": "hsl(39, 20%, 70%)",
-        "line-opacity": 0.4,
-        "line-width": 0.5
+        "line-color": "#333",
+        "line-opacity": 1,
+        "line-width": 1
       },
       "layout": {
         "line-cap": "round",

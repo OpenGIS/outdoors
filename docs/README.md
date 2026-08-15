@@ -1,12 +1,15 @@
 ---
 git_hash: "6fd49ab1b6937eb78dc716cd07796bf9d922d112"
-modified: "2026-08-14"
+modified: "2026-08-15"
 ---
 
 # Project Documentation
 
-1. [The Style Build](1.build.md) — how the base style and outdoor layers are assembled into `style.json`, and the knobs that control the result
-2. [Style Structure](2.style.md) — the full layer stack, bottom to top, and what each section changes over the Liberty base
+> [!IMPORTANT]
+> **Prerequisites.** This documentation is deeply technical. It assumes existing knowledge of vector map styling, the MapLibre Style Spec, GeoJSON, and the tooling in this repo's stack (Node.js, Planetiler, SQLite). If you're not already familiar with these, brush up on them before relying on these docs.
+
+1. [The Style Build](1.build.md) — how the base style and outdoor layers are assembled into `style.json`, and the toggles and constants that control the result
+2. [Style Structure](2.style.md) — how the style builds on the OSM Liberty base: why it's the starting point, its sources, and the modifications that turn it into an outdoor map
 3. [Low-zoom paths overlay](3.paths.md) — the style-side of the hosted paths overlay that fills the low-zoom gap in the base data
 4. [Outdoor POIs](4.pois.md) — the POI system: the conceptual model and the catalogue-driven implementation
 5. [Elevation & Terrain](5.dem.md) — the Mapterhorn DEM — hillshade, 3D terrain, and the server-generated contour overlay

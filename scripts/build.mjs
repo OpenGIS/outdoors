@@ -25,10 +25,10 @@
  *   existed keep their current implementation.
  *
  * Feature toggles at the top enable/disable each section. Per-feature
- * config blocks follow in the same render order. The outdoor POI and
- * route overlay sections derive their tile URLs from a single
- * production endpoint, TILES_BASE_URL — which already points at the
- * production tile server (https://tile.ogis.app).
+ * config blocks follow in the same render order. All hosted overlay
+ * sections — contours, POIs and routes — derive their tile URLs from a
+ * single production endpoint, TILES_BASE_URL — which already points at
+ * the production tile server (https://tile.ogis.app).
  *
  * Sections are ordered from bottom to top in the render stack:
  *  urban removal → terrain palette → road palette → DEM (hillshade, terrain) →
@@ -181,7 +181,7 @@ const COLOURS = {
 
   // Buildings — stroke-only outlines (applied by future slice)
   BUILDING: {
-    OUTLINE: "hsl(39, 20%, 70%)", // light warm grey outline stroke
+    OUTLINE: "#333", // light warm grey outline stroke
     FILL: "rgba(0, 0, 0, 0.02)", // nearly transparent fill
   },
 
@@ -291,8 +291,9 @@ const ROUTE_TIER_DEFAULT = {
 // PER-FEATURE CONFIG (in rendering order, bottom→top)
 // ═════════════════════════════════════════════════════════════════════════
 // Each feature's constants are grouped before its build logic below.
-// Both outdoor overlay features (routes & POIs) read their tile URLs from
-// the single TILES_BASE_URL endpoint — see the self-hosted tiles block.
+// All hosted overlay features (contours, routes & POIs) read their tile
+// URLs from the single TILES_BASE_URL endpoint — see the self-hosted
+// tiles block.
 
 // ── Terrain palette ───────────────────────────────────────────────────
 // Muted base-layer colours (see COLOURS.TERRAIN) applied by
@@ -441,8 +442,8 @@ const PARK_OUTLINE_MINZOOM = 10;
 // 2D stroke-only building outlines (applied by applyBuildingOutlines).
 
 const BUILDING_MINZOOM = 13;
-const BUILDING_OPACITY = 0.4;
-const BUILDING_WIDTH = 0.5;
+const BUILDING_OPACITY = 1;
+const BUILDING_WIDTH = 1;
 
 // ── AERIALWAY ───────────────────────────────────────────────────────
 // Ski lifts, gondolas, cable cars (applied by applyAerialway).
@@ -458,6 +459,14 @@ const FERRY_MINZOOM = 8;
 const FERRY_OPACITY = 0.7;
 const FERRY_WIDTH = 1.5;
 const FERRY_DASHARRAY = [4, 3];
+
+// ── Externally hosted outdoor vector tiles ──────────────────────────
+// Single endpoint for every self-hosted overlay below (contours, routes,
+// paths, POIs). Attribution blank to avoid double OSM in attr control
+// (Liberty adds OSM).
+
+const TILES_BASE_URL = "https://tile.ogis.app";
+const TILES_ATTRIBUTION = "";
 
 // ── Contours ─────────────────────────────────────────────────────────
 // PBF vector contour tiles from the ogis.app hosted contour service
@@ -479,8 +488,8 @@ const CONTOUR_LABEL_EXPR = [
 // server renders tiles from the Mapterhorn DEM — the same endpoint as
 // DEM_SOURCE_URL — so the client and the tile server fetch the same
 // Mapterhorn tile; the CDN sees it twice and serves the second request
-// from cache.
-const CONTOUR_PBF_TILE_URL = "https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf";
+// from cache. Derives from TILES_BASE_URL like the other hosted overlays.
+const CONTOUR_PBF_TILE_URL = `${TILES_BASE_URL}/terrain/{z}/{x}/{y}.pbf`;
 const CONTOUR_PBF_SOURCE_MINZOOM = 9;
 const CONTOUR_PBF_SOURCE_MAXZOOM = 14;
 
@@ -500,12 +509,6 @@ const CONTOUR_OPACITY_MINOR = { low: 0.35, mid: 0.47, high: 0.5 };
 // 0 (ele % 20 === 0) so lines land on the server's 20 m grid at z10-12: all
 // minors there, every 2nd at z13 (10 m), every 4th at z14 (5 m).
 const CONTOUR_MINOR_EVERY = 20;
-
-// ── Externally hosted outdoor vector tiles ──────────────────────────
-// Attribution blank to avoid double OSM in attr control (Liberty adds OSM)
-
-const TILES_BASE_URL = "https://tile.ogis.app";
-const TILES_ATTRIBUTION = "";
 
 // ── Outdoor routes (hiking route relations) ──────────────────────────
 // Vector tiles with hiking route relations from OSM — line geometry
