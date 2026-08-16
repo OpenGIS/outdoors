@@ -9,10 +9,6 @@ last_commit: "48536cf1e1d7b297033e2a6b53f8469596c96e44"
 > [!WARNING]
 > This project is currently a **Proof of Concept**. It's a work in-progress, so please treat it as such.
 
-[`scripts/build.mjs`](scripts/build.mjs) assembles the style: it fetches the Liberty base from GitHub (cached locally), layers the outdoor sections on top, and writes the result to [`style.json`](style.json) at the project root. Every build validates the output against the MapLibre spec, so an invalid style fails the build instead of shipping. How the build works — the pipeline, the toggles and constants that control it, and why the style is assembled rather than hand-edited — is explained in [The Style Build](docs/1.build.md).
-
-`npm run screenshots` renders the current style to PNGs in `screenshots/` with a headless-Chromium runner driven by an editable shot list — see [Screenshots](docs/9.screenshots.md).
-
 ## Aims
 
 This style aims to be an
@@ -37,12 +33,12 @@ This style does not
 
 ## Development
 
+Run the compare app.
+
 ```bash
 npm install            # install dependencies
 npm run dev            # start Vite dev server + auto-build watcher
 ```
-
-The dev server opens the compare app at [localhost:12345](http://localhost:12345).
 
 ### Scripts
 
@@ -62,7 +58,9 @@ npm run demo:build      # Build demo (`demo/`)
 npm run demo:preview    # Preview demo
 
 # Screenshots
-npm run screenshots     # Render `style.json` to PNGs in `screenshots/` (see docs/9.screenshots.md)
+npx playwright install chromium
+npm run screenshots                  # regenerate every shot in shots.json
+npm run screenshots -- --name <id>   # regenerate a single shot by id
 ```
 
 ## The Future
@@ -78,5 +76,7 @@ npm run screenshots     # Render `style.json` to PNGs in `screenshots/` (see doc
 - The map is showing too much, making it crowded. My focus has been on sourcing and displaying outdoor data "loud and proud" - it isn't subtle.
 - The "handoff" between z13-14 shows inconsistent styling, some geometries vanish/reappear and the stacking order is wrong (e.g. paths shown above bridges but actually goes under).
 - DEM features are limited by [Mapterhorn Coverage](https://mapterhorn.com/coverage/), many areas do not show contours at higher zooms. Might be worth comparing with [Mapzen dataset](https://github.com/hyperknot/openfreemap/issues/19#issuecomment-3392131908).
-- Not all icons make sense - the [trailhead](https://wiki.openstreetmap.org/wiki/Tag:highway%3Dtrailhead) icon is an elevator! But the mechanism for setting custom Icons is the point.
-- Contour lines - need to find nice major/minor index values for both metric and imperial support. Also MapLibre GL v5 filter syntax can't express modulo, so off-cadence lines are painted invisible rather than filtered out.
+- Not all icons make sense - the [trailhead](https://wiki.openstreetmap.org/wiki/Tag:highway%3Dtrailhead) icon is an escalator! But the mechanism for setting custom Icons is the point.
+- Contour lines - need to find nice major/minor index values for both metric and imperial support. Also ran into issues with MapLibre GL v5 filter syntax not supporting modulo i.e. "%".
+- Bridge/tunnels may not render correctly, better variation support needed.
+- Outdoor POIs can obscure more important information, like peak heights.
