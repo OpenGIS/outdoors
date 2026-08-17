@@ -52,7 +52,9 @@ async function ensureApiKey(provider) {
   let apiKey = keys[provider.key];
 
   if (!apiKey) {
-    apiKey = window.prompt(`Enter API key for "${provider.label}":`);
+    apiKey = window.prompt(
+      `Enter API key for "${provider.label}":\n\nAPI keys are stored locally in your browser only.`,
+    );
     if (!apiKey) return null; // user cancelled
     setStoredApiKey(provider.key, apiKey);
   }
