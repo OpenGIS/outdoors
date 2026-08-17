@@ -94,9 +94,9 @@ const PARK_LABELS = true;
 const REPLACE_LIBERTY_POIS = true;
 
 const LOW_ZOOM_PATHS = true;
-const OUTDOOR_ROUTE = true;
+const OUTDOOR_ROUTE = false;
 const OUTDOOR_POI = true;
-const MTB_SCALE = true;
+const MTB_SCALE = false;
 const PATH_STYLING = true;
 
 // ═════════════════════════════════════════════════════════════════════════
