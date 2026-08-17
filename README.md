@@ -2,14 +2,14 @@
 
 > A Free and Open-Source map style for the great outdoors.
 
-[![Outdoor POIs](screenshots/cape-scott.png)](https://www.ogis.org/outdoors/#12/50.77365/-128.39317)
+> [!WARNING]
+> This project is currently a **Proof of Concept**. It's a work in progress, so please treat it as such.
+
+[![Cape Scott](screenshots/cape-scott.png)](https://www.ogis.org/outdoors/#12/50.77365/-128.39317)
 
 [View Demo →](https://www.ogis.org/outdoors/)
 
 ---
-
-> [!WARNING]
-> This project is currently a **Proof of Concept**. It's a work in progress, so please treat it as such.
 
 Outdoors combines a number of Free and Open-Source data sources and software projects, without which this project would not be possible.
 
