@@ -19,14 +19,16 @@ This style does not
 
 ## Sources
 
-- **[OpenFreeMap](https://openfreemap.org/)** -
-- **[Mapterhorn](https://mapterhorn.com/)** - Powers 3D terrain, hillshading & contour lines.
-- **[Open GIS](https://tile.ogis.app/)** - Additional outdoor-specific POIs and low-level paths.
+- [OpenFreeMap](https://openfreemap.org/) -
+- [Natural Earth Tiles](https://klokantech.github.io/naturalearthtiles/) for relief shading.
+- [Mapterhorn](https://mapterhorn.com/) - Powers 3D terrain, hillshading & contour lines.
+- [Open GIS](https://tile.ogis.app/) - Additional outdoor-specific [OpenStreetMap](https://www.openstreetmap.org/) POIs and low-level paths extracted from [Geofabrik](https://download.geofabrik.de/).
 
 ## Key Dependencies
 
 - [OSM Liberty](https://github.com/maputnik/osm-liberty)
-  - [Maki Icons](https://github.com/mapbox/maki/)
+  - [Maki](https://www.mapbox.com/maki-icons/) as icon set
+  - [Orange Mug](https://github.com/orangemug/font-glyphs) as font glyphs
 - [OpenMapTiles](https://github.com/openmaptiles/openmaptiles)
 - [Planetiler](https://github.com/onthegomap/planetiler)
 - [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)
