@@ -1,6 +1,6 @@
 ---
-git_hash: "19d3873474ff7e6bad2a48fe0466fc26d281fc52"
-modified: "2026-08-15"
+git_hash: "8eb9b6751afadcb2a3e74de62c326cf38836d580"
+modified: "2026-08-17"
 ---
 
 # Project Documentation
@@ -16,5 +16,4 @@ modified: "2026-08-15"
 5. [Elevation & Terrain](5.dem.md) — the Mapterhorn DEM — hillshade, 3D terrain, and the server-generated contour overlay
 6. [Client-side rendering](6.client.md) — how the style is rendered by client mapping libraries: renderer compatibility, metric/imperial unit switching, and the repository's consumers
 7. [Tile Server](7.server.md) — the hosted tile.ogis.app services: POIs, paths and contours, and the feeds this repo provides
-8. [Hiking Routes](8.activities.md) — the hiking routes overlay: the Planetiler profile, how routes are processed, and its rendering in the style
-9. [Screenshots](9.screenshots.md) — the Playwright-based runner that renders the current `style.json` to `screenshots/`, and how to add or regenerate shots
+8. [Activities](8.activities.md) — activity-specific overlays considered for the style: hiking routes and MTB scale, and why the style stays activity-agnostic

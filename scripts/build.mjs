@@ -31,7 +31,7 @@
  * the production tile server (https://tile.ogis.app).
  *
  * Sections are ordered from bottom to top in the render stack:
- *  urban removal → terrain palette → road palette → DEM (hillshade, terrain) →
+ *  urban removal → terrain palette → road surface-aware → DEM (hillshade, terrain) →
  *  landcover (rock, farmland, subclass) → landuse (military/quarry, recreation) →
  *  park differentiation → water palette → road surface-aware → building outlines →
  *  aerialway → ferry → rail simplified → contours → POI section
@@ -81,7 +81,6 @@ const LANDUSE_RECREATION = true;
 const PARK_DIFFERENTIATION = true;
 const WATER_PALETTE = true;
 const ROAD_SURFACE_AWARE = true;
-const ROAD_PALETTE = false;
 const BUILDING_OUTLINES = true;
 const AERIALWAY = true;
 const FERRY = true;
@@ -95,9 +94,9 @@ const PARK_LABELS = true;
 const REPLACE_LIBERTY_POIS = true;
 
 const LOW_ZOOM_PATHS = true;
-const OUTDOOR_ROUTE = false;
+const OUTDOOR_ROUTE = true;
 const OUTDOOR_POI = true;
-const MTB_SCALE = false;
+const MTB_SCALE = true;
 const PATH_STYLING = true;
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -170,7 +169,7 @@ const COLOURS = {
     LABEL_TEXT: "#3d5c28", // dark green for park labels
   },
 
-  // Roads — muted warm-taupe road palette (applied by applyRoadPalette)
+  // Roads — muted warm-taupe road palette (applied by applyRoadSurfaceAware)
   ROADS: {
     MAJOR: "rgb(228, 219, 201)", // lightest, most recessive — motorway/trunk/primary (+ motorway links)
     MEDIUM: "rgb(223, 211, 188)", // secondary/tertiary/links
@@ -307,53 +306,14 @@ const PALETTE_SAND_OPACITY = 0.3; // softened sand fill (reference-derived)
 const PALETTE_RESIDENTIAL_OPACITY = 0.7; // softened residential fill (reference-derived)
 
 // ── Roads ─────────────────────────────────────────────────────────────
-// Legacy ROAD_PALETTE colours (see COLOURS.ROADS) applied by
-// applyRoadPalette(). Tunnel fills stay faded so their dashes read
-// clearly; track/service roads are promoted — they render from z12
-// with a dark casing outline and their name labels start at z13.
-// Deprecated in favour of ROAD_SURFACE_AWARE — see below.
+// Surface-aware paved/unpaved road hierarchy (applied by
+// applyRoadSurfaceAware). ROAD_TUNNEL_OPACITY fades tunnel fills so
+// their dashes read clearly.
 
 const ROAD_TUNNEL_OPACITY = 0.55; // line-opacity for tunnel fills (faded, dashes preserved)
-const ROAD_TRACK_WIDTH = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  1,
-  13,
-  1.5,
-  14,
-  2,
-  15,
-  3,
-  16,
-  4,
-  20,
-  9.5,
-]; // line-width for service/track fills (promoted: visible from z12 — the earliest zoom where OMT tiles carry track geometry)
-
-const ROAD_TRACK_CASING_WIDTH = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  2,
-  13,
-  3,
-  14,
-  4,
-  15,
-  5.5,
-  16,
-  7,
-  20,
-  12.5,
-]; // casing width for service/track roads (fill + ~2px dark outline)
-
-const ROAD_TRACK_LABEL_MINZOOM = 13; // track/service road name labels (highway-name-minor) promoted from z15
 
 // Paved/unpaved road hierarchy (applied by applyRoadSurfaceAware) —
-// replaces the legacy Liberty road layers & ROAD_PALETTE when enabled.
+// replaces the legacy Liberty road layers when enabled.
 // Width stops for road surface fills. Each entry is [zoom, width_in_px].
 // Convert to expression with: roadStopsToExpr(stops)
 const ROAD_UNPAVED_STOPS = [
@@ -875,133 +835,6 @@ function applyTerrainPalette(style) {
 }
 
 /**
- * Override the Liberty base-layer road colours with the muted road
- * palette (see COLOURS.ROADS). Skips any layer id that isn't found in
- * the base style, so the build stays robust if upstream renames or
- * removes a layer. Tunnel fills are faded (dashes preserved); the
- * service/track fills are thickened for outdoor use and their casings
- * get a darker colour + promoted width so tracks read at low zoom.
- *
- * Legacy — deprecated in favour of applyRoadSurfaceAware(). Gated by
- * ROAD_PALETTE AND NOT ROAD_SURFACE_AWARE.
- */
-function applyRoadPalette(style) {
-  const set = (id, paintKey, value) => {
-    const layer = style.layers.find((l) => l.id === id);
-    if (!layer) return;
-    layer.paint = layer.paint || {};
-    layer.paint[paintKey] = value;
-  };
-
-  // Fills → MAJOR (motorway/trunk/primary + motorway links)
-  for (const id of [
-    "road_motorway",
-    "road_trunk_primary",
-    "road_motorway_link",
-    "bridge_motorway",
-    "bridge_trunk_primary",
-    "bridge_motorway_link",
-    "tunnel_motorway",
-    "tunnel_trunk_primary",
-    "tunnel_motorway_link",
-  ]) {
-    set(id, "line-color", COLOURS.ROADS.MAJOR);
-  }
-
-  // Fills → MEDIUM (secondary/tertiary/links)
-  for (const id of [
-    "road_secondary_tertiary",
-    "road_link",
-    "bridge_secondary_tertiary",
-    "bridge_link",
-    "tunnel_secondary_tertiary",
-    "tunnel_link",
-  ]) {
-    set(id, "line-color", COLOURS.ROADS.MEDIUM);
-  }
-
-  // Fills → LOCAL (minor/service/track/street)
-  for (const id of [
-    "road_minor",
-    "road_service_track",
-    "bridge_street",
-    "bridge_service_track",
-    "tunnel_minor",
-    "tunnel_service_track",
-  ]) {
-    set(id, "line-color", COLOURS.ROADS.LOCAL);
-  }
-
-  // Casings → CASING (all non-path casing layers)
-  for (const id of [
-    "tunnel_motorway_link_casing",
-    "tunnel_service_track_casing",
-    "tunnel_link_casing",
-    "tunnel_street_casing",
-    "tunnel_secondary_tertiary_casing",
-    "tunnel_trunk_primary_casing",
-    "tunnel_motorway_casing",
-    "road_motorway_link_casing",
-    "road_service_track_casing",
-    "road_link_casing",
-    "road_minor_casing",
-    "road_secondary_tertiary_casing",
-    "road_trunk_primary_casing",
-    "road_motorway_casing",
-    "bridge_motorway_link_casing",
-    "bridge_service_track_casing",
-    "bridge_link_casing",
-    "bridge_street_casing",
-    "bridge_secondary_tertiary_casing",
-    "bridge_trunk_primary_casing",
-    "bridge_motorway_casing",
-  ]) {
-    set(id, "line-color", COLOURS.ROADS.CASING);
-  }
-
-  // Track/service casings — darker colour + promoted width (outline so tracks
-  // read against land + contour lines at low zoom)
-  for (const id of [
-    "road_service_track_casing",
-    "bridge_service_track_casing",
-    "tunnel_service_track_casing",
-  ]) {
-    set(id, "line-color", COLOURS.ROADS.TRACK_CASING);
-    set(id, "line-width", ROAD_TRACK_CASING_WIDTH);
-  }
-
-  // Tunnel fills — faded, but their dash arrays are left untouched
-  for (const id of [
-    "tunnel_motorway",
-    "tunnel_trunk_primary",
-    "tunnel_motorway_link",
-    "tunnel_secondary_tertiary",
-    "tunnel_link",
-    "tunnel_minor",
-    "tunnel_service_track",
-  ]) {
-    set(id, "line-opacity", ROAD_TUNNEL_OPACITY);
-  }
-
-  // Service/track fills — thicker line-width (appears earlier than Liberty)
-  for (const id of [
-    "road_service_track",
-    "tunnel_service_track",
-    "bridge_service_track",
-  ]) {
-    set(id, "line-width", ROAD_TRACK_WIDTH);
-  }
-
-  // Promote track/service road name labels (highway-name-minor covers
-  // minor/service/track classes) from z15 → z13 so forest roads are
-  // identifiable as soon as they render.
-  const trackNameLayer = style.layers.find(
-    (l) => l.id === "highway-name-minor",
-  );
-  if (trackNameLayer) trackNameLayer.minzoom = ROAD_TRACK_LABEL_MINZOOM;
-}
-
-/**
  * Add the shared raster-dem source. Gated by DEM.
  */
 function applyDemSource(style) {
@@ -1340,7 +1173,7 @@ function applyWaterPalette(style) {
 
 /**
  * Paved/unpaved road hierarchy — replaces the legacy Liberty road layers
- * and ROAD_PALETTE when enabled. Gated by ROAD_SURFACE_AWARE.
+ * when enabled. Gated by ROAD_SURFACE_AWARE.
  */
 function applyRoadSurfaceAware(style) {
   const libertyRoadIds = [
@@ -2817,91 +2650,88 @@ async function build() {
   // 2. Base terrain palette
   if (TERRAIN_PALETTE) applyTerrainPalette(style);
 
-  // 3. Road colour palette (legacy — skipped once ROAD_SURFACE_AWARE lands)
-  if (ROAD_PALETTE && !ROAD_SURFACE_AWARE) applyRoadPalette(style);
-
-  // 4. DEM — raster-dem source, hillshade & terrain (all gated on DEM)
+  // 3. DEM — raster-dem source, hillshade & terrain (all gated on DEM)
   if (DEM) {
     applyDemSource(style);
     if (DEM_HILLSHADE) applyDemHillshade(style);
     if (DEM_TERRAIN) applyDemTerrain(style);
   }
 
-  // 5. Landcover — rock, farmland, grass subclass
+  // 4. Landcover — rock, farmland, grass subclass
   if (LANDCOVER_ROCK) applyLandcoverRock(style);
   if (LANDCOVER_FARMLAND) applyLandcoverFarmland(style);
   if (LANDCOVER_SUBCLASS) applyLandcoverSubclass(style);
 
-  // 6. Landuse — military/quarry warning fills + recreation
+  // 5. Landuse — military/quarry warning fills + recreation
   if (LANDUSE_MILITARY_QUARRY) applyMilitaryQuarry(style);
   if (LANDUSE_RECREATION) applyRecreation(style);
 
-  // 7. Park differentiation — national_park vs nature_reserve + labels
+  // 6. Park differentiation — national_park vs nature_reserve + labels
   if (PARK_DIFFERENTIATION) applyParkDifferentiation(style);
 
-  // 8. Water palette — water colour + swimming_pool differentiation
+  // 7. Water palette — water colour + swimming_pool differentiation
   if (WATER_PALETTE) applyWaterPalette(style);
 
-  // 9. Road surface-aware hierarchy (replaces Liberty road layers + ROAD_PALETTE)
+  // 8. Road surface-aware hierarchy (replaces Liberty road layers)
   if (ROAD_SURFACE_AWARE) applyRoadSurfaceAware(style);
 
-  // 10. Building outlines — 2D stroke-only (replaces building + building-3d)
+  // 9. Building outlines — 2D stroke-only (replaces building + building-3d)
   if (BUILDING_OUTLINES) applyBuildingOutlines(style);
 
-  // 11. Aerialways — ski lifts, gondolas, cable cars
+  // 10. Aerialways — ski lifts, gondolas, cable cars
   if (AERIALWAY) applyAerialway(style);
 
-  // 12. Ferries — shipway ferry routes
+  // 11. Ferries — shipway ferry routes
   if (FERRY) applyFerry(style);
 
-  // 13. Rail simplified — strip bridge/tunnel rail variants
+  // 12. Rail simplified — strip bridge/tunnel rail variants
   if (RAIL_SIMPLIFIED) applyRailSimplified(style);
 
-  // 14. Contours — hosted PBF contour vector tiles + labels
+  // 13. Contours — hosted PBF contour vector tiles + labels
   if (CONTOURS) applyContours(style);
 
-  // 15. POI section (see the POI SECTION block above) — the label functions
+  // 14. POI section (see the POI SECTION block above) — the label functions
   //     below insert below the POI stack: peaks, park-label and contour-labels
   //     run before applyReplacePois (they need the Liberty poi_r20 anchor),
   //     and applyReplacePois runs before the non-POI sections below so
   //     outdoor-poi-z1/z2 anchor at the top of the POI stack.
-  //     reorderContourLabelStack (step 23) then repositions the
+  //     reorderContourLabelStack (step 22) then repositions the
   //     contour/peak/park block above the POI tiers. Custom outdoor-poi
   //     (applyOutdoorPoi) stays with the non-POI sections below — it must sit
   //     above routes but below MTB to preserve the layer stack.
   if (PEAK_LABELS) applyPeakLabels(style);
 
-  // 16. Park labels — protected-area point labels
+  // 15. Park labels — protected-area point labels
   if (PARK_LABELS) applyParkLabels(style);
 
-  // 16b. Contour labels — inserted below the POI stack here; step 23 moves it
+  // 15b. Contour labels — inserted below the POI stack here; step 22 moves it
   //      above the POI tiers so contour labels beat POIs but lose to peaks
   //      and park labels.
   if (CONTOURS) applyContourLabels(style);
 
-  // 17. Replaced liberty POIs — catalogue-driven outdoor-filtered tiers
+  // 16. Replaced liberty POIs — catalogue-driven outdoor-filtered tiers
   if (REPLACE_LIBERTY_POIS) applyReplacePois(style);
 
-  // 18. Low-zoom paths overlay (z9–13) — non-POI; sits below the route
+  // 17. Low-zoom paths overlay (z9–13) — non-POI; sits below the route
   //     layers and the custom outdoor-poi layer in the stack.
   if (LOW_ZOOM_PATHS) applyLowZoomPaths(style);
 
-  // 19. Outdoor routes (hiking route relations) — non-POI; sits between the
+  // 18. Outdoor routes (hiking route relations) — non-POI; sits between the
   //     paths overlay and the custom outdoor-poi layer.
   if (OUTDOOR_ROUTE) applyOutdoorRoute(style);
 
-  // 20. Custom outdoor POIs (external vector tiles) — part of the POI
+  // 19. Custom outdoor POIs (external vector tiles) — part of the POI
   //     section; called here (above routes, below MTB) to preserve the stack.
   if (OUTDOOR_POI) applyOutdoorPoi(style);
 
-  // 21. MTB scale + bicycle access — non-POI; sits between the custom
+  // 20. MTB scale + bicycle access — non-POI; sits between the custom
   //     outdoor-poi layer and outdoor-poi-z1/z2.
   if (MTB_SCALE) applyMtbScale(style);
 
-  // 22. Path & trail styling
+  // 21. Path & trail styling
   if (PATH_STYLING) applyPathStyling(style);
 
-  // 23. Label-stack fix-up — reposition contour-labels / peaks / park-label
+  // 22. Label-stack fix-up — reposition contour-labels / peaks / park-label
   //     directly above the POI tiers (see reorderContourLabelStack).
   reorderContourLabelStack(style);
 
