@@ -38,13 +38,6 @@
       "height": 600
     },
     {
-      "id": "north-island",
-      "center": [-127.804, 50.7089],
-      "zoom": 9,
-      "width": 1600,
-      "height": 800
-    },
-    {
       "id": "tin-hat",
       "center": [-124.377551, 49.980138],
       "zoom": 15.3,
