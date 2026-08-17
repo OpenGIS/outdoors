@@ -4,7 +4,9 @@
 
 [![Outdoor POIs](screenshots/cape-scott.png)](https://www.ogis.org/outdoors/#12/50.77365/-128.39317)
 
-[Demo](https://www.ogis.org/outdoors/)
+[View Demo →](https://www.ogis.org/outdoors/)
+
+---
 
 > [!WARNING]
 > This project is currently a **Proof of Concept**. It's a work in progress, so please treat it as such.
@@ -14,7 +16,7 @@ Outdoors combines a number of Free and Open-Source data sources and software pro
 ## Key Sources
 
 - [OpenFreeMap](https://openfreemap.org/) — Base vector tiles ([OpenMapTiles schema](https://github.com/openmaptiles/openmaptiles)) for the entire planet.
-- [Mapterhorn](https://mapterhorn.com/) — powers 3D terrain, hillshading & contour lines.
+- [Mapterhorn](https://mapterhorn.com/) — Powers 3D terrain, hillshading & contour lines.
 - [Open GIS](https://tile.ogis.app/) — Outdoor-specific POIs, low-level paths & contour service for the planet. See [Tile Server](docs/7.server.md).
 
 ## Key Dependencies
