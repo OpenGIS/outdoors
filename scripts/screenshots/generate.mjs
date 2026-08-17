@@ -164,17 +164,23 @@ async function captureShot(browser, port, shot) {
   page.on("pageerror", (error) => pageErrors.push(String(error)));
 
   try {
-    await page.goto(shotUrl(port, shot), { waitUntil: "load" });
+    await page.goto(shotUrl(port, shot), {
+      waitUntil: "load",
+      timeout: 120000,
+    });
     // NB: options must be the third argument — Playwright treats a second
     // object as the function's arg, silently ignoring timeout.
     await page.waitForFunction(() => window.__shotReady === true, undefined, {
-      timeout: 60000,
+      // Outlives the harness's 20-minute idle fallback so that path still works.
+      timeout: 1220000,
     });
 
     const outputPath = resolve(SCREENSHOTS_DIR, `${shot.id}.png`);
     await page.screenshot({
       path: outputPath,
       clip: { x: 0, y: 0, width: shot.width, height: shot.height },
+      // Large shots (e.g. 10000x10000 CSS px at scale 2) take minutes to encode.
+      timeout: 300000,
     });
 
     const mapErrors = await page.evaluate(() => window.__mapErrors ?? []);
