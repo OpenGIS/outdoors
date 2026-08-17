@@ -1,7 +1,3 @@
----
-last_commit: "e7acdcdbcf00116e90f652245050cfb990de117e"
----
-
 # Outdoors
 
 > A Free and Open-Source map style for the great outdoors.
@@ -68,4 +64,4 @@ npm run screenshots -- --name <id>    # Regenerate a single shot by id
 
 ---
 
-[Read the Docs](docs/README.md).
+[Read the Docs →](docs/README.md)
