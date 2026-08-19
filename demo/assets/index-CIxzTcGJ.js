@@ -3437,6 +3437,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "bicycle_rental",
           "trailhead",
           "entrance",
+          "lighthouse",
+          "lighthouse",
           "marker"
         ],
         "icon-size": 1,

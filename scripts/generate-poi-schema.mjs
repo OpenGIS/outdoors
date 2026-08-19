@@ -48,7 +48,7 @@ const customEntries = catalogue.pois.filter((e) => e.source === "custom");
 const schema = {
   schema_name: "Outdoor POIs",
   schema_description:
-    "Outdoor points of interest (huts, shelters, water, parking, viewpoints, passes) for the outdoors style",
+    "Outdoor points of interest (huts, shelters, water, parking, viewpoints, passes, lighthouses) for the outdoors style",
   attribution:
     '<a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
   version: "1.0.0",

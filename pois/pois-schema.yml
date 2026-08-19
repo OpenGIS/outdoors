@@ -3,7 +3,7 @@
 # Change the catalogue instead, then run: npm run pois:schema
 
 schema_name: Outdoor POIs
-schema_description: Outdoor points of interest (huts, shelters, water, parking, viewpoints, passes) for the outdoors style
+schema_description: Outdoor points of interest (huts, shelters, water, parking, viewpoints, passes, lighthouses) for the outdoors style
 attribution: <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>
 version: 1.0.0
 is_overlay: true
@@ -204,5 +204,15 @@ layers:
         attributes:
           - key: kind
             value: trailhead
+          - key: name
+            tag_value: name
+      - source: osm
+        geometry: point
+        min_zoom: 10
+        include_when:
+          man_made: lighthouse
+        attributes:
+          - key: kind
+            value: lighthouse
           - key: name
             tag_value: name

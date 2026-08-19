@@ -323,3 +323,11 @@ pois:
     min_zoom: 10
     icon: entrance
     show_title: true
+  - id: lighthouse
+    source: custom
+    include_when:
+      man_made: lighthouse
+    kind: lighthouse
+    min_zoom: 10
+    icon: lighthouse
+    show_title: true
