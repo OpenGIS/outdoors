@@ -15,7 +15,7 @@ layers:
   - id: outdoor_pois
     features:
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 12
         include_when:
           leisure: park
@@ -25,7 +25,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 12
         include_when:
           historic: castle
@@ -35,7 +35,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 8
         include_when:
           tourism:
@@ -49,7 +49,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           amenity: drinking_water
@@ -59,7 +59,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           amenity: shelter
@@ -71,7 +71,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           amenity: parking
@@ -81,7 +81,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           tourism: viewpoint
@@ -93,7 +93,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 8
         include_when:
           natural: saddle
@@ -105,7 +105,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 12
         include_when:
           tourism: picnic_site
@@ -117,7 +117,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 12
         include_when:
           tourism: information
@@ -127,7 +127,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 13
         include_when:
           amenity: toilets
@@ -137,7 +137,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 12
         include_when:
           amenity: ranger_station
@@ -149,7 +149,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           tourism:
@@ -163,7 +163,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 13
         include_when:
           leisure: playground
@@ -173,7 +173,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           leisure: ski_resort
@@ -185,7 +185,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 12
         include_when:
           amenity: ferry_terminal
@@ -195,7 +195,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 13
         include_when:
           amenity: bicycle_rental
@@ -205,7 +205,7 @@ layers:
           - key: name
             tag_value: name
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           highway: trailhead
@@ -217,7 +217,7 @@ layers:
           - key: ele
             tag_value: ele
       - source: osm
-        geometry: point
+        geometry: centroid
         min_zoom: 10
         include_when:
           man_made: lighthouse

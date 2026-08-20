@@ -82,7 +82,7 @@ const schema = {
         }
         return {
           source: "osm",
-          geometry: "point",
+          geometry: "centroid",
           min_zoom: entry.min_zoom,
           include_when: entry.include_when,
           attributes,
