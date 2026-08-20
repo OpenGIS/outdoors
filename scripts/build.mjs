@@ -125,6 +125,14 @@ const STYLE_METADATA = {};
 
 const OFM_DOMAIN = "tiles.openfreemap.org";
 
+// ── Base source attribution ─────────────────────────────────────────
+// The openmaptiles source (OpenFreeMap planet tiles over OSM data) carries
+// the map's core attribution: the data is © OpenStreetMap contributors
+// (ODbL), served by OpenFreeMap. The upstream OpenFreeMap Liberty fork
+// ships no attribution, so it is added at build time (see build()).
+
+const OPENMAPTILES_ATTRIBUTION = `© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | © <a href="https://openfreemap.org/">OpenFreeMap</a>`;
+
 // ═════════════════════════════════════════════════════════════════════════
 // COLOURS — nested by feature, grouped in build/render order:
 //   terrain base palette → contours → peaks → POIs → routes → MTB → paths
@@ -423,7 +431,7 @@ const FERRY_DASHARRAY = [4, 3];
 // ── Externally hosted outdoor vector tiles ──────────────────────────
 // Single endpoint for every self-hosted overlay below (contours, routes,
 // paths, POIs). Attribution blank to avoid double OSM in attr control
-// (Liberty adds OSM).
+// (the openmaptiles source carries the OSM + OpenFreeMap attribution).
 
 const TILES_BASE_URL = "https://tile.ogis.app";
 const TILES_ATTRIBUTION = "";
@@ -2643,6 +2651,10 @@ async function build() {
     metadata: STYLE_METADATA,
     ...JSON.parse(JSON.stringify(liberty)),
   };
+
+  // Base attribution — OpenStreetMap data + OpenFreeMap tiles on the
+  // openmaptiles source (upstream Liberty ships none).
+  style.sources.openmaptiles.attribution = OPENMAPTILES_ATTRIBUTION;
 
   // 1. Urban removal — one-way arrows + US shields
   if (REMOVE_URBAN_LAYERS) applyUrbanRemoval(style);

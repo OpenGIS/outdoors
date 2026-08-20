@@ -831,7 +831,8 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
     },
     "openmaptiles": {
       "type": "vector",
-      "url": "https://tiles.openfreemap.org/planet"
+      "url": "https://tiles.openfreemap.org/planet",
+      "attribution": "© <a href=\\"https://www.openstreetmap.org/copyright\\">OpenStreetMap</a> contributors | © <a href=\\"https://openfreemap.org/\\">OpenFreeMap</a>"
     },
     "demSource": {
       "type": "raster-dem",
