@@ -28,7 +28,17 @@ const CATALOGUE_FILE = resolve(ROOT, "pois", "catalogue.yml");
 const OUTPUT_FILE = resolve(ROOT, "pois", "pois-schema.yml");
 
 // Kinds that also carry an elevation attribute.
-const ELE_KINDS = new Set(["hut", "shelter", "viewpoint", "pass"]);
+const ELE_KINDS = new Set([
+  "hut",
+  "shelter",
+  "viewpoint",
+  "pass",
+  "picnic_site",
+  "ranger_station",
+  "campsite",
+  "skiing",
+  "trailhead",
+]);
 
 function parseAreaArg(argv) {
   for (const arg of argv) {

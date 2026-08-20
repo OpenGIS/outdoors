@@ -114,6 +114,8 @@ layers:
             value: picnic_site
           - key: name
             tag_value: name
+          - key: ele
+            tag_value: ele
       - source: osm
         geometry: point
         min_zoom: 12
@@ -144,6 +146,8 @@ layers:
             value: ranger_station
           - key: name
             tag_value: name
+          - key: ele
+            tag_value: ele
       - source: osm
         geometry: point
         min_zoom: 10
@@ -156,6 +160,8 @@ layers:
             value: campsite
           - key: name
             tag_value: name
+          - key: ele
+            tag_value: ele
       - source: osm
         geometry: point
         min_zoom: 13
@@ -176,6 +182,8 @@ layers:
             value: skiing
           - key: name
             tag_value: name
+          - key: ele
+            tag_value: ele
       - source: osm
         geometry: point
         min_zoom: 12
@@ -206,6 +214,8 @@ layers:
             value: trailhead
           - key: name
             tag_value: name
+          - key: ele
+            tag_value: ele
       - source: osm
         geometry: point
         min_zoom: 10
