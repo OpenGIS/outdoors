@@ -33,7 +33,7 @@ Outdoors combines a number of Free and Open-Source data sources and software pro
   - [Style](https://openmaptiles.org/styles)
 - [MapLibre Style Spec](https://maplibre.org/maplibre-style-spec/)
 - [Planetiler](https://github.com/onthegomap/planetiler)
-- [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)
+- [maplibre-contour](https://github.com/onthegomap/maplibre-contour) ([contour-mvt-server](https://github.com/acalcutt/contour-mvt-server))
 
 ## Build
 
