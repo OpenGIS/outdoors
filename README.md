@@ -5,7 +5,7 @@
 > [!WARNING]
 > This project is currently a **Proof of Concept**. It's a work in progress, so please treat it as such.
 
-[![Cape Scott](screenshots/helvellyn.png)](https://www.ogis.org/outdoors/#12/54.52653/-3.01724/)
+[![Helvellyn](screenshots/helvellyn.png)](https://www.ogis.org/outdoors/#12/54.52653/-3.01724/)
 
 [View Demo →](https://www.ogis.org/outdoors/)
 
