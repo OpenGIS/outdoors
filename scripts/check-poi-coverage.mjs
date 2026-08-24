@@ -6,7 +6,7 @@
  * Usage:
  *   node scripts/check-poi-coverage.mjs
  *
- * Three checks, all against the built style.json, the shared OUTDOOR_POI
+ * Checks, all against the built style.json, the shared OUTDOOR_POI
  * config and the generated pois/pois-schema.yml:
  *
  *   [1] Sprite validation — every literal icon-image value used by the
