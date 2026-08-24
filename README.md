@@ -9,7 +9,7 @@ last_commit: "7b3b115523b73d1f3a054a81e3b7eefbecd141ea"
 > [!WARNING]
 > This project is currently a **Proof of Concept**. It's a work in progress, so please treat it as such.
 
-[![Cape Scott](screenshots/cape-scott.png)](https://www.ogis.org/outdoors/#12/50.77365/-128.39317)
+[![Cape Scott](screenshots/helvellyn.png)](https://www.ogis.org/outdoors/#12/54.52653/-3.01724/)
 
 [View Demo →](https://www.ogis.org/outdoors/)
 
@@ -22,15 +22,15 @@ Outdoors combines a number of Free and Open-Source data sources and software pro
 - [OpenFreeMap](https://openfreemap.org/) — Base vector tiles ([OpenMapTiles schema](https://github.com/openmaptiles/openmaptiles)) for the entire planet.
 - [Mapterhorn](https://mapterhorn.com/) — Powers 3D terrain, hillshading & contour lines.
 - [Open GIS](https://tile.ogis.app/)
-  - Outdoor-specific POIs, low-level paths & contour service for the planet. See [Tile Server](docs/7.server.md).
-  - [Basemap style assets](https://www.ogis.org/basemap/) (style, glyphs & sprite).
+  - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, low-level paths & contours.
+  - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
 
 ## Key Dependencies
 
-- [OpenStreetMap](https://www.openstreetmap.org/)
+- [© OpenStreetMap Contributors](https://www.openstreetmap.org/copyright)
 - [OpenMapTiles](https://github.com/openmaptiles/openmaptiles)
   - [Schema](https://openmaptiles.org/schema)
-  - [Style](https://openmaptiles.org/styles)
+  - [OSM Style](https://github.com/openmaptiles/openmaptiles/tree/master/style)
 - [MapLibre Style Spec](https://maplibre.org/maplibre-style-spec/)
 - [Planetiler](https://github.com/onthegomap/planetiler)
 - [maplibre-contour](https://github.com/onthegomap/maplibre-contour) ([contour-mvt-server](https://github.com/acalcutt/contour-mvt-server))
