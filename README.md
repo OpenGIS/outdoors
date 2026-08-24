@@ -1,7 +1,3 @@
----
-last_commit: "7b3b115523b73d1f3a054a81e3b7eefbecd141ea"
----
-
 # Outdoors
 
 > A Free and Open-Source map style for the great outdoors.
