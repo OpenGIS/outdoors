@@ -50,7 +50,8 @@ function extractLayerId(message, style) {
 // ── CLI (only when run directly) ────────────────────────────────────────
 
 const isDirectRun =
-  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (isDirectRun) {
   try {

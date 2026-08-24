@@ -1,13 +1,14 @@
 {
   "name": "outdoors",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently --names dev,build --prefix-colors cyan,green \"vite\" \"node scripts/watch.mjs\"",
     "build": "node scripts/build.mjs",
     "watch:build": "node scripts/watch.mjs",
     "pois:schema": "node scripts/generate-poi-schema.mjs",
+    "sprite:build": "node scripts/build-sprite.mjs",
     "check:pois": "node scripts/check-poi-coverage.mjs",
     "validate:style": "node scripts/validate-style.mjs",
     "demo:build": "vite build",

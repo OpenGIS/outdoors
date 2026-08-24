@@ -2,7 +2,7 @@ import { computed, ref, watch } from "vue";
 import rawProviders from "../providers.json";
 
 const SELECTED_STORAGE = "outdoors_dev_selected";
-const DEFAULT_PROVIDER_KEY = "openfreemap-liberty";
+const DEFAULT_PROVIDER_KEY = "opengis-basemap";
 
 /**
  * Provider selection state for the compare app: builds the grouped
@@ -40,9 +40,7 @@ export function useProviderSelection() {
     }
 
     // Sort categories alphabetically, then providers by label
-    const sortedCats = Object.keys(grouped).sort((a, b) =>
-      a.localeCompare(b),
-    );
+    const sortedCats = Object.keys(grouped).sort((a, b) => a.localeCompare(b));
     for (const cat of sortedCats) {
       grouped[cat].sort((a, b) => a.label.localeCompare(b.label));
       result.push({ label: cat, providers: grouped[cat] });
@@ -68,7 +66,7 @@ export function useProviderSelection() {
       if (saved && providers.find((p) => p.key === saved)) {
         selectedKey.value = saved;
       } else {
-        // Default to OpenFreeMap Liberty; fall back to the first provider
+        // Default to the OpenGIS Basemap; fall back to the first provider
         // that doesn't require an API key (avoids key prompts on page load).
         const defaultProvider =
           providers.find((p) => p.key === DEFAULT_PROVIDER_KEY) ??

@@ -105,6 +105,26 @@ watch(selectedKey, async (key) => {
 });
 
 /**
+ * Recursively walk a MapLibre expression, converting elevation values from
+ * metres to feet where they are rounded for display and swapping the "m"
+ * suffix for "ft". The index-contours case expression is left intact so only
+ * index contours get labelled.
+ */
+function toImperial(expr) {
+  if (!Array.isArray(expr)) return expr === "m" ? "ft" : expr;
+  if (
+    expr.length === 2 &&
+    expr[0] === "round" &&
+    Array.isArray(expr[1]) &&
+    expr[1][0] === "get" &&
+    expr[1][1] === "ele"
+  ) {
+    return ["round", ["*", ["get", "ele"], 3.28084]];
+  }
+  return expr.map(toImperial);
+}
+
+/**
  * Convert contour labels from metric ("m") to imperial ("ft") in the
  * built outdoor style. The style ships metric labels; the compare app
  * applies this so the right-hand map displays feet. Only touches the
@@ -112,12 +132,8 @@ watch(selectedKey, async (key) => {
  */
 function applyImperialContours(style) {
   const labelLayer = style.layers?.find((l) => l.id === "contour-labels");
-  if (!labelLayer?.layout) return;
-  labelLayer.layout["text-field"] = [
-    "concat",
-    ["number-format", ["round", ["*", ["get", "ele"], 3.28084]], {}],
-    "ft",
-  ];
+  if (!labelLayer?.layout?.["text-field"]) return;
+  labelLayer.layout["text-field"] = toImperial(labelLayer.layout["text-field"]);
 }
 
 // ── Initialise maps ──

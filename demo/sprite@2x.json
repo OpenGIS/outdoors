@@ -1,0 +1,37 @@
+{
+  "dot": {
+    "height": 16,
+    "pixelRatio": 2,
+    "width": 16,
+    "x": 28,
+    "y": 28
+  },
+  "park": {
+    "height": 28,
+    "pixelRatio": 2,
+    "width": 28,
+    "x": 0,
+    "y": 0
+  },
+  "pass": {
+    "height": 16,
+    "pixelRatio": 2,
+    "width": 16,
+    "x": 44,
+    "y": 28
+  },
+  "skiing": {
+    "height": 28,
+    "pixelRatio": 2,
+    "width": 28,
+    "x": 28,
+    "y": 0
+  },
+  "trailhead": {
+    "height": 28,
+    "pixelRatio": 2,
+    "width": 28,
+    "x": 0,
+    "y": 28
+  }
+}

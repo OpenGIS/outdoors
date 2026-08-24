@@ -1,3 +1,7 @@
+---
+last_commit: "7b3b115523b73d1f3a054a81e3b7eefbecd141ea"
+---
+
 # Outdoors
 
 > A Free and Open-Source map style for the great outdoors.
@@ -17,19 +21,18 @@ Outdoors combines a number of Free and Open-Source data sources and software pro
 
 - [OpenFreeMap](https://openfreemap.org/) — Base vector tiles ([OpenMapTiles schema](https://github.com/openmaptiles/openmaptiles)) for the entire planet.
 - [Mapterhorn](https://mapterhorn.com/) — Powers 3D terrain, hillshading & contour lines.
-- [Open GIS](https://tile.ogis.app/) — Outdoor-specific POIs, low-level paths & contour service for the planet. See [Tile Server](docs/7.server.md).
+- [Open GIS](https://tile.ogis.app/)
+  - Outdoor-specific POIs, low-level paths & contour service for the planet. See [Tile Server](docs/7.server.md).
+  - [Basemap style assets](https://www.ogis.org/basemap/) (style, glyphs & sprite).
 
 ## Key Dependencies
 
 - [OpenStreetMap](https://www.openstreetmap.org/)
-- [MapLibre Style Spec](https://maplibre.org/maplibre-style-spec/)
-- [OSM Liberty](https://github.com/maputnik/osm-liberty)
-  - [Natural Earth Tiles](https://klokantech.github.io/naturalearthtiles/)
-  - [Maki](https://www.mapbox.com/maki-icons/)
-  - [Orange Mug](https://github.com/orangemug/font-glyphs)
 - [OpenMapTiles](https://github.com/openmaptiles/openmaptiles)
+  - [Schema](https://openmaptiles.org/schema)
+  - [Style](https://openmaptiles.org/styles)
+- [MapLibre Style Spec](https://maplibre.org/maplibre-style-spec/)
 - [Planetiler](https://github.com/onthegomap/planetiler)
-- [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 - [contour-mvt-server](https://github.com/acalcutt/contour-mvt-server)
 
 ## Build
@@ -53,6 +56,13 @@ npm run dev                           # Start Vite dev server + auto-build watch
 ```bash
 # Validate
 npm run validate:style                # Validate `style.json` (MapLibre style spec)
+
+# Sprites
+npm run sprite:build                  # Build the outdoors sprite sheet from `icons/` into `dev/public/`
+
+# POIs
+npm run pois:schema                   # Regenerate `pois/pois-schema.yml` from `scripts/poi-config.mjs`
+npm run check:pois                    # Sprite / kind-coverage / schema-sync checks
 
 # Demo
 npm run demo:build                    # Build demo (`demo/`)

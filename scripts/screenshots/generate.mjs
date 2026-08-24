@@ -39,6 +39,7 @@ const MIME_TYPES = {
   ".json": "application/json",
   ".js": "text/javascript",
   ".css": "text/css",
+  ".png": "image/png",
 };
 
 /**
@@ -77,6 +78,10 @@ function handleRequest(req, res) {
   const pathToFile = {
     "/": resolve(__dirname, "harness.html"),
     "/style.json": resolve(PROJECT_ROOT, "style.json"),
+    "/sprite.json": resolve(PROJECT_ROOT, "dev", "public", "sprite.json"),
+    "/sprite.png": resolve(PROJECT_ROOT, "dev", "public", "sprite.png"),
+    "/sprite@2x.json": resolve(PROJECT_ROOT, "dev", "public", "sprite@2x.json"),
+    "/sprite@2x.png": resolve(PROJECT_ROOT, "dev", "public", "sprite@2x.png"),
     "/maplibre-gl.js": resolve(
       PROJECT_ROOT,
       "node_modules",
