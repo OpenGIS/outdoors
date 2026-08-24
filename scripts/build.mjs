@@ -483,6 +483,21 @@ const POI_ICON_MATCH = [
 const POI_ELE_KINDS = OUTDOOR_POI.kinds
   .filter((k) => k.showEle)
   .map((k) => k.kind);
+
+// Symbol-sort-key — a match over kind → priority, mirroring the basemap's
+// rank-as-sort-key convention: its POI layers (Zoo, Attraction, Campsite,
+// Accommodation, Waste, Ferry) use ["to-number",["get","rank"]] with feature
+// rank 20–2000, lower = placed first = wins collisions. Our priorities use
+// the same convention — 10 (outdoor identity) beats 50 (parking, information)
+// when icons collide. Derived from OUTDOOR_POI.kinds so it can never drift
+// from the config. The 50 fallback covers any unmatched kind, so unknown
+// kinds lose; it never fires because the filter only admits configured kinds.
+const POI_SORT_KEY_MATCH = [
+  "match",
+  ["get", "kind"],
+  ...OUTDOOR_POI.kinds.flatMap((k) => [k.kind, k.priority]),
+  50,
+];
 const POI_TEXT_EXPR = [
   "case",
   ["all", ["has", "ele"], ["in", ["get", "kind"], ["literal", POI_ELE_KINDS]]],
@@ -520,6 +535,20 @@ const PLANET_POI_TEXT_FIELD = [
     k.showTitle ? ["get", "name"] : "",
   ]),
   "",
+];
+
+// Symbol-sort-key for the planet amenities — derived from PLANET_POI.kinds
+// like the outdoor-poi key, but at 1000 rather than the urban tier (50): the
+// basemap's POI layers sort by feature rank 20–2000 (lower = placed first),
+// so a 50 would let doctors/bank/bicycle_rental outrank nearly every basemap
+// POI they collide with. 1000 keeps basemap POIs first — our amenities win
+// only against the least-important ranks (≥1000). See the priority comment in
+// poi-config.mjs.
+const PLANET_POI_SORT_KEY_MATCH = [
+  "match",
+  ["get", "class"],
+  ...PLANET_POI.kinds.flatMap((k) => [k.class, k.priority]),
+  1000,
 ];
 
 /**
@@ -1081,6 +1110,7 @@ function applyOutdoorPoi(style) {
     layout: {
       "icon-allow-overlap": false,
       "icon-image": POI_ICON_MATCH,
+      "symbol-sort-key": POI_SORT_KEY_MATCH,
       "text-anchor": "top",
       "text-field": POI_TEXT_EXPR,
       "text-font": ["Noto Sans Regular"],
@@ -1114,6 +1144,7 @@ function applyOutdoorPoi(style) {
     layout: {
       "icon-allow-overlap": false,
       "icon-image": PLANET_POI_ICON_MATCH,
+      "symbol-sort-key": PLANET_POI_SORT_KEY_MATCH,
       "text-anchor": "top",
       "text-field": PLANET_POI_TEXT_FIELD,
       "text-font": ["Noto Sans Regular"],

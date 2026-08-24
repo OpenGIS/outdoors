@@ -29,11 +29,15 @@
  *   [2] Kind coverage — the outdoor-poi layer exists, references the
  *       outdoor-poi source, and every kind in OUTDOOR_POI.kinds appears in
  *       its filter.
+ *   [2b] Sort priority — every OUTDOOR_POI.kind carries a numeric priority,
+ *       and the outdoor-poi layer's symbol-sort-key is a match over kind with
+ *       every kind covered at its config priority.
  *   [3] Schema sync — the kind set in pois/pois-schema.yml matches
  *       OUTDOOR_POI.kinds.
  *   [4] Planet layer — the PLANET_POI layer (outdoor-amenities) exists in
  *       style.json with the correct source/source-layer/minzoom, its filter
- *       contains every PLANET_POI class, and every PLANET_POI icon resolves
+ *       contains every PLANET_POI class, its symbol-sort-key covers every
+ *       class at its config priority, and every PLANET_POI icon resolves
  *       in its named sheet (covered by check [1] automatically).
  *
  * Exit code:
@@ -198,6 +202,32 @@ function extractClassLiterals(filter) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Symbol-sort-key coverage — the kind → priority pairs of a
+// ["match", ["get", "<key>"], <key>, <priority>, ..., <fallback>] layout
+// value. Returns null when the value is not such a match expression.
+// ─────────────────────────────────────────────────────────────────────
+
+function extractSortKeyMatch(sortKey) {
+  if (
+    !Array.isArray(sortKey) ||
+    sortKey[0] !== "match" ||
+    !Array.isArray(sortKey[1]) ||
+    sortKey[1][0] !== "get"
+  ) {
+    return null;
+  }
+  const pairs = new Map();
+  for (let i = 2; i < sortKey.length - 1; i += 2) {
+    pairs.set(sortKey[i], sortKey[i + 1]);
+  }
+  return {
+    getKey: sortKey[1][1],
+    pairs,
+    fallback: sortKey[sortKey.length - 1],
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Main
 // ─────────────────────────────────────────────────────────────────────
 
@@ -355,7 +385,79 @@ if (!poiLayer) {
 }
 console.log();
 
-// ---- [3] Schema sync -----------------------------------------------------
+// ---- [2b] Sort priority ----------------------------------------------------
+
+console.log(
+  "[2b] Sort priority — OUTDOOR_POI priorities & outdoor-poi symbol-sort-key",
+);
+const missingPriority = OUTDOOR_POI.kinds.filter(
+  (k) => typeof k.priority !== "number" || !Number.isFinite(k.priority),
+);
+if (missingPriority.length > 0) {
+  console.log(
+    `  FAIL kinds without a numeric priority: ${missingPriority.map((k) => k.kind).join(", ")}`,
+  );
+  for (const k of missingPriority) {
+    failures.push(`kind "${k.kind}" missing numeric priority`);
+  }
+} else {
+  console.log("  all kinds have a numeric priority");
+}
+
+const poiSortKey = poiLayer?.layout?.["symbol-sort-key"];
+const sortKeyMatch = extractSortKeyMatch(poiSortKey);
+if (poiSortKey === undefined) {
+  failures.push("outdoor-poi layer missing symbol-sort-key");
+  console.log("  FAIL outdoor-poi layer missing symbol-sort-key");
+} else if (!sortKeyMatch) {
+  failures.push(
+    "outdoor-poi symbol-sort-key not a match expression over a feature",
+  );
+  console.log(
+    "  FAIL outdoor-poi symbol-sort-key not a match expression over a feature",
+  );
+} else if (sortKeyMatch.getKey !== "kind") {
+  failures.push(
+    `outdoor-poi symbol-sort-key matches on "${sortKeyMatch.getKey}", not "kind"`,
+  );
+  console.log(
+    `  FAIL symbol-sort-key matches on "${sortKeyMatch.getKey}", not "kind"`,
+  );
+} else {
+  const ladder = [...sortKeyMatch.pairs.entries()]
+    .sort((a, b) => a[1] - b[1])
+    .map(([k, v]) => `${k}=${v}`)
+    .join(", ");
+  const uncovered = OUTDOOR_POI.kinds.filter(
+    (k) => !sortKeyMatch.pairs.has(k.kind),
+  );
+  const mismatched = OUTDOOR_POI.kinds.filter(
+    (k) => sortKeyMatch.pairs.get(k.kind) !== k.priority,
+  );
+  console.log(`  symbol-sort-key pairs: ${ladder}`);
+  if (uncovered.length > 0) {
+    console.log(
+      `  FAIL kinds missing from symbol-sort-key: ${uncovered.map((k) => k.kind).join(", ")}`,
+    );
+    for (const k of uncovered) {
+      failures.push(
+        `kind "${k.kind}" missing from outdoor-poi symbol-sort-key`,
+      );
+    }
+  } else if (mismatched.length > 0) {
+    console.log(
+      `  FAIL priorities mismatch config: ${mismatched.map((k) => `${k.kind} (layer ${sortKeyMatch.pairs.get(k.kind)} vs config ${k.priority})`).join(", ")}`,
+    );
+    for (const k of mismatched) {
+      failures.push(
+        `kind "${k.kind}" priority in symbol-sort-key (${sortKeyMatch.pairs.get(k.kind)}) != config (${k.priority})`,
+      );
+    }
+  } else {
+    console.log("  every kind covered, priorities match config");
+  }
+}
+console.log();
 
 console.log("[3] Schema sync — pois-schema.yml kind set vs OUTDOOR_POI.kinds");
 const schemaDoc = YAML.parse(readFileSync(SCHEMA_FILE, "utf8"));
@@ -431,6 +533,60 @@ if (!planetLayer) {
     }
   } else {
     console.log("  all classes present in filter");
+  }
+
+  const missingPriority = PLANET_POI.kinds.filter(
+    (k) => typeof k.priority !== "number" || !Number.isFinite(k.priority),
+  );
+  const planetSortKey = extractSortKeyMatch(
+    planetLayer.layout?.["symbol-sort-key"],
+  );
+  const uncoveredClasses = PLANET_POI.kinds.filter(
+    (k) => !planetSortKey?.pairs.has(k.class),
+  );
+  const mismatchedClasses = PLANET_POI.kinds.filter(
+    (k) => planetSortKey?.pairs.get(k.class) !== k.priority,
+  );
+  if (missingPriority.length > 0) {
+    console.log(
+      `  FAIL classes without a numeric priority: ${missingPriority.map((k) => k.class).join(", ")}`,
+    );
+    for (const k of missingPriority) {
+      failures.push(`class "${k.class}" missing numeric priority`);
+    }
+  }
+  if (!planetSortKey) {
+    failures.push(`${PLANET_POI.layerId} layer missing symbol-sort-key match`);
+    console.log(
+      `  FAIL ${PLANET_POI.layerId} layer missing symbol-sort-key match`,
+    );
+  } else if (planetSortKey.getKey !== "class") {
+    failures.push(
+      `${PLANET_POI.layerId} symbol-sort-key matches on "${planetSortKey.getKey}", not "class"`,
+    );
+    console.log(
+      `  FAIL symbol-sort-key matches on "${planetSortKey.getKey}", not "class"`,
+    );
+  } else if (uncoveredClasses.length > 0) {
+    console.log(
+      `  FAIL classes missing from symbol-sort-key: ${uncoveredClasses.map((k) => k.class).join(", ")}`,
+    );
+    for (const k of uncoveredClasses) {
+      failures.push(
+        `class "${k.class}" missing from ${PLANET_POI.layerId} symbol-sort-key`,
+      );
+    }
+  } else if (mismatchedClasses.length > 0) {
+    console.log(
+      `  FAIL class priorities mismatch config: ${mismatchedClasses.map((k) => `${k.class} (layer ${planetSortKey.pairs.get(k.class)} vs config ${k.priority})`).join(", ")}`,
+    );
+    for (const k of mismatchedClasses) {
+      failures.push(
+        `class "${k.class}" priority in symbol-sort-key (${planetSortKey.pairs.get(k.class)}) != config (${k.priority})`,
+      );
+    }
+  } else {
+    console.log("  all classes covered in symbol-sort-key at config priority");
   }
 }
 console.log();

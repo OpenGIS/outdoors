@@ -15308,6 +15308,20 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "rental_bicycle",
           "outdoors:dot"
         ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "doctors",
+          1000,
+          "bank",
+          1000,
+          "bicycle_rental",
+          1000,
+          1000
+        ],
         "text-anchor": "top",
         "text-field": [
           "case",
@@ -15685,6 +15699,50 @@ ${b.shaderPreludeCode.vertexSource}`,define:b.shaderDefine},defaultProjectionDat
           "skiing",
           "outdoors:skiing",
           "outdoors:dot"
+        ],
+        "symbol-sort-key": [
+          "match",
+          [
+            "get",
+            "kind"
+          ],
+          "hut",
+          10,
+          "shelter",
+          20,
+          "viewpoint",
+          20,
+          "campsite",
+          20,
+          "picnic_site",
+          30,
+          "drinking_water",
+          30,
+          "trailhead",
+          10,
+          "pass",
+          10,
+          "ranger_station",
+          10,
+          "castle",
+          40,
+          "information",
+          50,
+          "parking",
+          50,
+          "park",
+          40,
+          "toilets",
+          40,
+          "playground",
+          40,
+          "ferry",
+          40,
+          "lighthouse",
+          40,
+          "skiing",
+          40,
+          50
         ],
         "text-anchor": "top",
         "text-field": [
