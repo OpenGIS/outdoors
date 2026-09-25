@@ -145,6 +145,9 @@ function shotUrl(port, shot) {
     bearing: String(shot.bearing ?? 0),
     pitch: String(shot.pitch ?? 0),
   });
+  if (shot.maxCanvasSize) {
+    params.set("maxCanvasSize", shot.maxCanvasSize.join(","));
+  }
   return `http://${HOST}:${port}/?${params.toString()}`;
 }
 
@@ -184,8 +187,9 @@ async function captureShot(browser, port, shot) {
     await page.screenshot({
       path: outputPath,
       clip: { x: 0, y: 0, width: shot.width, height: shot.height },
-      // Large shots (e.g. 10000x10000 CSS px at scale 2) take minutes to encode.
-      timeout: 300000,
+      // Large shots (e.g. 10000x10000 CSS px at scale 2) take minutes to
+      // encode; 8192x8192 PNGs in particular can take several minutes.
+      timeout: 600000,
     });
 
     const mapErrors = await page.evaluate(() => window.__mapErrors ?? []);

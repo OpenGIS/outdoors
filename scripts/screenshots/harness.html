@@ -29,6 +29,7 @@
         var zoom = Number(params.get("zoom") || 13);
         var bearing = Number(params.get("bearing") || 0);
         var pitch = Number(params.get("pitch") || 0);
+        var maxCanvasSizeParam = params.get("maxCanvasSize");
 
         window.__mapErrors = [];
 
@@ -40,7 +41,7 @@
           recordError(event.message);
         });
 
-        var map = new maplibregl.Map({
+        var mapOptions = {
           container: "map",
           style: "/style.json",
           center: [center[0], center[1]],
@@ -50,7 +51,13 @@
           interactive: false,
           attributionControl: true,
           fadeDuration: 0,
-        });
+        };
+
+        if (maxCanvasSizeParam) {
+          mapOptions.maxCanvasSize = maxCanvasSizeParam.split(",").map(Number);
+        }
+
+        var map = new maplibregl.Map(mapOptions);
 
         window.__map = map;
 
