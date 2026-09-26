@@ -70,6 +70,8 @@ const STYLE_NAME = "Outdoors";
 // the build stays robust if upstream renames or removes it.
 
 const FEATURES = {
+  // Esri World Imagery raster ground beneath all vector layers.
+  SATELLITE_GROUND: true,
   // Muted landcover & landuse fills (terrain palette).
   TERRAIN_PALETTE: true,
   // Muted water fills & lines (water palette).
@@ -155,6 +157,143 @@ const COLOURS = {
     LABEL: "#5c4634", // dark umber — elevation labels
     HALO: "rgba(255, 255, 255, 0.5)", // semi-transparent white — label halo
   },
+};
+
+// SATELLITE — Esri World Imagery raster ground, inserted directly above the
+// Background canvas floor so it sits beneath every vector layer. The URL
+// template is z/y/x (row before column) — the Esri MapServer convention —
+// not the more common z/x/y.
+const SATELLITE_SOURCE_ID = "esri-satellite";
+const SATELLITE_LAYER_ID = "satellite";
+const SATELLITE_TILE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const SATELLITE_TILE_SIZE = 256;
+const SATELLITE_MAXZOOM = 20;
+const SATELLITE_ATTRIBUTION =
+  "Powered by Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community";
+
+// IMAGERY GROUND — with the satellite raster sitting beneath the vector
+// stack, every large opaque fill would hide the imagery it is drawn over, so
+// these base-style landuse/landcover fills and the outline strokes that
+// belong to them are stripped instead. Ids are the base style's layers at
+// indices 1–47 plus 59–61, grouped by intent below. The water fills stay
+// (they read as a translucent palette tint — see WATER_TINT_OPACITY).
+const SAT_STRIP_LANDUSE_FILLS = [
+  // 1–12: large landuse fills.
+  "Residential",
+  "Cemetery",
+  "Military",
+  "Railway",
+  "Garage",
+  "Dam",
+  "Quarry",
+  "Industrial",
+  "Retail",
+  "Commercial",
+  "Education and Health",
+  "Aeroway",
+];
+
+const SAT_STRIP_LANDCOVER_FILLS = [
+  // 13–18: medium-scale landcover fills.
+  "Wetland (medium scale)",
+  "Sand (medium scale)",
+  "Grass (medium scale)",
+  "Rock (medium scale)",
+  "Wood (medium scale)",
+  "Farmland (medium scale)",
+  // 19–44: detailed landcover/landuse fills, including the pattern fills.
+  "Marsh",
+  "Park",
+  "Stadium",
+  "Pitch",
+  "Garden",
+  "Garden pattern",
+  "Wood",
+  "Tidalflat",
+  "Wetland and swamp",
+  "Scree",
+  "Sand",
+  "Recreation ground",
+  "Orchard and vineyard",
+  "Meadow",
+  "Mangrove",
+  "Heath",
+  "Forest",
+  "Farmland",
+  "Farm",
+  "Scrub",
+  "Dune",
+  "Beach",
+  "Bare rock",
+  "Allotments",
+  "Landcover patterns",
+  "Grass",
+  // 46: glacier fill.
+  "Glacier",
+];
+
+const SAT_STRIP_OUTLINE_STROKES = [
+  // 45, 47 & 60: the outline strokes drawn around the stripped fills.
+  "Landcover outline",
+  "Glacier outline",
+  "Landuse outline",
+];
+
+const SAT_STRIP_OTHER = [
+  // 59 & 61: misc pattern & themed-area layers.
+  "Landuse pattern",
+  "Theme park",
+];
+
+// fill-opacity applied to the base water fills so the imagery shows through
+// the palette tint.
+const WATER_TINT_OPACITY = 0.45;
+
+// IMAGERY LEGIBILITY — final overrides applied by applyImageryLegibility() so
+// the vector overlay stays readable on the satellite ground. The contour
+// opacity ramp is scaled back at the z9–13 stops (minor lines a little more
+// than index) so the lines recede over the dark, busy imagery; width, colour
+// and the z14 stop are untouched. Small road/street labels sit directly over
+// the imagery, so their halo is widened by a fixed bump (capped at a maximum;
+// layers with no halo start from a base) and any missing halo colour is
+// filled with white. Town/city/peak/water label layers read fine and are
+// deliberately excluded, as are font sizes.
+const CONTOUR_IMAGERY_OPACITY_SCALE = 0.625; // index contours (37.5% reduction)
+const CONTOUR_IMAGERY_OPACITY_SCALE_MINOR = 0.6; // minor contours (40% reduction)
+
+const IMAGERY_LABEL_LAYERS = [
+  "Road labels",
+  "Tertiary road shield",
+  "Secondary road shield",
+  "Primary road shield",
+  "Trunk road shield",
+  "Highway shield",
+];
+const IMAGERY_LABEL_HALO_BUMP = 0.5;
+const IMAGERY_LABEL_HALO_MAX = 1.8;
+const IMAGERY_LABEL_HALO_BASE = 1.5;
+const IMAGERY_LABEL_HALO_COLOUR = "hsl(0, 0%, 100%)";
+
+// Buildings are outline-only over the imagery. The base Building fill layer is
+// removed outright rather than re-coloured: a fully transparent fill-color
+// hides its fill-outline-color too (Chrome pixel-diff confirms the outline
+// pass draws nothing), so a fill layer cannot render outline-only. It is
+// replaced by a dedicated line layer over the same building source-layer —
+// line layers honour line-color & line-width, so the footprint outline renders
+// reliably over the satellite ground at a width we control. The line layer
+// sits where the base Building fill sat, directly below the transportation
+// lines; Taxiway is the immediate surviving predecessor in the stripped stack.
+const BUILDING_OUTLINE_LAYER_ID = "building-outline";
+const BUILDING_OUTLINE_SOURCE_LAYER = "building";
+const BUILDING_OUTLINE_ANCHOR = "Taxiway";
+const BUILDING_OUTLINE_MINZOOM = 13;
+// line-width (px) and line-color at the zoom-ramp stops (low = z13, high =
+// z16). The colours replicate the base Building fill-outline-color.
+const BUILDING_OUTLINE_WIDTH = { low: 0.4, high: 0.6 };
+const BUILDING_OUTLINE_COLOUR = {
+  low: "hsl(26, 7%, 57%)",
+  high: "hsl(26, 8%, 62%)",
 };
 
 // DEM — Mapterhorn raster-dem source, hillshade layer & 3D terrain.
@@ -564,6 +703,18 @@ function setPaint(style, id, paintKey, value) {
 }
 
 /**
+ * Remove layers from the style, matched by exact id. Ids missing from the
+ * base style are skipped silently so the build stays robust against upstream
+ * renames. Returns the number of layers actually removed.
+ */
+function removeLayers(style, ids) {
+  const strip = new Set(ids);
+  const before = style.layers.length;
+  style.layers = style.layers.filter((l) => !strip.has(l.id));
+  return before - style.layers.length;
+}
+
+/**
  * Insert a layer immediately after the layer with the given anchor id.
  * Returns true if the anchor was found (layer inserted); false otherwise.
  */
@@ -591,11 +742,16 @@ function insertBefore(style, layer, anchorId) {
  * Slice 2 recolours the muted base with the project's terrain, water and
  * park palettes; slice 3 adds the DEM source, the hillshade layer and the
  * terrain config; slice 4 adds the hosted contour vector source, the contour
- * line layer and the contour elevation labels. Each is gated by its FEATURES
- * toggle. Later slices add the remaining outdoor sections (paths, routes,
- * POIs, …) here, mutating `style` in place and returning it.
+ * line layer and the contour elevation labels. The satellite-ground slice
+ * adds the Esri World Imagery raster beneath all vector layers. Each is gated
+ * by its FEATURES toggle. Later slices add the remaining outdoor sections
+ * (paths, routes, POIs, …) here, mutating `style` in place and returning it.
  */
 function applyModifications(style) {
+  // Ground raster first, so it sits beneath every vector layer.
+  if (FEATURES.SATELLITE_GROUND) applySatelliteGround(style);
+  // Then clear the opaque fills that would hide it, before the palettes run.
+  if (FEATURES.SATELLITE_GROUND) applyImageryGround(style);
   if (FEATURES.TERRAIN_PALETTE) applyTerrainPalette(style);
   if (FEATURES.WATER_PALETTE) applyWaterPalette(style);
   if (FEATURES.PARK_DIFFERENTIATION) applyParkDifferentiation(style);
@@ -608,7 +764,143 @@ function applyModifications(style) {
   if (FEATURES.ROAD_SURFACE_AWARE) applyRoadSurfaceAware(style);
   if (FEATURES.LOW_ZOOM_PATHS) applyLowZoomPaths(style);
   if (FEATURES.PATH_STYLING) applyPathStyling(style);
+  // Last, so its overrides beat the contour & road/path styling above.
+  if (FEATURES.SATELLITE_GROUND) applyImageryLegibility(style);
   return style;
+}
+
+/**
+ * Add the Esri World Imagery raster source and a ground layer directly above
+ * the Background canvas floor, so satellite imagery sits beneath every vector
+ * layer. Uses the default raster opacity — no paint overrides. Gated by
+ * SATELLITE_GROUND.
+ */
+function applySatelliteGround(style) {
+  if (!style.sources[SATELLITE_SOURCE_ID]) {
+    style.sources[SATELLITE_SOURCE_ID] = {
+      type: "raster",
+      tiles: [SATELLITE_TILE_URL],
+      tileSize: SATELLITE_TILE_SIZE,
+      maxzoom: SATELLITE_MAXZOOM,
+      attribution: SATELLITE_ATTRIBUTION,
+    };
+  }
+
+  const layer = {
+    id: SATELLITE_LAYER_ID,
+    type: "raster",
+    source: SATELLITE_SOURCE_ID,
+    minzoom: 0,
+  };
+  insertAfter(style, layer, "Background");
+}
+
+/**
+ * Let the satellite ground read through: strip the large-area opaque
+ * landuse/landcover fills and their outline strokes (see the SAT_STRIP_*
+ * config), and make the water fills translucent. Layer ids are matched
+ * exactly and missing layers are skipped silently. Gated by SATELLITE_GROUND;
+ * a no-op when it is off.
+ */
+function applyImageryGround(style) {
+  const removed = removeLayers(style, [
+    ...SAT_STRIP_LANDUSE_FILLS,
+    ...SAT_STRIP_LANDCOVER_FILLS,
+    ...SAT_STRIP_OUTLINE_STROKES,
+    ...SAT_STRIP_OTHER,
+  ]);
+  console.log(`[build] imagery ground: removed ${removed} opaque layers`);
+
+  // Translucent water so the imagery shows through the palette tint. The
+  // intermittent fill's own fill-opacity is overridden in the process.
+  setPaint(style, "Water", "fill-opacity", WATER_TINT_OPACITY);
+  setPaint(style, "Water intermittent", "fill-opacity", WATER_TINT_OPACITY);
+}
+
+/**
+ * Final legibility pass over the satellite ground: recede the contour lines
+ * at z9–13, widen the halo on the small road/street label layers, and replace
+ * the base Building fill with the outline line layer (see the
+ * BUILDING_OUTLINE_* config). Runs last in applyModifications() — after the
+ * contours and the road/path styling — so its setPaint overrides win. Gated by
+ * SATELLITE_GROUND; a no-op when it is off.
+ */
+function applyImageryLegibility(style) {
+  // Scale the contour opacity ramp's low (z9) and mid (z13) stops; the z14
+  // stop, the widths, the colours and contour labels are left as built. The
+  // expression keeps the same zoom stops and the same contourCase() cadence.
+  setPaint(style, "contour-lines", "line-opacity", [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    CONTOUR_SOURCE_MINZOOM,
+    contourCase(
+      CONTOUR_OPACITY_INDEX.low * CONTOUR_IMAGERY_OPACITY_SCALE,
+      CONTOUR_OPACITY_MINOR.low * CONTOUR_IMAGERY_OPACITY_SCALE_MINOR,
+    ),
+    CONTOUR_MID_ZOOM,
+    contourCase(
+      CONTOUR_OPACITY_INDEX.mid * CONTOUR_IMAGERY_OPACITY_SCALE,
+      CONTOUR_OPACITY_MINOR.mid * CONTOUR_IMAGERY_OPACITY_SCALE_MINOR,
+    ),
+    CONTOUR_SOURCE_MAXZOOM,
+    contourCase(CONTOUR_OPACITY_INDEX.high, CONTOUR_OPACITY_MINOR.high),
+  ]);
+
+  // Buildings outline-only: drop the base fill, then add the dedicated line
+  // layer in its slot below the transportation lines. The fill is removed
+  // rather than made transparent because a transparent fill hides its own
+  // fill-outline-color (see the BUILDING_OUTLINE_* config).
+  removeLayers(style, ["Building"]);
+  const buildingOutline = {
+    id: BUILDING_OUTLINE_LAYER_ID,
+    type: "line",
+    source: "openmaptiles",
+    "source-layer": BUILDING_OUTLINE_SOURCE_LAYER,
+    minzoom: BUILDING_OUTLINE_MINZOOM,
+    paint: {
+      "line-color": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        BUILDING_OUTLINE_MINZOOM,
+        BUILDING_OUTLINE_COLOUR.low,
+        16,
+        BUILDING_OUTLINE_COLOUR.high,
+      ],
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        BUILDING_OUTLINE_MINZOOM,
+        BUILDING_OUTLINE_WIDTH.low,
+        16,
+        BUILDING_OUTLINE_WIDTH.high,
+      ],
+      "line-opacity": 1,
+    },
+  };
+  if (!insertAfter(style, buildingOutline, BUILDING_OUTLINE_ANCHOR)) {
+    console.warn(
+      `[build] building outline: anchor "${BUILDING_OUTLINE_ANCHOR}" not found`,
+    );
+  }
+
+  for (const id of IMAGERY_LABEL_LAYERS) {
+    const layer = style.layers.find((l) => l.id === id);
+    if (!layer) continue;
+    layer.paint = layer.paint || {};
+    const halo = layer.paint["text-halo-width"];
+    layer.paint["text-halo-width"] =
+      typeof halo === "number"
+        ? Math.min(IMAGERY_LABEL_HALO_MAX, halo + IMAGERY_LABEL_HALO_BUMP)
+        : IMAGERY_LABEL_HALO_BASE;
+    // Only fill in a halo colour where the basemap omits one; otherwise the
+    // layer's own colour is left untouched.
+    if (!layer.paint["text-halo-color"]) {
+      layer.paint["text-halo-color"] = IMAGERY_LABEL_HALO_COLOUR;
+    }
+  }
 }
 
 /**

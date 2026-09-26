@@ -11,12 +11,13 @@
 
 ---
 
-Outdoors combines a number of Free and Open-Source data sources and software projects, without which this project would not be possible.
+Outdoors combines a number of data sources and software projects, without which this project would not be possible.
 
 ## Key Sources
 
 - [OpenFreeMap](https://openfreemap.org/) — Base vector tiles ([OpenMapTiles schema](https://github.com/openmaptiles/openmaptiles)) for the entire planet.
 - [Mapterhorn](https://mapterhorn.com/) — Powers 3D terrain, hillshading & contour lines.
+- [Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster (attribution required: "Powered by Esri" + source credits).
 - [Open GIS](https://tile.ogis.app/)
   - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, low-level paths & contours.
   - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
@@ -36,15 +37,6 @@ Outdoors combines a number of Free and Open-Source data sources and software pro
 ```bash
 npm install                           # Install dependencies
 npm run build                         # Build `style.json` from `scripts/build.mjs` (also validates)
-```
-
-## Development
-
-The dev server uses the same compare app as the demo, with HMR support.
-
-```bash
-npm install                           # Install dependencies
-npm run dev                           # Start Vite dev server + auto-build watcher
 ```
 
 ### Other Scripts
@@ -70,6 +62,17 @@ npm run screenshots                   # Regenerate every shot in shots.json
 npm run screenshots -- --name <id>    # Regenerate a single shot by id
 ```
 
+## Development
+
+Compare app with HMR support.
+
+```bash
+npm install                           # Install dependencies
+npm run dev                           # Start Vite dev server + auto-build watcher
+```
+
 ---
 
 [Read the Docs →](docs/README.md)
+
+---
