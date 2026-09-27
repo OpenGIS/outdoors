@@ -24,6 +24,15 @@
       "pitch": 60
     },
     {
+      "id": "bolzano-3d",
+      "center": [11.3548, 46.4981],
+      "zoom": 16,
+      "width": 800,
+      "height": 600,
+      "bearing": 0,
+      "pitch": 60
+    },
+    {
       "id": "sunshine-coast",
       "center": [-124.45956, 49.97661],
       "zoom": 12,
@@ -59,13 +68,18 @@
       "height": 600
     },
     {
-      "id": "vancouver-island",
-      "center": [-125.875, 49.6],
-      "zoom": 10,
-      "width": 8192,
-      "height": 8192,
-      "scale": 1,
-      "maxCanvasSize": [8192, 8192]
+      "id": "motorway",
+      "center": [11.32, 46.45],
+      "zoom": 13.5,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "id": "mid-wales",
+      "center": [-3.28954, 52.55497],
+      "zoom": 12.48,
+      "width": 800,
+      "height": 600
     }
   ]
 }

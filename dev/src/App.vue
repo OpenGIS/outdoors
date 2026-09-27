@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MaplibreCompare from "@maplibre/maplibre-gl-compare";
@@ -12,6 +12,7 @@ import { useProviderSelection } from "./composables/useProviderSelection";
 // ── Constants ──
 const CONTOURS_TO_IMPERIAL = false;
 const API_KEYS_STORAGE = "outdoors_dev_apiKeys";
+const VIEW_MODE_STORAGE = "outdoors_dev_viewMode";
 
 // ── Provider selection state (sections, selectedKey, persistence) ──
 const { sections, allProviders, selectedKey, selectedEntry } =
@@ -67,8 +68,11 @@ const styleCache = {};
 
 // ── Map state ──
 const compareEl = ref(null);
+const viewMode = ref(localStorage.getItem(VIEW_MODE_STORAGE) || "overlay");
 let leftMap = null;
 let rightMap = null;
+let compare = null;
+let detachSync = null;
 
 async function resolveStyle(entry) {
   if (entry?.style) return entry.style;
@@ -136,9 +140,105 @@ function applyImperialContours(style) {
   labelLayer.layout["text-field"] = toImperial(labelLayer.layout["text-field"]);
 }
 
+// ── View mode (overlay swipe vs side-by-side) ──
+function applyViewMode() {
+  if (!leftMap || !rightMap || !compareEl.value) return;
+  const el = compareEl.value;
+
+  if (viewMode.value === "side-by-side") {
+    if (compare) {
+      compare.remove();
+      compare = null;
+    }
+    if (detachSync) detachSync();
+    el.classList.add("mode-side-by-side");
+    alignRightToLeft();
+    detachSync = createMoveSync(leftMap, rightMap);
+    leftMap.resize();
+    rightMap.resize();
+  } else {
+    if (detachSync) {
+      detachSync();
+      detachSync = null;
+    }
+    el.classList.remove("mode-side-by-side");
+    if (!compare) {
+      compare = new MaplibreCompare(leftMap, rightMap, el, {});
+      alignRightToLeft();
+    }
+    leftMap.resize();
+    rightMap.resize();
+  }
+}
+
+function alignRightToLeft() {
+  rightMap.jumpTo({
+    center: leftMap.getCenter(),
+    zoom: leftMap.getZoom(),
+    bearing: leftMap.getBearing(),
+    pitch: leftMap.getPitch(),
+  });
+}
+
+/**
+ * Bidirectional pan/zoom sync for side-by-side mode. Mirrors the
+ * temporary-detach pattern of @mapbox/mapbox-gl-sync-move: listeners are
+ * removed before jumping the other map, then restored, so movements cannot
+ * cycle back and forth. Returns a detach function.
+ */
+function createMoveSync(master, clone) {
+  const moveTo = (from, to) =>
+    to.jumpTo({
+      center: from.getCenter(),
+      zoom: from.getZoom(),
+      bearing: from.getBearing(),
+      pitch: from.getPitch(),
+    });
+
+  const onMaster = () => {
+    off();
+    moveTo(master, clone);
+    on();
+  };
+  const onClone = () => {
+    off();
+    moveTo(clone, master);
+    on();
+  };
+  const on = () => {
+    master.on("move", onMaster);
+    clone.on("move", onClone);
+  };
+  const off = () => {
+    master.off("move", onMaster);
+    clone.off("move", onClone);
+  };
+
+  on();
+  return off;
+}
+
+watch(viewMode, (mode) => {
+  localStorage.setItem(VIEW_MODE_STORAGE, mode);
+  applyViewMode();
+});
+
 // ── Initialise maps ──
 onMounted(async () => {
   const rightStyle = JSON.parse(outdoorStyleRaw);
+
+  // Dev-only: load the outdoors sprite from the locally built sheet (Vite
+  // serves dev/public at the root) so icons under active development render
+  // before deploy. maplibre-gl v5 rejects relative sprite URLs, so this is
+  // absolute against the dev origin. Production keeps the remote sprite URL
+  // in style.json.
+  if (import.meta.env.DEV) {
+    rightStyle.sprite = (rightStyle.sprite || []).map((sheet) =>
+      sheet.id === "outdoors"
+        ? { ...sheet, url: `${window.location.origin}/sprite` }
+        : sheet,
+    );
+  }
 
   // Patch contour labels to imperial units BEFORE the map parses
   if (CONTOURS_TO_IMPERIAL) {
@@ -164,14 +264,22 @@ onMounted(async () => {
     zoom: 3,
   });
 
-  new MaplibreCompare(leftMap, rightMap, compareEl.value, {});
+  applyViewMode();
 
-  leftMap.once("idle", () => {
-    rightMap.jumpTo({
-      center: leftMap.getCenter(),
-      zoom: leftMap.getZoom(),
-    });
-  });
+  leftMap.once("idle", alignRightToLeft);
+});
+
+onBeforeUnmount(() => {
+  if (detachSync) {
+    detachSync();
+    detachSync = null;
+  }
+  compare?.remove();
+  compare = null;
+  leftMap?.remove();
+  rightMap?.remove();
+  leftMap = null;
+  rightMap = null;
 });
 </script>
 
@@ -180,6 +288,14 @@ onMounted(async () => {
     <div id="left" class="map">
       <div class="style-selector">
         <ProviderSelect v-model="selectedKey" :sections="sections" />
+        <select
+          v-model="viewMode"
+          class="view-mode-select"
+          aria-label="View mode"
+        >
+          <option value="overlay">Overlay</option>
+          <option value="side-by-side">Side by side</option>
+        </select>
       </div>
     </div>
     <div id="right" class="map"></div>

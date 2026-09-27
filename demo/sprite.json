@@ -1,37 +1,142 @@
 {
+  "baseball": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 0,
+    "y": 0
+  },
+  "basketball": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 0,
+    "y": 14
+  },
+  "bowls": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 0,
+    "y": 28
+  },
   "dot": {
     "height": 8,
     "pixelRatio": 1,
     "width": 8,
-    "x": 14,
-    "y": 14
+    "x": 0,
+    "y": 56
+  },
+  "garden": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 0,
+    "y": 42
   },
   "park": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 0,
+    "x": 14,
     "y": 0
   },
   "pass": {
     "height": 8,
     "pixelRatio": 1,
     "width": 8,
-    "x": 22,
+    "x": 8,
+    "y": 56
+  },
+  "route_marker": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 14,
     "y": 14
+  },
+  "ruins": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 14,
+    "y": 28
+  },
+  "running": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 14,
+    "y": 42
+  },
+  "skateboard": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 28,
+    "y": 0
   },
   "skiing": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 14,
+    "x": 28,
+    "y": 14
+  },
+  "soccer": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 28,
+    "y": 28
+  },
+  "sports_centre": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 28,
+    "y": 42
+  },
+  "stadium": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
     "y": 0
+  },
+  "swimming_pool": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
+    "y": 14
+  },
+  "tennis": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
+    "y": 28
+  },
+  "trail_blaze": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
+    "y": 42
   },
   "trailhead": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 0,
+    "x": 56,
+    "y": 0
+  },
+  "volleyball": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 56,
     "y": 14
   }
 }

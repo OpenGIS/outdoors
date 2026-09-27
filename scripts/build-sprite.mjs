@@ -24,7 +24,31 @@ const ICONS_DIR = resolve(PROJECT_ROOT, "icons");
 const OUT_DIR = resolve(PROJECT_ROOT, "dev", "public");
 
 const SPRITE_JSON = resolve(OUT_DIR, "sprite.json");
-const EXPECTED_ICONS = ["dot", "pass", "trailhead", "skiing", "park"];
+const EXPECTED_ICONS = [
+  // Outdoor-POI overlay glyphs (referenced from poi-config.mjs via build.mjs).
+  "dot",
+  "pass",
+  "trailhead",
+  "skiing",
+  "park",
+  // Curated basemap-POI glyphs (referenced from BASEMAP_POI_ICON_REMAP in
+  // build.mjs). MUST stay in sync with OUTDOOR_SPRITE_ICONS there.
+  "soccer",
+  "basketball",
+  "tennis",
+  "volleyball",
+  "baseball",
+  "bowls",
+  "swimming_pool",
+  "running",
+  "skateboard",
+  "garden",
+  "stadium",
+  "sports_centre",
+  "route_marker",
+  "trail_blaze",
+  "ruins",
+];
 
 try {
   execFileSync("spreet", ["--version"], { stdio: "ignore" });

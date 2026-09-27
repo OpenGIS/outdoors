@@ -23,8 +23,9 @@
  * inside applyModifications().
  *
  * Cache: the downloaded basemap style is cached in .cache/basemap.json, with
- * the response ETag in .cache/basemap-etag.txt. Cache invalidation uses the
- * HTTP ETag — see fetchBasemap() below.
+ * the response ETag in .cache/basemap-etag.txt; the default sprite sheet is
+ * cached the same way in .cache/basemap-sprite.json + -etag.txt. Cache
+ * invalidation uses the HTTP ETag — see fetchBasemap() and fetchSpriteKeys().
  *
  * Usage:
  *   node scripts/build.mjs           # one-shot build
@@ -53,6 +54,15 @@ const BASE_STYLE_URL = "https://www.ogis.org/basemap/style.json";
 const CACHE_DIR = resolve(__dirname, "..", ".cache");
 const CACHE_FILE = resolve(CACHE_DIR, "basemap.json");
 const CACHE_META_FILE = resolve(CACHE_DIR, "basemap-etag.txt");
+
+// Default basemap sprite — fetched at build time so the basemap-POI icon
+// expressions can identity-match the names the sheet actually contains,
+// without a runtime ["image", …] probe (which raises styleimagemissing for
+// names the sheet lacks). Same ETag-cache pattern as the style and
+// scripts/check-poi-coverage.mjs.
+const SPRITE_URL = "https://www.ogis.org/basemap/sprite.json";
+const SPRITE_CACHE_FILE = resolve(CACHE_DIR, "basemap-sprite.json");
+const SPRITE_CACHE_META_FILE = resolve(CACHE_DIR, "basemap-sprite-etag.txt");
 
 // Root style identity — written into the generated style.json as the
 // top-level `name` property (see the style spec's Root section). The
@@ -134,16 +144,22 @@ const COLOURS = {
     LABEL_TEXT: "#3d5c28", // dark green — park labels
   },
 
-  // Roads (ROAD_SURFACE_AWARE) — muted warm-taupe paved road palette, with
-  // the slightly darker unpaved variants (drawn dashed & thinner).
+  // Roads (ROAD_SURFACE_AWARE) — asphalt greys read as the ground surface
+  // over the satellite raster (lightest tier most recessive), with the
+  // slightly darker unpaved variants (drawn dashed & thinner) and the neutral
+  // no-colour-cast casing greys (darker than their tier's fill).
   ROADS: {
-    MAJOR: "rgb(228, 219, 201)", // lightest, most recessive — motorway/trunk/primary (+ motorway links)
-    MEDIUM: "rgb(223, 211, 188)", // secondary/tertiary/links
-    LOCAL: "rgb(255, 255, 255)", // minor/service/track/raceway
-    TRACK_CASING: "rgb(146, 118, 86)", // darker warm brown — low-zoom track outline
-    UNPAVED_MAJOR: "rgb(210, 200, 180)", // unpaved motorway/trunk/primary
-    UNPAVED_MEDIUM: "rgb(210, 197, 175)", // unpaved secondary/tertiary
-    UNPAVED_LOCAL: "rgb(237, 230, 218)", // unpaved minor/service/track
+    MAJOR: "rgb(109, 110, 96)", // asphalt — motorway/trunk/primary (+ links)
+    MEDIUM: "rgb(118, 120, 109)", // asphalt — secondary/tertiary/links
+    LOCAL: "rgb(115, 116, 103)", // asphalt — minor/service/track/raceway
+    CASING_MAJOR: "rgb(80, 82, 72)", // casing — darker than the major fill
+    CASING_MEDIUM: "rgb(90, 92, 83)", // casing — darker than the medium fill
+    CASING_LOCAL: "rgb(86, 88, 78)", // casing — darker than the local fill
+    TRACK_CASING: "rgb(104, 106, 95)", // neutral grey — low-zoom track outline
+    TRACK_FILL: "rgb(136, 136, 122)", // light core inside the track casing; decoupled from LOCAL
+    UNPAVED_MAJOR: "rgb(123, 124, 110)", // unpaved motorway/trunk/primary
+    UNPAVED_MEDIUM: "rgb(132, 134, 123)", // unpaved secondary/tertiary
+    UNPAVED_LOCAL: "rgb(129, 130, 117)", // unpaved minor/service/track
   },
 
   // Paths (PATH_STYLING & LOW_ZOOM_PATHS) — the outdoor trail colour shared
@@ -170,7 +186,7 @@ const SATELLITE_TILE_URL =
 const SATELLITE_TILE_SIZE = 256;
 const SATELLITE_MAXZOOM = 20;
 const SATELLITE_ATTRIBUTION =
-  "Powered by Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community";
+  '<a href="https://www.esri.com" target="_blank">© Esri</a>';
 
 // IMAGERY GROUND — with the satellite raster sitting beneath the vector
 // stack, every large opaque fill would hide the imagery it is drawn over, so
@@ -296,6 +312,72 @@ const BUILDING_OUTLINE_COLOUR = {
   high: "hsl(26, 8%, 62%)",
 };
 
+// Buildings extrude from z15 so dense urban areas gain honest 3D massing over
+// the satellite ground. The source-layer carries render_height &
+// render_min_height on every feature (raw height/min_height are absent), so
+// the extrusion is mapped from those directly — no invented heights. Features
+// missing render_height fall back to 0 and render flat. The extrusion is
+// inserted immediately before the outline so the roof outline draws on top.
+const BUILDING_3D_LAYER_ID = "building-3d";
+const BUILDING_3D_SOURCE_LAYER = "building";
+const BUILDING_3D_MINZOOM = 15;
+// Pale neutral massing that does not compete with the imagery; the opacity
+// lets the satellite ground tint through.
+const BUILDING_3D_COLOUR = "rgb(140, 136, 130)";
+const BUILDING_3D_OPACITY = 0.85;
+
+// Remaining man-made surfaces recede over the imagery. The opaque urban area
+// fills drop to a light translucent wash; the runway/taxiway tarmac is
+// desaturated toward neutral grey and faded; the rail family is lightly
+// muted so it still reads but stops competing with the ground. Nothing is
+// removed — outdoor infrastructure (trails, POIs) stays prominent. Opacity
+// is the main lever; colours are kept except the runway's blue cast.
+const IMAGERY_URBAN_FILL_OPACITY = 0.4;
+const IMAGERY_URBAN_FILL_LAYERS = ["Pier", "Bridge area", "Platform area"];
+
+// The bright, wide pedestrian road linework is the single largest white
+// contributor over the imagery: the lavender fill and its dark casing are
+// pulled back to neutral, low-opacity greys so the satellite ground reads
+// through. The pedestrian area fill is decoupled from the shared
+// IMAGERY_URBAN_FILL_OPACITY above (Pier/Bridge/Platform keep it) and given a
+// cooler, lighter, more transparent wash of its own.
+const IMAGERY_PEDESTRIAN_ROAD_COLOUR = "rgb(127, 128, 108)";
+const IMAGERY_PEDESTRIAN_ROAD_OPACITY = 0.3;
+const IMAGERY_PEDESTRIAN_ROAD_OUTLINE_OPACITY = 0.3;
+const IMAGERY_PEDESTRIAN_AREA_COLOUR = "hsl(0, 0%, 88%)";
+const IMAGERY_PEDESTRIAN_AREA_OPACITY = 0.25;
+
+// The white path casing under the orange path fills. Colour and width are
+// untouched; only the opacity drops so it stops reading as white linework.
+const IMAGERY_PATH_OUTLINE_OPACITY = 0.3;
+const IMAGERY_PATH_OUTLINE_LAYERS = [
+  "Footway path outline",
+  "Bridleway path outline",
+  "Cycleway path outline",
+  "Steps path outline",
+];
+
+// Runway/taxiway tarmac — the base hsl(234, 25%, 76%) is a blue-cast grey
+// that reads too strongly over the imagery; pulled toward neutral grey.
+const IMAGERY_RUNWAY_COLOUR = "hsl(234, 8%, 74%)";
+const IMAGERY_RUNWAY_OPACITY = 0.45;
+const IMAGERY_RUNWAY_LAYERS = ["Runway", "Taxiway"];
+
+// Rail family — the hatchings, tunnels and bridges are included so opacity
+// does not jump where a rail line crosses one.
+const IMAGERY_RAIL_OPACITY = 0.8;
+const IMAGERY_RAIL_LAYERS = [
+  "Major rail",
+  "Minor rail",
+  "Major rail hatching",
+  "Minor rail hatching",
+  "Major rail tunnel",
+  "Major rail tunnel hatching",
+  "Major rail bridge",
+  "Major rail bridge hatching",
+  "Subway line",
+];
+
 // DEM — Mapterhorn raster-dem source, hillshade layer & 3D terrain.
 // Values ported from the pre-refactor build. The raster-dem source feeds
 // both the hillshade layer and the terrain. Mapterhorn serves
@@ -312,7 +394,7 @@ const DEM_SOURCE_MAXZOOM = 17;
 
 // style.terrain.exaggeration — ratio by which the terrain is exaggerated
 // relative to the real world.
-const TERRAIN_EXAGGERATION = 1.5;
+const TERRAIN_EXAGGERATION = 1.2;
 
 // hillshade-exaggeration — intensity of the hillshade (fades in z3 → z5,
 // held constant from z12).
@@ -445,19 +527,85 @@ const ROAD_TIERS = {
   },
 };
 
-// Road tunnel fills faded by ROAD_TUNNEL_OPACITY — the basemap's own
-// tunnel layers (path & rail tunnels are styled separately).
-const ROAD_TUNNEL_LAYERS = [
-  "Highway tunnel",
-  "Trunk tunnel",
-  "Primary tunnel",
-  "Secondary tunnel",
-  "Tertiary tunnel",
-  "Minor tunnel",
-  "Service tunnel",
-  "Highway link tunnel",
-  "Link tunnel",
-];
+// Road casing (`* outline`) layer ids by tier, each carrying its neutral grey
+// casing colour. The basemap's vivid outline hues (red motorways, green
+// secondaries, …) are replaced so only the asphalt fills colour the road
+// network. Road, link, tunnel & bridge outlines are all casings; the
+// under-construction, path, rail & water outlines are left to the basemap.
+const ROAD_CASING_LAYERS = {
+  major: {
+    colour: COLOURS.ROADS.CASING_MAJOR,
+    layers: [
+      "Highway road outline",
+      "Trunk road outline",
+      "Primary road outline",
+      "Highway link outline",
+      "Trunk road link outline",
+      "Primary road link outline",
+      "Highway tunnel outline",
+      "Trunk tunnel outline",
+      "Primary tunnel outline",
+      "Highway link tunnel outline",
+      "Highway bridge outline",
+      "Trunk bridge outline",
+      "Primary bridge outline",
+      "Highway link bridge outline",
+    ],
+  },
+  medium: {
+    colour: COLOURS.ROADS.CASING_MEDIUM,
+    layers: [
+      "Secondary road outline",
+      "Tertiary road outline",
+      "Secondary road link outline",
+      "Secondary tunnel outline",
+      "Tertiary tunnel outline",
+      "Secondary bridge outline",
+      "Tertiary bridge outline",
+    ],
+  },
+  local: {
+    colour: COLOURS.ROADS.CASING_LOCAL,
+    layers: [
+      "Minor road outline",
+      "Pedestrian road outline",
+      "Service road link outline",
+      "Service tunnel outline",
+      "Street tunnel outline",
+      "Link tunnel outline",
+      "Service bridge outline",
+      "Street bridge outline",
+      "Link bridge outline",
+    ],
+  },
+};
+
+// Road bridge fill layers by tier — recoloured to the same asphalt palette (and
+// unpaved case) as their non-bridge counterparts; widths stay as the basemap's.
+const ROAD_BRIDGE_LAYERS = {
+  major: [
+    "Highway bridge",
+    "Trunk bridge",
+    "Primary bridge",
+    "Highway link bridge",
+  ],
+  medium: ["Secondary bridge", "Tertiary bridge"],
+  local: ["Minor bridge", "Service bridge", "Link bridge"],
+};
+
+// Road tunnel fill layers by tier — recoloured to the tier asphalt colour and
+// faded by ROAD_TUNNEL_OPACITY so their dashes read. Path & rail tunnels are
+// styled separately.
+const ROAD_TUNNEL_LAYERS = {
+  major: [
+    "Highway tunnel",
+    "Trunk tunnel",
+    "Primary tunnel",
+    "Highway link tunnel",
+  ],
+  medium: ["Secondary tunnel", "Tertiary tunnel"],
+  local: ["Minor tunnel", "Service tunnel", "Link tunnel"],
+};
 
 // Build a v5-valid line-width expression where zoom is the top-level
 // interpolate and surface-awareness lives at each stop value. Unpaved width
@@ -551,23 +699,23 @@ const PATH_TRACK_WIDTH_LOW_ZOOM = [
   ["exponential", 1.2],
   ["zoom"],
   12,
-  1,
+  0.6,
   13,
-  2,
+  0.9,
   14,
-  2,
-]; // fill width; z13=2 matches the local road fill at z14 for a seamless handoff
+  1.3,
+]; // fill width
 const PATH_TRACK_CASING_WIDTH_LOW_ZOOM = [
   "interpolate",
   ["exponential", 1.2],
   ["zoom"],
   12,
-  4,
+  1.2,
   13,
-  5,
+  1.8,
   14,
-  5,
-]; // casing = fill + ~3px outline (mirrors the local road casing at z14)
+  2.5,
+]; // casing = fill + a slim outline
 
 // POIs — the config-driven outdoor-poi overlay (see poi-config.mjs). All
 // expressions below are derived from OUTDOOR_POI.kinds so the filter, icon
@@ -601,7 +749,33 @@ const POI_FILTER = [
 // Every other POI icon comes from the basemap's "default" sheet and stays
 // unprefixed. See the style.sprite array in build().
 const OUTDOOR_SPRITE_ID = "outdoors";
-const OUTDOOR_SPRITE_ICONS = ["trailhead", "pass", "dot", "park", "skiing"];
+const OUTDOOR_SPRITE_ICONS = [
+  // Outdoor-POI overlay (poi-config.mjs).
+  "trailhead",
+  "pass",
+  "dot",
+  "park",
+  "skiing",
+  // Curated basemap-POI glyphs — see BASEMAP_POI_ICON_REMAP below. Every entry
+  // MUST exist as an SVG in icons/ and in EXPECTED_ICONS in
+  // scripts/build-sprite.mjs, and be referenced somewhere below, or the
+  // coverage check's orphan assertion fails.
+  "soccer",
+  "basketball",
+  "tennis",
+  "volleyball",
+  "baseball",
+  "bowls",
+  "swimming_pool",
+  "running",
+  "skateboard",
+  "garden",
+  "stadium",
+  "sports_centre",
+  "route_marker",
+  "trail_blaze",
+  "ruins",
+];
 const outdoorIcon = (name) =>
   OUTDOOR_SPRITE_ICONS.includes(name) ? `${OUTDOOR_SPRITE_ID}:${name}` : name;
 
@@ -615,6 +789,116 @@ const POI_ICON_MATCH = [
   ...OUTDOOR_POI.kinds.flatMap((k) => [k.kind, outdoorIcon(k.icon)]),
   outdoorIcon("dot"),
 ];
+
+// Basemap-POI icon remap — the basemap's own POI symbol layers (Shop, Waste,
+// Outdoor, Sport, Food, Public, Cultural, Transport, Health, Accommodation,
+// Place of worship, Bus station, Zoo) use dynamic icon templates such as
+// "{subclass}". At urban zooms many resolved names are absent from the
+// basemap sprite sheet, producing runtime `styleimagemissing` warnings and no
+// icon.
+//
+// applyBasemapPoiIcons() replaces each template with a single match:
+//
+//   ["match", ["get", "<key>"],
+//      ...curated OSM value → icon pairs,  // bespoke glyphs win
+//      ...identity pairs,                  // every default-sheet name → itself
+//      "outdoors:dot"]
+//
+// Every output therefore names an icon that is loaded: curated pairs map to
+// bespoke outdoors glyphs or near-miss default-sheet literals, identity pairs
+// (built from the fetched default sprite's keys, minus the curated inputs)
+// map a value to the identically named sprite icon, and the fallback is the
+// neutral outdoors generic. No ["image", …] probe is used — MapLibre fires
+// styleimagemissing for any probe whose name is absent, so matching against
+// the real key list is the only zero-warning approach. Only
+// BASEMAP_POI_ICON_REMAP is hand-maintained; the identity pairs are derived.
+const BASEMAP_POI_ICON_REMAP = {
+  // Recreation & sport — curated outdoors glyphs. Visually similar variants
+  // share one glyph (e.g. table_tennis with tennis, beachvolleyball with
+  // volleyball, softball with baseball, bmx with skateboard, fistball with
+  // sports_centre).
+  soccer: outdoorIcon("soccer"),
+  "soccer;basketball": outdoorIcon("soccer"), // literal compound subclass
+  basketball: outdoorIcon("basketball"),
+  tennis: outdoorIcon("tennis"),
+  table_tennis: outdoorIcon("tennis"),
+  volleyball: outdoorIcon("volleyball"),
+  beachvolleyball: outdoorIcon("volleyball"),
+  baseball: outdoorIcon("baseball"),
+  softball: outdoorIcon("baseball"),
+  bowls: outdoorIcon("bowls"),
+  multi: outdoorIcon("sports_centre"),
+  gaelic_games: outdoorIcon("sports_centre"),
+  fistball: outdoorIcon("sports_centre"),
+  pitch: outdoorIcon("sports_centre"),
+  skateboard: outdoorIcon("skateboard"),
+  bmx: outdoorIcon("skateboard"),
+  running: outdoorIcon("running"),
+  swimming_pool: outdoorIcon("swimming_pool"),
+  sports_centre: outdoorIcon("sports_centre"),
+  stadium: outdoorIcon("stadium"),
+  // Nature & outdoor heritage.
+  garden: outdoorIcon("garden"),
+  route_marker: outdoorIcon("route_marker"),
+  trail_blaze: outdoorIcon("trail_blaze"),
+  ruins: outdoorIcon("ruins"),
+  // Near-miss literals that DO exist in the basemap sheet.
+  fire_station: "firestation",
+  wine: "alcohol",
+  beer: "biergarten",
+  art_gallery: "gallery",
+  post: "post_office",
+  information: "board",
+  lodging: "bed",
+  bus: "bus_station",
+  stele: "monument",
+  // Non-outdoor names with no good match — the neutral generic.
+  chess: outdoorIcon("dot"),
+  dormitory: outdoorIcon("dot"),
+  zoo: outdoorIcon("dot"),
+};
+
+/**
+ * Flatten the curated label→icon pairs for the basemap-POI icon matches.
+ * Only values the basemap sprite is known to lack (or that warrant a bespoke
+ * outdoors glyph) belong in BASEMAP_POI_ICON_REMAP; every other default-sheet
+ * name is handled by an identity pair — see basemapPoiIdentityNames().
+ */
+const BASEMAP_POI_ICON_MATCH_PAIRS = Object.entries(
+  BASEMAP_POI_ICON_REMAP,
+).flat();
+
+/**
+ * The default-sprite names that get an identity pair (name → same name) in
+ * every basemap-POI icon match: every fetched key except the curated inputs,
+ * which keep precedence. Derived at build time — no hand-maintained list.
+ */
+function basemapPoiIdentityNames(spriteKeys) {
+  const curatedInputs = new Set(Object.keys(BASEMAP_POI_ICON_REMAP));
+  return spriteKeys.filter((name) => !curatedInputs.has(name));
+}
+
+/**
+ * The icon-image expression that replaces a basemap "{class}" / "{subclass}"
+ * template. See BASEMAP_POI_ICON_REMAP for the technique: a single match over
+ * the source key whose curated pairs take precedence, followed by identity
+ * pairs for every remaining default-sprite name, landing on `fallback` (the
+ * neutral "outdoors:dot" generic by default). Every possible output therefore
+ * exists in a loaded sheet, so no resolved value can raise styleimagemissing.
+ */
+function basemapPoiIconExpression(
+  sourceKey,
+  spriteKeys = [],
+  fallback = outdoorIcon("dot"),
+) {
+  return [
+    "match",
+    ["get", sourceKey],
+    ...BASEMAP_POI_ICON_MATCH_PAIRS,
+    ...basemapPoiIdentityNames(spriteKeys).flatMap((name) => [name, name]),
+    fallback,
+  ];
+}
 
 // Elevation in the label — showEle kinds carry ele from the tiles, rendered
 // as "{name} {ele}m" like the peak labels. number-format(round(ele))
@@ -703,6 +987,18 @@ function setPaint(style, id, paintKey, value) {
 }
 
 /**
+ * Override a layout property on a layer, matched by exact id. Layers missing
+ * from the base style are skipped silently so the build stays robust against
+ * upstream renames.
+ */
+function setLayout(style, id, layoutKey, value) {
+  const layer = style.layers.find((l) => l.id === id);
+  if (!layer) return;
+  layer.layout = layer.layout || {};
+  layer.layout[layoutKey] = value;
+}
+
+/**
  * Remove layers from the style, matched by exact id. Ids missing from the
  * base style are skipped silently so the build stays robust against upstream
  * renames. Returns the number of layers actually removed.
@@ -747,7 +1043,7 @@ function insertBefore(style, layer, anchorId) {
  * by its FEATURES toggle. Later slices add the remaining outdoor sections
  * (paths, routes, POIs, …) here, mutating `style` in place and returning it.
  */
-function applyModifications(style) {
+function applyModifications(style, spriteKeys = []) {
   // Ground raster first, so it sits beneath every vector layer.
   if (FEATURES.SATELLITE_GROUND) applySatelliteGround(style);
   // Then clear the opaque fills that would hide it, before the palettes run.
@@ -760,6 +1056,10 @@ function applyModifications(style) {
   if (FEATURES.DEM_TERRAIN) applyDemTerrain(style);
   if (FEATURES.CONTOURS) applyContours(style);
   if (FEATURES.CONTOURS) applyContourLabels(style);
+  // Always: swap the basemap's dynamic POI icon templates for expressions
+  // that can never resolve to a name the sprite lacks. Independent of the
+  // outdoor overlay, like the always-on sprite wiring in build().
+  applyBasemapPoiIcons(style, spriteKeys);
   if (FEATURES.OUTDOOR_POI) applyOutdoorPoi(style);
   if (FEATURES.ROAD_SURFACE_AWARE) applyRoadSurfaceAware(style);
   if (FEATURES.LOW_ZOOM_PATHS) applyLowZoomPaths(style);
@@ -819,11 +1119,15 @@ function applyImageryGround(style) {
 
 /**
  * Final legibility pass over the satellite ground: recede the contour lines
- * at z9–13, widen the halo on the small road/street label layers, and replace
- * the base Building fill with the outline line layer (see the
- * BUILDING_OUTLINE_* config). Runs last in applyModifications() — after the
- * contours and the road/path styling — so its setPaint overrides win. Gated by
- * SATELLITE_GROUND; a no-op when it is off.
+ * at z9–13, widen the halo on the small road/street label layers, tone down
+ * the remaining man-made surfaces (translucent urban fills, faded pedestrian
+ * road/area linework and path casings, desaturated & faded runway/taxiway
+ * tarmac, lightly muted rails — see the IMAGERY_* and BUILDING_* config),
+ * replace the base Building fill with the outline line
+ * layer and add the 3D building extrusion. Runs last in
+ * applyModifications() — after the contours and the road/path styling — so
+ * its setPaint overrides win. Gated by SATELLITE_GROUND; a no-op when it is
+ * off.
  */
 function applyImageryLegibility(style) {
   // Scale the contour opacity ramp's low (z9) and mid (z13) stops; the z14
@@ -886,6 +1190,28 @@ function applyImageryLegibility(style) {
     );
   }
 
+  // 3D massing sits immediately beneath the outline so the roof outline draws
+  // on top of the extrusion. Heights come straight from the source-layer; no
+  // filter, so every feature extrudes and those without a height render flat.
+  const building3d = {
+    id: BUILDING_3D_LAYER_ID,
+    type: "fill-extrusion",
+    source: "openmaptiles",
+    "source-layer": BUILDING_3D_SOURCE_LAYER,
+    minzoom: BUILDING_3D_MINZOOM,
+    paint: {
+      "fill-extrusion-color": BUILDING_3D_COLOUR,
+      "fill-extrusion-height": ["get", "render_height"],
+      "fill-extrusion-base": ["get", "render_min_height"],
+      "fill-extrusion-opacity": BUILDING_3D_OPACITY,
+    },
+  };
+  if (!insertBefore(style, building3d, BUILDING_OUTLINE_LAYER_ID)) {
+    console.warn(
+      `[build] building 3d: anchor "${BUILDING_OUTLINE_LAYER_ID}" not found`,
+    );
+  }
+
   for (const id of IMAGERY_LABEL_LAYERS) {
     const layer = style.layers.find((l) => l.id === id);
     if (!layer) continue;
@@ -900,6 +1226,55 @@ function applyImageryLegibility(style) {
     if (!layer.paint["text-halo-color"]) {
       layer.paint["text-halo-color"] = IMAGERY_LABEL_HALO_COLOUR;
     }
+  }
+
+  // Remaining man-made surfaces sit lightly over the satellite ground:
+  // translucent urban area fills, the faded pedestrian road/area linework and
+  // path casings, desaturated & faded runway/taxiway tarmac and lightly muted
+  // rails. Nothing is removed; outdoor infrastructure (trails, POIs) is
+  // untouched.
+  for (const id of IMAGERY_URBAN_FILL_LAYERS) {
+    setPaint(style, id, "fill-opacity", IMAGERY_URBAN_FILL_OPACITY);
+  }
+  setPaint(
+    style,
+    "Pedestrian area",
+    "fill-color",
+    IMAGERY_PEDESTRIAN_AREA_COLOUR,
+  );
+  setPaint(
+    style,
+    "Pedestrian area",
+    "fill-opacity",
+    IMAGERY_PEDESTRIAN_AREA_OPACITY,
+  );
+  setPaint(
+    style,
+    "Pedestrian road",
+    "line-color",
+    IMAGERY_PEDESTRIAN_ROAD_COLOUR,
+  );
+  setPaint(
+    style,
+    "Pedestrian road",
+    "line-opacity",
+    IMAGERY_PEDESTRIAN_ROAD_OPACITY,
+  );
+  setPaint(
+    style,
+    "Pedestrian road outline",
+    "line-opacity",
+    IMAGERY_PEDESTRIAN_ROAD_OUTLINE_OPACITY,
+  );
+  for (const id of IMAGERY_PATH_OUTLINE_LAYERS) {
+    setPaint(style, id, "line-opacity", IMAGERY_PATH_OUTLINE_OPACITY);
+  }
+  for (const id of IMAGERY_RUNWAY_LAYERS) {
+    setPaint(style, id, "line-color", IMAGERY_RUNWAY_COLOUR);
+    setPaint(style, id, "line-opacity", IMAGERY_RUNWAY_OPACITY);
+  }
+  for (const id of IMAGERY_RAIL_LAYERS) {
+    setPaint(style, id, "line-opacity", IMAGERY_RAIL_OPACITY);
   }
 }
 
@@ -1198,16 +1573,19 @@ function applyContourLabels(style) {
  * surface tag. Each tier's fill layers get a surface-aware line-colour and
  * line-width (paved vs unpaved ramps), a dashed line-dasharray for unpaved
  * ways, and the butt cap that lets dasharrays render at interpolated
- * widths. The basemap's road tunnel fills are faded so their dashes read
- * clearly. Outlines, bridges, rails & pedestrian areas keep the basemap's
- * own rendering. Gated by ROAD_SURFACE_AWARE.
+ * widths. The basemap's vivid casing outlines, bridge fills and tunnel
+ * fills are brought into the same asphalt palette — casings become neutral
+ * greys (line-colour only), bridges mirror their tier fills (colour only)
+ * and tunnels keep their dashes faded by ROAD_TUNNEL_OPACITY. Rail, path &
+ * under-construction rendering is left alone. Gated by ROAD_SURFACE_AWARE.
  */
 function applyRoadSurfaceAware(style) {
+  const unpaved = ["==", ["get", "surface"], "unpaved"];
+
   for (const tier of Object.values(ROAD_TIERS)) {
     for (const id of tier.layers) {
       const layer = style.layers.find((l) => l.id === id);
       if (!layer) continue;
-      const unpaved = ["==", ["get", "surface"], "unpaved"];
       layer.paint = layer.paint || {};
       layer.paint["line-color"] = ["case", unpaved, tier.unpaved, tier.paved];
       layer.paint["line-width"] = surfaceWidthExpr(tier.stops);
@@ -1226,8 +1604,33 @@ function applyRoadSurfaceAware(style) {
     }
   }
 
-  for (const id of ROAD_TUNNEL_LAYERS) {
-    setPaint(style, id, "line-opacity", ROAD_TUNNEL_OPACITY);
+  // Casings — neutral grey line-colour only; the basemap's own widths and
+  // opacity ramps stay untouched.
+  for (const { colour, layers } of Object.values(ROAD_CASING_LAYERS)) {
+    for (const id of layers) {
+      setPaint(style, id, "line-color", colour);
+    }
+  }
+
+  // Bridge fills — the same asphalt palette & unpaved case as the road fills,
+  // keeping the basemap's bridge widths.
+  for (const [tier, ids] of Object.entries(ROAD_BRIDGE_LAYERS)) {
+    for (const id of ids) {
+      setPaint(style, id, "line-color", [
+        "case",
+        unpaved,
+        ROAD_TIERS[tier].unpaved,
+        ROAD_TIERS[tier].paved,
+      ]);
+    }
+  }
+
+  // Tunnel fills — tier asphalt colour, faded so the dashes read.
+  for (const [tier, ids] of Object.entries(ROAD_TUNNEL_LAYERS)) {
+    for (const id of ids) {
+      setPaint(style, id, "line-color", ROAD_TIERS[tier].paved);
+      setPaint(style, id, "line-opacity", ROAD_TUNNEL_OPACITY);
+    }
   }
 }
 
@@ -1281,7 +1684,7 @@ function applyLowZoomPaths(style) {
       "line-join": PATH_LINE_JOIN,
     },
     paint: {
-      "line-color": COLOURS.ROADS.LOCAL,
+      "line-color": COLOURS.ROADS.TRACK_FILL,
       "line-width": PATH_TRACK_WIDTH_LOW_ZOOM,
     },
   };
@@ -1369,6 +1772,82 @@ function applyPathStyling(style) {
       layer.minzoom = PATH_BASE_MINZOOM;
     }
   }
+}
+
+// Matches a bare "{class}" / "{subclass}" token-template icon name in the
+// basemap's POI layers. These are resolved at render time by substring
+// substitution, so a name the sprite lacks raises styleimagemissing.
+const TOKEN_ICON_RE = /^\{([a-z_]+)\}$/;
+
+/**
+ * Rewrite the basemap's dynamic POI icon-image templates so every name they
+ * can resolve to is guaranteed to live in a loaded sprite. Scans every layer
+ * for a "{class}" / "{subclass}" token (Waste, Outdoor, Sport, Food, Public,
+ * Cultural, Transport, Health, Accommodation, Place of worship, Bus station,
+ * Zoo, …) and replaces it with a match — see basemapPoiIconExpression().
+ * The Shop layer ships its own coalesce but ends in a dead ["image", "dot"]
+ * fallback ("dot" is not in the basemap sheet), so it is rewritten too,
+ * keeping its subclass → class precedence. Also neutralises legacy {stops}
+ * icon functions whose high-zoom stop is whitespace (City labels' " "), which
+ * would otherwise raise the same warning — empty string is the one icon value
+ * maplibre-gl treats as "no image" silently. Always applied (not
+ * feature-gated), matching the always-on sprite wiring in build(). `spriteKeys`
+ * are the fetched default-sheet names that seed the identity pairs. Returns the
+ * number of layers rewritten.
+ */
+function applyBasemapPoiIcons(style, spriteKeys = []) {
+  const rewrites = [];
+
+  for (const layer of style.layers) {
+    const img = layer.layout?.["icon-image"];
+    const match = typeof img === "string" ? TOKEN_ICON_RE.exec(img) : null;
+    if (match) {
+      setLayout(
+        style,
+        layer.id,
+        "icon-image",
+        basemapPoiIconExpression(match[1], spriteKeys),
+      );
+      rewrites.push(layer.id);
+    }
+  }
+
+  // Shop: keep its subclass → class precedence, then land on a live icon.
+  if (style.layers.some((l) => l.id === "Shop")) {
+    setLayout(
+      style,
+      "Shop",
+      "icon-image",
+      basemapPoiIconExpression(
+        "subclass",
+        spriteKeys,
+        basemapPoiIconExpression("class", spriteKeys),
+      ),
+    );
+    rewrites.push("Shop");
+  }
+
+  // Legacy {stops} icon functions — blank out whitespace stops so they render
+  // no image without a warning ("" resolves to null in maplibre-gl).
+  for (const layer of style.layers) {
+    const img = layer.layout?.["icon-image"];
+    if (!img || typeof img !== "object" || !Array.isArray(img.stops)) continue;
+    let changed = false;
+    for (const stop of img.stops) {
+      if (typeof stop[1] === "string" && !stop[1].trim()) {
+        stop[1] = "";
+        changed = true;
+      }
+    }
+    if (changed) rewrites.push(layer.id);
+  }
+
+  console.log(
+    `[build] basemap POI icons: rewrote ${rewrites.length} dynamic icon-image expression(s)` +
+      ` (${Object.keys(BASEMAP_POI_ICON_REMAP).length} curated pairs +` +
+      ` ${basemapPoiIdentityNames(spriteKeys).length} identity names)`,
+  );
+  return rewrites.length;
 }
 
 /**
@@ -1540,12 +2019,77 @@ async function fetchBasemap() {
   return JSON.parse(text);
 }
 
+/**
+ * Fetch the default basemap sprite sheet's icon keys, with the same
+ * ETag-cache pattern as fetchBasemap(). Used only to derive the identity pairs
+ * of the basemap-POI icon matches — a missing sheet is non-fatal, because the
+ * curated pairs plus the fallback are still zero-warning on their own.
+ */
+async function fetchSpriteKeys() {
+  const headers = {};
+  const cachedEtag = existsSync(SPRITE_CACHE_META_FILE)
+    ? readFileSync(SPRITE_CACHE_META_FILE, "utf8").trim()
+    : null;
+
+  if (cachedEtag) {
+    headers["If-None-Match"] = cachedEtag;
+  }
+
+  const cachedKeys = () =>
+    Object.keys(JSON.parse(readFileSync(SPRITE_CACHE_FILE, "utf8")));
+
+  let res;
+  try {
+    res = await fetch(SPRITE_URL, { headers });
+  } catch (err) {
+    if (existsSync(SPRITE_CACHE_FILE)) {
+      console.warn(
+        `[build] network error, using cached basemap sprite: ${err.message}`,
+      );
+      return cachedKeys();
+    }
+    console.warn(
+      `[build] no basemap sprite available (network error, no cache) —` +
+        ` proceeding without identity icon pairs`,
+    );
+    return [];
+  }
+
+  if (res.status === 304 && existsSync(SPRITE_CACHE_FILE)) {
+    return cachedKeys();
+  }
+
+  if (!res.ok) {
+    if (existsSync(SPRITE_CACHE_FILE)) {
+      console.warn(
+        `[build] server returned ${res.status}, using cached basemap sprite`,
+      );
+      return cachedKeys();
+    }
+    console.warn(
+      `[build] no basemap sprite available (HTTP ${res.status}, no cache) —` +
+        ` proceeding without identity icon pairs`,
+    );
+    return [];
+  }
+
+  const text = await res.text();
+  const etag = res.headers.get("etag") || "";
+
+  mkdirSync(CACHE_DIR, { recursive: true });
+  writeFileSync(SPRITE_CACHE_FILE, text, "utf8");
+  writeFileSync(SPRITE_CACHE_META_FILE, etag, "utf8");
+
+  return Object.keys(JSON.parse(text));
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 // Build — fetch & deep-clone the base style, write style.json
 // ═════════════════════════════════════════════════════════════════════════
 
 async function build() {
   const basemap = await fetchBasemap();
+  const spriteKeys = await fetchSpriteKeys();
 
   // Deep-clone the base style, declaring the root-level identity key first
   // so it is prepended in JSON output. (Assigning `style.name` to an
@@ -1576,7 +2120,7 @@ async function build() {
     { id: OUTDOOR_SPRITE_ID, url: "https://www.ogis.org/outdoors/sprite" },
   ];
 
-  applyModifications(style);
+  applyModifications(style, spriteKeys);
 
   writeFileSync(OUTDOOR_STYLE, `${JSON.stringify(style, null, 2)}\n`, "utf8");
 

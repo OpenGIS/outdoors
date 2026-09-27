@@ -75,9 +75,34 @@ async function startServer() {
  */
 function handleRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  // Serve the built style with the outdoors sprite pointed at the locally
+  // built sheet (/sprite.json, /sprite.png — served from dev/public below),
+  // so screenshot runs verify the icons committed with the code instead of
+  // the deployed https://www.ogis.org/outdoors/sprite. The basemap "default"
+  // sheet stays remote. maplibre-gl v5 rejects relative sprite URLs, so the
+  // local URL is absolute, built from the request's own origin.
+  if (url.pathname === "/style.json") {
+    try {
+      const style = JSON.parse(
+        readFileSync(resolve(PROJECT_ROOT, "style.json"), "utf8"),
+      );
+      style.sprite = (style.sprite || []).map((sheet) =>
+        sheet.id === "outdoors"
+          ? { ...sheet, url: `http://${req.headers.host}/sprite` }
+          : sheet,
+      );
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(style));
+    } catch {
+      res.writeHead(404, { "Content-Type": "text/plain" });
+      res.end("Not found");
+    }
+    return;
+  }
+
   const pathToFile = {
     "/": resolve(__dirname, "harness.html"),
-    "/style.json": resolve(PROJECT_ROOT, "style.json"),
     "/sprite.json": resolve(PROJECT_ROOT, "dev", "public", "sprite.json"),
     "/sprite.png": resolve(PROJECT_ROOT, "dev", "public", "sprite.png"),
     "/sprite@2x.json": resolve(PROJECT_ROOT, "dev", "public", "sprite@2x.json"),

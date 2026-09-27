@@ -26,6 +26,13 @@
  *       referenced somewhere in style.json with the "outdoors:" prefix, so the
  *       outdoors sheet can never silently grow an icon that OUTDOOR_SPRITE_ICONS
  *       in scripts/build.mjs forgets.
+ *   [1c] Token-template scan — no symbol layer's icon-image may still contain
+ *       a "{class}" / "{subclass}" token template. Those resolve at render
+ *       time by substring substitution and raise styleimagemissing for names
+ *       the sprite lacks; scripts/build.mjs rewrites them into coalesce +
+ *       curated-match expressions. Expression recursion reaches match values,
+ *       fallbacks and ["image", name] literals, so build-side regressions are
+ *       caught here rather than in the browser console.
  *   [2] Kind coverage — the outdoor-poi layer exists, references the
  *       outdoor-poi source, and every kind in OUTDOOR_POI.kinds appears in
  *       its filter.
@@ -132,28 +139,70 @@ async function fetchWithCache(url, cachePath, etagPath, label) {
 
 function collectSpriteIconNames(img) {
   const names = new Set();
-  if (typeof img === "string") {
-    if (!/^{[^}]+}$/.test(img) && img.trim()) names.add(img);
-    return names;
-  }
-  if (Array.isArray(img)) {
-    if (img[0] === "match") {
-      const tail = img.slice(2);
-      for (let i = 1; i < tail.length; i += 2) {
-        if (typeof tail[i] === "string" && tail[i].trim()) names.add(tail[i]);
-      }
-      if (tail.length % 2 === 1 && typeof tail[tail.length - 1] === "string") {
-        names.add(tail[tail.length - 1]);
-      }
+  const add = (value) => {
+    if (typeof value !== "string") return;
+    if (/^{[^}]+}$/.test(value)) return; // token template, resolved at render time
+    if (value.trim()) names.add(value);
+  };
+
+  // Recursive walk that only treats *icon value* positions as sprite names:
+  // plain strings, the value positions + fallback of a match (never its
+  // labels), the literal second argument of ["image", name], and the children
+  // of a coalesce. Dynamic leaves (get/literal/zoom) are skipped.
+  const walk = (node) => {
+    if (typeof node === "string") {
+      add(node);
+      return;
     }
-    return names;
-  }
-  if (img && typeof img === "object" && Array.isArray(img.stops)) {
-    for (const [, value] of img.stops) {
-      if (typeof value === "string" && value.trim()) names.add(value);
+    if (Array.isArray(node)) {
+      const op = node[0];
+      if (op === "get" || op === "literal" || op === "zoom") return;
+      if (op === "match") {
+        for (let i = 2; i < node.length - 1; i += 2) walk(node[i + 1]);
+        if (node.length > 2) walk(node[node.length - 1]);
+        return;
+      }
+      if (op === "image") {
+        if (typeof node[1] === "string") add(node[1]);
+        return;
+      }
+      for (let i = 1; i < node.length; i++) walk(node[i]);
+      return;
     }
-  }
+    if (node && typeof node === "object" && Array.isArray(node.stops)) {
+      for (const [, value] of node.stops) walk(value);
+    }
+  };
+
+  walk(img);
   return names;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Token-template scan — any "{class}" / "{subclass}" left in an
+// icon-image expression. These resolve at render time by substring
+// substitution and raise styleimagemissing for names the sprite lacks,
+// so the built style must contain none.
+// ─────────────────────────────────────────────────────────────────────
+
+function collectTokenTemplates(img) {
+  const tokens = new Set();
+  const walk = (node) => {
+    if (typeof node === "string") {
+      const match = /\{[^}]+\}/.exec(node);
+      if (match) tokens.add(match[0]);
+      return;
+    }
+    if (Array.isArray(node)) {
+      for (let i = 1; i < node.length; i++) walk(node[i]);
+      return;
+    }
+    if (node && typeof node === "object" && Array.isArray(node.stops)) {
+      for (const [, value] of node.stops) walk(value);
+    }
+  };
+  walk(img);
+  return tokens;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -344,6 +393,33 @@ if (orphanIcons.length === 0) {
   for (const name of orphanIcons) {
     failures.push(
       `outdoors sprite icon "${name}" not referenced with "${OUTDOOR_SPRITE_ID}:" prefix — OUTDOOR_SPRITE_ICONS missing it`,
+    );
+  }
+}
+console.log();
+
+// ---- [1c] Token-template scan --------------------------------------------
+
+console.log(
+  "[1c] Token-template scan — no {class}/{subclass} template left in icon-image",
+);
+const tokenHits = [];
+for (const layer of style.layers) {
+  if (layer.type !== "symbol") continue;
+  const img = layer.layout?.["icon-image"];
+  if (img === undefined) continue;
+  const tokens = collectTokenTemplates(img);
+  if (tokens.size > 0) tokenHits.push({ id: layer.id, tokens: [...tokens] });
+}
+if (tokenHits.length === 0) {
+  console.log("  no token templates in any icon-image expression");
+} else {
+  for (const hit of tokenHits) {
+    console.log(
+      `  FAIL ${hit.id}: unresolved token template(s) ${hit.tokens.join(", ")}`,
+    );
+    failures.push(
+      `${hit.id} icon-image still contains token template(s) ${hit.tokens.join(", ")}`,
     );
   }
 }

@@ -19,4 +19,26 @@ body {
   top: 12px;
   left: 12px;
   z-index: 10;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.view-mode-select {
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  width: auto;
+}
+
+.mode-side-by-side .map {
+  width: 50%;
+}
+
+.mode-side-by-side #right {
+  left: 50%;
 }
