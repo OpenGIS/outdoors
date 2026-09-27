@@ -11,14 +11,14 @@
 
 ---
 
-Outdoors combines a number of data sources and software projects, without which this project would not be possible.
+Outdoors is the combination of a number of **Open Data** sources.
 
 ## Key Sources
 
 - [© OpenStreetMap Contributors](https://www.openstreetmap.org/copyright)
 - [OpenFreeMap](https://openfreemap.org/) — Base vector tiles ([OpenMapTiles schema](https://github.com/openmaptiles/openmaptiles)) for the entire planet.
 - [Mapterhorn](https://mapterhorn.com/) — Powers 3D terrain, hillshading & contour lines.
-- [Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster.
+- [© Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster.
 - [Open GIS](https://tile.ogis.app/)
   - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, low-level paths & contours.
   - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
