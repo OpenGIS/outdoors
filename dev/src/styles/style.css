@@ -35,6 +35,25 @@ body {
   width: auto;
 }
 
+.dem-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.dem-toggle input {
+  cursor: pointer;
+}
+
 .mode-side-by-side .map {
   width: 50%;
 }

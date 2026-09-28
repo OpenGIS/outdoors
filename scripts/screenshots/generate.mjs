@@ -196,6 +196,8 @@ async function captureShot(browser, port, shot) {
   });
   page.on("pageerror", (error) => pageErrors.push(String(error)));
 
+  let result = null;
+  let failure = null;
   try {
     await page.goto(shotUrl(port, shot), {
       waitUntil: "load",
@@ -204,8 +206,8 @@ async function captureShot(browser, port, shot) {
     // NB: options must be the third argument — Playwright treats a second
     // object as the function's arg, silently ignoring timeout.
     await page.waitForFunction(() => window.__shotReady === true, undefined, {
-      // Outlives the harness's 20-minute idle fallback so that path still works.
-      timeout: 1220000,
+      // Outlives the harness's 80-minute idle fallback so that path still works.
+      timeout: 4880000,
     });
 
     const outputPath = resolve(SCREENSHOTS_DIR, `${shot.id}.png`);
@@ -218,10 +220,22 @@ async function captureShot(browser, port, shot) {
     });
 
     const mapErrors = await page.evaluate(() => window.__mapErrors ?? []);
-    return { outputPath, consoleErrors, pageErrors, mapErrors };
+    result = { outputPath, consoleErrors, pageErrors, mapErrors };
+  } catch (error) {
+    failure = error;
   } finally {
-    await context.close();
+    try {
+      await context.close();
+    } catch (closeError) {
+      // Once the browser has crashed, close() throws "Target page, context or
+      // browser has been closed" and would otherwise replace the real capture
+      // failure, so keep the original error.
+      if (!failure) failure = closeError;
+    }
   }
+
+  if (failure) throw failure;
+  return result;
 }
 
 /** CLI: extract the value following --name, or null. */

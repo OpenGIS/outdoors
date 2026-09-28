@@ -8,6 +8,7 @@ import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
 import outdoorStyleRaw from "../../style.json?raw";
 import ProviderSelect from "./components/ProviderSelect.vue";
 import { useProviderSelection } from "./composables/useProviderSelection";
+import { useDemOverlay } from "./composables/useDemOverlay";
 
 // ── Constants ──
 const CONTOURS_TO_IMPERIAL = false;
@@ -17,6 +18,9 @@ const VIEW_MODE_STORAGE = "outdoors_dev_viewMode";
 // ── Provider selection state (sections, selectedKey, persistence) ──
 const { sections, allProviders, selectedKey, selectedEntry } =
   useProviderSelection();
+
+// ── Left-map DEM overlays (hillshading, 3D terrain; both default on) ──
+const { hillshade, terrain, attach: attachDemOverlay } = useDemOverlay();
 
 // ── API key management ──
 function getStoredApiKeys() {
@@ -257,6 +261,8 @@ onMounted(async () => {
     hash: true,
   });
 
+  attachDemOverlay(leftMap);
+
   rightMap = new maplibregl.Map({
     container: "right",
     style: rightStyle,
@@ -296,6 +302,17 @@ onBeforeUnmount(() => {
           <option value="overlay">Overlay</option>
           <option value="side-by-side">Side by side</option>
         </select>
+        <label class="dem-toggle" title="Show hillshading on the left map">
+          <input type="checkbox" v-model="hillshade" />
+          Hillshading
+        </label>
+        <label
+          class="dem-toggle"
+          title="Enable 3D terrain on the left map at 1.2× vertical exaggeration"
+        >
+          <input type="checkbox" v-model="terrain" />
+          3D terrain
+        </label>
       </div>
     </div>
     <div id="right" class="map"></div>

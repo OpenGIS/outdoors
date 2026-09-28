@@ -1,0 +1,13 @@
+{
+  "shots": [
+    {
+      "id": "vancouver-island",
+      "center": [-125.875, 49.6],
+      "zoom": 10,
+      "width": 8192,
+      "height": 8192,
+      "scale": 1,
+      "maxCanvasSize": [8192, 8192]
+    }
+  ]
+}

@@ -75,12 +75,15 @@
           setTimeout(markReady, 400);
         });
 
+        // Idle fallback: very large shots (e.g. 8192x8192) can take far
+        // longer than an ordinary view to finish rendering, so allow up to
+        // 80 minutes before capturing regardless.
         setTimeout(function () {
           if (!window.__shotReady) {
             recordError("timeout waiting for idle");
             markReady();
           }
-        }, 1200000);
+        }, 4800000);
       })();
     </script>
   </body>

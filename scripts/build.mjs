@@ -144,22 +144,23 @@ const COLOURS = {
     LABEL_TEXT: "#3d5c28", // dark green — park labels
   },
 
-  // Roads (ROAD_SURFACE_AWARE) — asphalt greys read as the ground surface
-  // over the satellite raster (lightest tier most recessive), with the
-  // slightly darker unpaved variants (drawn dashed & thinner) and the neutral
-  // no-colour-cast casing greys (darker than their tier's fill).
+  // Roads (ROAD_SURFACE_AWARE) — a strict greyscale network: near-black
+  // asphalt fills ascending in lightness by tier, casings that are lighter
+  // than their fills, and light-grey unpaved variants with a slightly darker
+  // edge.
   ROADS: {
-    MAJOR: "rgb(109, 110, 96)", // asphalt — motorway/trunk/primary (+ links)
-    MEDIUM: "rgb(118, 120, 109)", // asphalt — secondary/tertiary/links
-    LOCAL: "rgb(115, 116, 103)", // asphalt — minor/service/track/raceway
-    CASING_MAJOR: "rgb(80, 82, 72)", // casing — darker than the major fill
-    CASING_MEDIUM: "rgb(90, 92, 83)", // casing — darker than the medium fill
-    CASING_LOCAL: "rgb(86, 88, 78)", // casing — darker than the local fill
-    TRACK_CASING: "rgb(104, 106, 95)", // neutral grey — low-zoom track outline
-    TRACK_FILL: "rgb(136, 136, 122)", // light core inside the track casing; decoupled from LOCAL
-    UNPAVED_MAJOR: "rgb(123, 124, 110)", // unpaved motorway/trunk/primary
-    UNPAVED_MEDIUM: "rgb(132, 134, 123)", // unpaved secondary/tertiary
-    UNPAVED_LOCAL: "rgb(129, 130, 117)", // unpaved minor/service/track
+    MAJOR: "rgb(26, 26, 26)", // asphalt — motorway/trunk/primary (+ links)
+    MEDIUM: "rgb(36, 36, 36)", // asphalt — secondary/tertiary/links
+    LOCAL: "rgb(48, 48, 48)", // asphalt — minor/service/track/raceway
+    CASING_MAJOR: "rgb(94, 94, 94)", // casing — lighter than the major fill
+    CASING_MEDIUM: "rgb(106, 106, 106)", // casing — lighter than the medium fill
+    CASING_LOCAL: "rgb(120, 120, 120)", // casing — lighter than the local fill
+    CASING_UNPAVED: "rgb(118, 118, 118)", // casing — darker edge for light-grey unpaved fills
+    TRACK_CASING: "rgb(92, 92, 92)", // neutral grey — low-zoom track outline
+    TRACK_FILL: "rgb(112, 112, 112)", // muted core inside the track casing; decoupled from LOCAL
+    UNPAVED_MAJOR: "rgb(150, 150, 150)", // unpaved motorway/trunk/primary
+    UNPAVED_MEDIUM: "rgb(153, 153, 153)", // unpaved secondary/tertiary
+    UNPAVED_LOCAL: "rgb(156, 156, 156)", // unpaved minor/service/track
   },
 
   // Paths (PATH_STYLING & LOW_ZOOM_PATHS) — the outdoor trail colour shared
@@ -341,7 +342,7 @@ const IMAGERY_URBAN_FILL_LAYERS = ["Pier", "Bridge area", "Platform area"];
 // through. The pedestrian area fill is decoupled from the shared
 // IMAGERY_URBAN_FILL_OPACITY above (Pier/Bridge/Platform keep it) and given a
 // cooler, lighter, more transparent wash of its own.
-const IMAGERY_PEDESTRIAN_ROAD_COLOUR = "rgb(127, 128, 108)";
+const IMAGERY_PEDESTRIAN_ROAD_COLOUR = "rgb(128, 128, 128)";
 const IMAGERY_PEDESTRIAN_ROAD_OPACITY = 0.3;
 const IMAGERY_PEDESTRIAN_ROAD_OUTLINE_OPACITY = 0.3;
 const IMAGERY_PEDESTRIAN_AREA_COLOUR = "hsl(0, 0%, 88%)";
@@ -469,36 +470,16 @@ const contourCase = (idxValue, minorValue) => [
 
 // ROADS — surface-aware paved/unpaved road hierarchy (applied by
 // applyRoadSurfaceAware). ROAD_TUNNEL_OPACITY fades the basemap's road
-// tunnel fills so their dashes read clearly. Width stops are [zoom, px] —
-// see surfaceWidthExpr() below.
+// tunnel fills so their dashes read clearly. Fill and casing widths come
+// from the true-scale width engine further down (see ROAD WIDTH ENGINE).
 const ROAD_TUNNEL_OPACITY = 0.55; // line-opacity for tunnel fills (faded, dashes preserved)
-const ROAD_UNPAVED_STOPS = [
-  [12, 0.8],
-  [14, 1.5],
-  [20, 4],
-];
-const ROAD_UNPAVED_DASHARRAY = ["literal", [2, 1.5]];
-const ROAD_MAJOR_STOPS = [
-  [5, 0.8],
-  [12, 3],
-  [20, 14],
-];
-const ROAD_MEDIUM_STOPS = [
-  [8, 0.6],
-  [12, 2],
-  [20, 10],
-];
-const ROAD_LOCAL_STOPS = [
-  [12, 1],
-  [14, 2],
-  [20, 8],
-];
 
 // The basemap's road fill layers, grouped by hierarchy tier. Each tier
-// carries its paved/unpaved colours and the width ramp applied to every
-// layer in the group. Links join their parent tier (they carry the same
-// class + surface tags); the under-construction & rail layers are left to
-// the basemap's own rendering.
+// carries its paved/unpaved colours, plus the tier key used by the width
+// engine to pick that tier's low-zoom floor. Links join their parent tier
+// (they carry the same class + surface tags); the rail layers are left to
+// the basemap, while the under-construction layers are recoloured into the
+// same greyscale family (see ROAD_CONSTRUCTION_FILLS).
 const ROAD_TIERS = {
   major: {
     layers: [
@@ -511,27 +492,24 @@ const ROAD_TIERS = {
     ],
     paved: COLOURS.ROADS.MAJOR,
     unpaved: COLOURS.ROADS.UNPAVED_MAJOR,
-    stops: ROAD_MAJOR_STOPS,
   },
   medium: {
     layers: ["Secondary road", "Tertiary road"],
     paved: COLOURS.ROADS.MEDIUM,
     unpaved: COLOURS.ROADS.UNPAVED_MEDIUM,
-    stops: ROAD_MEDIUM_STOPS,
   },
   local: {
     layers: ["Minor road", "Service road", "Raceway road"],
     paved: COLOURS.ROADS.LOCAL,
     unpaved: COLOURS.ROADS.UNPAVED_LOCAL,
-    stops: ROAD_LOCAL_STOPS,
   },
 };
 
 // Road casing (`* outline`) layer ids by tier, each carrying its neutral grey
 // casing colour. The basemap's vivid outline hues (red motorways, green
 // secondaries, …) are replaced so only the asphalt fills colour the road
-// network. Road, link, tunnel & bridge outlines are all casings; the
-// under-construction, path, rail & water outlines are left to the basemap.
+// network. Road, link, tunnel & bridge outlines are all casings; the path,
+// rail & water outlines are left to the basemap.
 const ROAD_CASING_LAYERS = {
   major: {
     colour: COLOURS.ROADS.CASING_MAJOR,
@@ -607,37 +585,251 @@ const ROAD_TUNNEL_LAYERS = {
   local: ["Minor tunnel", "Service tunnel", "Link tunnel"],
 };
 
-// Build a v5-valid line-width expression where zoom is the top-level
-// interpolate and surface-awareness lives at each stop value. Unpaved width
-// ramps at different zooms than paved — merge the two stop sets:
-//   ["interpolate", …, ["zoom"],
-//    z0, ["case", ["==", ["get", "surface"], "unpaved"], u0, p0],
-//    z1, ["case", ["==", ["get", "surface"], "unpaved"], u1, p1], …]
-function surfaceWidthExpr(pavedStops) {
-  const unpaved = ROAD_UNPAVED_STOPS;
-  const zooms = new Set(pavedStops.map(([z]) => z));
-  unpaved.forEach(([z]) => zooms.add(z));
-  const sorted = [...zooms].sort((a, b) => a - b);
-  // Linearly interpolate a stop set at any zoom (extrapolates outside the
-  // set's range, where the value is clamped by the renderer anyway).
-  function lerp(stops, z) {
-    let lo = stops[0],
-      hi = stops[stops.length - 1];
-    for (let i = 0; i < stops.length - 1; i++) {
-      if (stops[i][0] <= z && stops[i + 1][0] >= z) {
-        lo = stops[i];
-        hi = stops[i + 1];
-        break;
-      }
+// Basemap road-construction layers — recoloured into the same greyscale
+// family as the roads they will become. The brown/olive/red fills take the
+// unpaved light grey and their outlines take the darker unpaved casing;
+// widths and dashes are left untouched. Ids missing from the base style are
+// skipped by setPaint.
+const ROAD_CONSTRUCTION_FILLS = [
+  "Secondary road under construction",
+  "Primary road under construction",
+  "Trunk road under construction",
+  "Highway road under construction",
+  "Secondary bridge under construction",
+  "Primary bridge under construction",
+  "Trunk bridge under construction",
+  "Highway bridge under construction",
+  "Secondary tunnel under construction",
+  "Primary tunnel under construction",
+  "Trunk tunnel under construction",
+  "Highway tunnel under construction",
+];
+const ROAD_CONSTRUCTION_OUTLINES = [
+  "Trunk tunnel under construction outline",
+  "Highway tunnel under construction outline",
+];
+
+// ROAD WIDTH ENGINE — real-world metres rendered at true Web Mercator scale.
+//
+// At zoom z a road's on-screen width is its real width in metres scaled by
+// 2^z / ROAD_METRES_TO_PX_Z0 (256 px tiles), so a 12 m motorway and a 5 m
+// lane keep honest relative widths instead of the old per-tier screen-px
+// ramps. True scale is unusable at the ends of the range, so three factors
+// ride on top:
+//   • mid-zoom boost  — below ~z14 true-scale roads are sub-pixel; z12–14 are
+//     scaled up so the network stays legible through the low-zoom hand-off;
+//   • high-zoom taper — above z17 true scale passes 100 px per lane and reads
+//     cartoonish; z18–20 take a fraction of true scale so growth stays gentle;
+//   • low-zoom floor  — a per-tier cartographic minimum below z12, roughly
+//     matching the previous low-zoom appearance, where true scale collapses.
+// A fill is max(floor, boosted/tapered true scale). Casings are no longer
+// independent ramps: each is the fill width plus a screen-constant shoulder
+// on each side, so a narrow road reads stroke-dominant (a dark core in a
+// light edge) while a motorway shows only a thin light edge.
+const ROAD_WIDTH_REFERENCE_LATITUDE = 48; // shot set spans 43°–54°N, ±7%
+const ROAD_METRES_TO_PX_Z0 =
+  78271.5 * Math.cos((ROAD_WIDTH_REFERENCE_LATITUDE * Math.PI) / 180); // ≈ 52374 m per px at z0
+const ROAD_UNPAVED_WIDTH_SCALE = 0.8; // gravel/earth lanes are narrower
+const ROAD_UNPAVED_COND = ["==", ["get", "surface"], "unpaved"];
+
+// Layer-id keyword → real width in metres. First match wins, so the order is
+// significant: "service" is tested before "link" (so "Service road link
+// outline" reads as a service road) and "link" before the class keywords (so
+// every major/medium link layer — motorway slip roads and ramps — takes the
+// ramp width, not its parent class's mainline width). Casing ids ("… outline")
+// resolve against their base layer. Across the current layer families every
+// id resolves: motorway 12, trunk 9.5, primary 8, secondary 7.5, tertiary 6.5,
+// raceway 6, minor 5, service 4, links/ramps 5.5, the bare Link/Street bridge
+// & tunnel family 4 (see ROAD_WIDTH_OVERRIDES), and the outdoor-paths-track
+// overlay 3.5. "Pedestrian road outline" is exempt and keeps its basemap width.
+const ROAD_TRACK_WIDTH_METRES = 3.5; // hosted low-zoom track overlay
+const ROAD_WIDTH_KEYWORDS = [
+  ["outdoor-paths-track", ROAD_TRACK_WIDTH_METRES],
+  ["service", 4], // before "link": a service-road link stays a service road
+  ["link", 5.5], // ramps & link roads — before the class keywords
+  ["highway", 12], // motorway
+  ["trunk", 9.5],
+  ["primary", 8],
+  ["secondary", 7.5],
+  ["tertiary", 6.5],
+  ["minor", 5],
+  ["raceway", 6],
+];
+
+// Basemap "Link"/"Street" bridge & tunnel ids the keyword table cannot place
+// consistently: they carry no class keyword, and "Street … outline" has no
+// base layer below it. Pinned to the service width so a fill and its casing
+// can never disagree.
+const ROAD_WIDTH_OVERRIDES = {
+  "Link bridge": 4,
+  "Link tunnel": 4,
+  "Service bridge outline": 4,
+  "Street bridge outline": 4,
+  "Link bridge outline": 4,
+  "Service tunnel outline": 4,
+  "Street tunnel outline": 4,
+  "Link tunnel outline": 4,
+};
+
+// Per-tier low-zoom floor in px — a fill never renders thinner than its tier
+// minimum below the true-scale regime.
+const ROAD_FLOOR_STOPS = {
+  major: [
+    [5, 0.7],
+    [9, 1.1],
+    [12, 1.3],
+  ],
+  medium: [
+    [7, 0.4],
+    [9, 0.7],
+    [12, 0.85],
+  ],
+  local: [
+    [10, 0.45],
+    [12, 0.6],
+  ],
+};
+
+// f(z): mid-zoom boost (z12–14) and high-zoom taper (z18–20); true scale
+// (×1.0) through the z15–17 mid-band.
+const ROAD_WIDTH_FACTOR = {
+  12: 1.5,
+  13: 1.3,
+  14: 1.15,
+  15: 1,
+  16: 1,
+  17: 1,
+  18: 0.8,
+  19: 0.62,
+  20: 0.5,
+};
+const ROAD_WIDTH_MIN_ZOOM = 12;
+const ROAD_WIDTH_MAX_ZOOM = 20;
+
+// Casing shoulder in px per side, deliberately screen-constant so the light
+// edge keeps its weight as the fill grows. [[zoom, px], …].
+const ROAD_CASING_SHOULDER_STOPS = [
+  [5, 0.25],
+  [9, 0.35],
+  [12, 0.5],
+  [15, 0.7],
+  [17, 1],
+  [20, 1.4],
+];
+
+// Numeric value of a zoom stop list at an arbitrary zoom, using the same
+// exponential interpolation MapLibre applies between stops.
+function stopValueAt(stops, exponent, z) {
+  const first = stops[0];
+  if (z <= first[0]) return first[1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [z0, v0] = stops[i];
+    const [z1, v1] = stops[i + 1];
+    if (z >= z0 && z <= z1) {
+      const t = (exponent ** (z - z0) - 1) / (exponent ** (z1 - z0) - 1);
+      return v0 + (v1 - v0) * t;
     }
-    if (hi[0] === lo[0]) return lo[1];
-    return lo[1] + (hi[1] - lo[1]) * ((z - lo[0]) / (hi[0] - lo[0]));
   }
-  const expr = ["interpolate", ["exponential", 1.2], ["zoom"]];
-  for (const z of sorted) {
-    const p = Math.round(lerp(pavedStops, z) * 10) / 10;
-    const u = Math.round(lerp(unpaved, z) * 10) / 10;
-    expr.push(z, ["case", ["==", ["get", "surface"], "unpaved"], u, p]);
+  return stops[stops.length - 1][1];
+}
+
+function roundTo(value, places) {
+  const factor = 10 ** places;
+  return Math.round(value * factor) / factor;
+}
+
+// Resolve a road layer id to its real width in metres. Casing ids ("… outline")
+// resolve against their base layer; overrides win before the keyword scan.
+function roadWidthMetres(id) {
+  if (Object.prototype.hasOwnProperty.call(ROAD_WIDTH_OVERRIDES, id)) {
+    return ROAD_WIDTH_OVERRIDES[id];
+  }
+  const base = id.endsWith(" outline") ? id.slice(0, -" outline".length) : id;
+  const lower = base.toLowerCase();
+  for (const [keyword, metres] of ROAD_WIDTH_KEYWORDS) {
+    if (lower.includes(keyword)) return metres;
+  }
+  throw new Error(`No road width keyword matched layer id "${id}"`);
+}
+
+// Boosted/tapered true scale in px at an integer zoom; 0 outside the engine's
+// z12–20 range so the tier floor governs below z12.
+function roadTrueScalePx(metres, z) {
+  if (z < ROAD_WIDTH_MIN_ZOOM || z > ROAD_WIDTH_MAX_ZOOM) return 0;
+  return (metres * 2 ** z * ROAD_WIDTH_FACTOR[z]) / ROAD_METRES_TO_PX_Z0;
+}
+
+function roadFloorPx(tier, z) {
+  return stopValueAt(ROAD_FLOOR_STOPS[tier], 1.4, z);
+}
+
+function roadShoulderPx(z) {
+  return stopValueAt(ROAD_CASING_SHOULDER_STOPS, 1.2, z);
+}
+
+// Merge [zoom, value] stop lists (or bare zoom numbers) into one sorted list.
+function roadZoomStops(...stopSets) {
+  const zooms = new Set();
+  for (const stops of stopSets) {
+    for (const stop of stops) {
+      zooms.add(Array.isArray(stop) ? stop[0] : stop);
+    }
+  }
+  return [...zooms].sort((a, b) => a - b);
+}
+
+// Every integer zoom the true-scale engine defines.
+function roadIntegerStops() {
+  const stops = [];
+  for (let z = ROAD_WIDTH_MIN_ZOOM; z <= ROAD_WIDTH_MAX_ZOOM; z++)
+    stops.push(z);
+  return stops;
+}
+
+// Fill width: max(tier floor, boosted/tapered true scale), with unpaved ways
+// taking ROAD_UNPAVED_WIDTH_SCALE of the metric branch. The floor is a shared
+// cartographic minimum and does not scale with surface. The style spec allows
+// only one zoom-based subexpression per width, so the max envelope is resolved
+// numerically at each stop rather than nested as a ["max", …] of two zoom
+// interpolates (which fails validation).
+function roadWidthExpr(metres, tier) {
+  const zooms = roadZoomStops(ROAD_FLOOR_STOPS[tier], roadIntegerStops());
+  const expr = ["interpolate", ["exponential", 2], ["zoom"]];
+  for (const z of zooms) {
+    const floor = roadFloorPx(tier, z);
+    const trueScale = roadTrueScalePx(metres, z);
+    expr.push(z, [
+      "case",
+      ROAD_UNPAVED_COND,
+      roundTo(Math.max(floor, trueScale * ROAD_UNPAVED_WIDTH_SCALE), 3),
+      roundTo(Math.max(floor, trueScale), 3),
+    ]);
+  }
+  return expr;
+}
+
+// Casing width: the fill plus a shoulder sliver on each side, resolved on the
+// union of the fill and shoulder stops.
+function roadCasingWidthExpr(metres, tier) {
+  const zooms = roadZoomStops(
+    ROAD_FLOOR_STOPS[tier],
+    ROAD_CASING_SHOULDER_STOPS,
+    roadIntegerStops(),
+  );
+  const expr = ["interpolate", ["exponential", 2], ["zoom"]];
+  for (const z of zooms) {
+    const floor = roadFloorPx(tier, z);
+    const trueScale = roadTrueScalePx(metres, z);
+    const shoulder = 2 * roadShoulderPx(z);
+    expr.push(z, [
+      "case",
+      ROAD_UNPAVED_COND,
+      roundTo(
+        Math.max(floor, trueScale * ROAD_UNPAVED_WIDTH_SCALE) + shoulder,
+        3,
+      ),
+      roundTo(Math.max(floor, trueScale) + shoulder, 3),
+    ]);
   }
   return expr;
 }
@@ -694,28 +886,8 @@ const PATHS_OVERLAY_CLASSES = ["path", "footway"];
 // look, no surface attribute).
 const PATHS_OVERLAY_TRACK_CLASSES = ["track"];
 const PATHS_TRACK_MINZOOM = 12; // below z12 nothing renders, matching the basemap local-road family's own start
-const PATH_TRACK_WIDTH_LOW_ZOOM = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  0.6,
-  13,
-  0.9,
-  14,
-  1.3,
-]; // fill width
-const PATH_TRACK_CASING_WIDTH_LOW_ZOOM = [
-  "interpolate",
-  ["exponential", 1.2],
-  ["zoom"],
-  12,
-  1.2,
-  13,
-  1.8,
-  14,
-  2.5,
-]; // casing = fill + a slim outline
+// Track fill & casing widths come from the road width engine (3.5 m, local
+// floor) so the overlay tracks match the basemap's local-road rendering.
 
 // POIs — the config-driven outdoor-poi overlay (see poi-config.mjs). All
 // expressions below are derived from OUTDOOR_POI.kinds so the filter, icon
@@ -1570,50 +1742,67 @@ function applyContourLabels(style) {
 
 /**
  * Paved/unpaved road hierarchy — restyles the basemap's road fills by the
- * surface tag. Each tier's fill layers get a surface-aware line-colour and
- * line-width (paved vs unpaved ramps), a dashed line-dasharray for unpaved
- * ways, and the butt cap that lets dasharrays render at interpolated
- * widths. The basemap's vivid casing outlines, bridge fills and tunnel
- * fills are brought into the same asphalt palette — casings become neutral
- * greys (line-colour only), bridges mirror their tier fills (colour only)
- * and tunnels keep their dashes faded by ROAD_TUNNEL_OPACITY. Rail, path &
- * under-construction rendering is left alone. Gated by ROAD_SURFACE_AWARE.
+ * surface tag. Each tier's fill layers get a surface-aware line-colour and a
+ * true-scale line-width from the road width engine, with a solid
+ * line-dasharray pinned so no basemap dash value can leak through. The
+ * basemap's vivid casing outlines, bridge fills and tunnel fills are brought
+ * into the same greyscale palette — casings become neutral greys lighter than
+ * their fills (or the darker unpaved edge on unpaved ways) and take the fill
+ * width plus a shoulder sliver on each side, bridges mirror their tier fills
+ * and tunnels keep their dashes faded by ROAD_TUNNEL_OPACITY. The
+ * under-construction fills and outlines are recoloured into that same
+ * greyscale family (widths & dashes unchanged). Rail & path rendering is left
+ * alone. Gated by ROAD_SURFACE_AWARE.
  */
 function applyRoadSurfaceAware(style) {
-  const unpaved = ["==", ["get", "surface"], "unpaved"];
+  const unpaved = ROAD_UNPAVED_COND;
 
-  for (const tier of Object.values(ROAD_TIERS)) {
-    for (const id of tier.layers) {
+  for (const [tier, config] of Object.entries(ROAD_TIERS)) {
+    for (const id of config.layers) {
       const layer = style.layers.find((l) => l.id === id);
       if (!layer) continue;
       layer.paint = layer.paint || {};
-      layer.paint["line-color"] = ["case", unpaved, tier.unpaved, tier.paved];
-      layer.paint["line-width"] = surfaceWidthExpr(tier.stops);
-      layer.paint["line-dasharray"] = [
+      layer.paint["line-color"] = [
         "case",
         unpaved,
-        ROAD_UNPAVED_DASHARRAY,
-        ["literal", [1]],
+        config.unpaved,
+        config.paved,
       ];
+      layer.paint["line-width"] = roadWidthExpr(roadWidthMetres(id), tier);
+      // Unpaved ways no longer dash: pin a constant solid dasharray so no
+      // basemap dash value can leak through.
+      layer.paint["line-dasharray"] = ["literal", [1]];
       layer.layout = layer.layout || {};
-      // BUTT cap: with round caps + an interpolated width, MapLibre fails to
-      // apply line-dasharray — unpaved roads would render solid instead of
-      // dashed (same quirk as the path family).
+      // BUTT cap retained from the dashed rendering so line ends stay flush.
       layer.layout["line-cap"] = "butt";
       layer.layout["line-join"] = "round";
     }
   }
 
-  // Casings — neutral grey line-colour only; the basemap's own widths and
-  // opacity ramps stay untouched.
-  for (const { colour, layers } of Object.values(ROAD_CASING_LAYERS)) {
+  // Casings — neutral grey line-colour, with unpaved ways taking the slightly
+  // darker edge, and the fill width plus a shoulder sliver on each side so the
+  // light edge frames the asphalt core. Pedestrian outline is exempt and keeps
+  // its basemap width.
+  for (const [tier, { colour, layers }] of Object.entries(ROAD_CASING_LAYERS)) {
     for (const id of layers) {
-      setPaint(style, id, "line-color", colour);
+      setPaint(style, id, "line-color", [
+        "case",
+        unpaved,
+        COLOURS.ROADS.CASING_UNPAVED,
+        colour,
+      ]);
+      if (id === "Pedestrian road outline") continue;
+      setPaint(
+        style,
+        id,
+        "line-width",
+        roadCasingWidthExpr(roadWidthMetres(id), tier),
+      );
     }
   }
 
-  // Bridge fills — the same asphalt palette & unpaved case as the road fills,
-  // keeping the basemap's bridge widths.
+  // Bridge fills — the same greyscale palette & unpaved case as the road
+  // fills, with the engine's true-scale widths.
   for (const [tier, ids] of Object.entries(ROAD_BRIDGE_LAYERS)) {
     for (const id of ids) {
       setPaint(style, id, "line-color", [
@@ -1622,15 +1811,37 @@ function applyRoadSurfaceAware(style) {
         ROAD_TIERS[tier].unpaved,
         ROAD_TIERS[tier].paved,
       ]);
+      setPaint(
+        style,
+        id,
+        "line-width",
+        roadWidthExpr(roadWidthMetres(id), tier),
+      );
     }
   }
 
-  // Tunnel fills — tier asphalt colour, faded so the dashes read.
+  // Tunnel fills — tier asphalt colour, faded so the dashes read, with the
+  // engine's true-scale widths.
   for (const [tier, ids] of Object.entries(ROAD_TUNNEL_LAYERS)) {
     for (const id of ids) {
       setPaint(style, id, "line-color", ROAD_TIERS[tier].paved);
       setPaint(style, id, "line-opacity", ROAD_TUNNEL_OPACITY);
+      setPaint(
+        style,
+        id,
+        "line-width",
+        roadWidthExpr(roadWidthMetres(id), tier),
+      );
     }
+  }
+
+  // Under-construction roads — the basemap's brown/olive/red fills and their
+  // outlines are brought into the greyscale family; widths & dashes stay.
+  for (const id of ROAD_CONSTRUCTION_FILLS) {
+    setPaint(style, id, "line-color", COLOURS.ROADS.UNPAVED_MAJOR);
+  }
+  for (const id of ROAD_CONSTRUCTION_OUTLINES) {
+    setPaint(style, id, "line-color", COLOURS.ROADS.CASING_UNPAVED);
   }
 }
 
@@ -1667,7 +1878,7 @@ function applyLowZoomPaths(style) {
     },
     paint: {
       "line-color": COLOURS.ROADS.TRACK_CASING,
-      "line-width": PATH_TRACK_CASING_WIDTH_LOW_ZOOM,
+      "line-width": roadCasingWidthExpr(ROAD_TRACK_WIDTH_METRES, "local"),
     },
   };
 
@@ -1685,7 +1896,7 @@ function applyLowZoomPaths(style) {
     },
     paint: {
       "line-color": COLOURS.ROADS.TRACK_FILL,
-      "line-width": PATH_TRACK_WIDTH_LOW_ZOOM,
+      "line-width": roadWidthExpr(ROAD_TRACK_WIDTH_METRES, "local"),
     },
   };
 
