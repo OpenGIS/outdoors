@@ -70,6 +70,11 @@ npm run demo:preview                  # Preview demo
 npx playwright install chromium
 npm run screenshots                   # Regenerate every shot in shots.json
 npm run screenshots -- --name <id>    # Regenerate a single shot by id
+
+# Benchmark
+npm run bench                         # Draw-performance benchmark of the compare app
+npm run bench -- --shot bolzano-3d --variants full   # Focus a shot / variant
+npm run bench -- --mode load --serve demo            # Load-benchmark the demo bundle
 ```
 
 ### Development

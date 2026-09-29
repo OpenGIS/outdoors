@@ -1,4 +1,5 @@
 import { ref, watch } from "vue";
+import { applyTerrainLod } from "../terrainLod";
 
 const HILLSHADE_STORAGE = "outdoors_dev_demHillshade";
 const TERRAIN_STORAGE = "outdoors_dev_demTerrain";
@@ -14,7 +15,9 @@ const DEM_SOURCE = {
   tiles: ["https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"],
   encoding: "terrarium",
   tileSize: 512,
-  maxzoom: 17,
+  // Matches the style's declared `demSource` maxzoom so both panes overzoom
+  // the same complete z15 tiles (Mapterhorn's z16 coverage has gaps).
+  maxzoom: 15,
   attribution: '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>',
 };
 
@@ -71,6 +74,9 @@ export function useDemOverlay() {
       ...DEM_SOURCE,
       tiles: [...DEM_SOURCE.tiles],
     });
+    // Re-apply after every (re)add so the override survives a provider
+    // setStyle round-trip and toggles that turn the source back on.
+    applyTerrainLod(map, DEM_SOURCE_ID);
   }
 
   /**

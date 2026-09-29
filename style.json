@@ -33,8 +33,8 @@
         "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp"
       ],
       "encoding": "terrarium",
-      "tileSize": 512,
-      "maxzoom": 17,
+      "tileSize": 256,
+      "maxzoom": 15,
       "attribution": "<a href=\"https://mapterhorn.com/attribution\">© Mapterhorn</a>"
     },
     "contour-source": {
@@ -525,8 +525,46 @@
       "source": "openmaptiles",
       "source-layer": "building",
       "minzoom": 15,
+      "filter": [
+        "!=",
+        [
+          "get",
+          "hide_3d"
+        ],
+        true
+      ],
       "paint": {
-        "fill-extrusion-color": "rgb(140, 136, 130)",
+        "fill-extrusion-color": [
+          "case",
+          [
+            "has",
+            "colour"
+          ],
+          [
+            "get",
+            "colour"
+          ],
+          [
+            "interpolate",
+            [
+              "linear"
+            ],
+            [
+              "coalesce",
+              [
+                "get",
+                "render_height"
+              ],
+              0
+            ],
+            0,
+            "rgb(150, 145, 138)",
+            10,
+            "rgb(140, 136, 130)",
+            30,
+            "rgb(122, 117, 111)"
+          ]
+        ],
         "fill-extrusion-height": [
           "get",
           "render_height"
@@ -31653,5 +31691,15 @@
   "terrain": {
     "source": "demSource",
     "exaggeration": 1.2
+  },
+  "light": {
+    "anchor": "viewport",
+    "color": "rgb(255, 250, 242)",
+    "intensity": 0.6,
+    "position": [
+      1.3,
+      300,
+      45
+    ]
   }
 }

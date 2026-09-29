@@ -9,6 +9,8 @@ import outdoorStyleRaw from "../../style.json?raw";
 import ProviderSelect from "./components/ProviderSelect.vue";
 import { useProviderSelection } from "./composables/useProviderSelection";
 import { useDemOverlay } from "./composables/useDemOverlay";
+import { applyTerrainLod } from "./terrainLod";
+import { parseHashCamera } from "./hashCamera";
 
 // ── Constants ──
 const CONTOURS_TO_IMPERIAL = false;
@@ -263,11 +265,35 @@ onMounted(async () => {
 
   attachDemOverlay(leftMap);
 
+  // The left map reads the `location.hash` camera itself (hash: true), but the
+  // right map has no hash, so without this it would start at the z3 world view
+  // and only catch up later. Seed it with the same hash camera so both maps
+  // paint the intended view from the first frame; with no usable hash the
+  // centre/zoom defaults are unchanged.
+  const hashCamera = parseHashCamera(window.location.hash);
+
   rightMap = new maplibregl.Map({
     container: "right",
     style: rightStyle,
-    center: [9, 48],
-    zoom: 3,
+    center: hashCamera?.center ?? [9, 48],
+    zoom: hashCamera?.zoom ?? 3,
+    bearing: hashCamera?.bearing ?? 0,
+    pitch: hashCamera?.pitch ?? 0,
+  });
+
+  // Expose both maps on window so tooling (the draw/load benchmark harness)
+  // can reach them in production too, where Vue strips the dev-only
+  // `__vueParentComponent` back-reference. Behaviour-neutral.
+  window.__outdoorsMaps = { leftMap, rightMap };
+
+  // Apply the shared terrain LOD to every raster-dem source in the right
+  // style, once the style has loaded. Derived from the parsed style so it
+  // tracks whatever DEM sources the build emits.
+  const rightDemSourceIds = Object.entries(rightStyle.sources ?? {})
+    .filter(([, source]) => source.type === "raster-dem")
+    .map(([id]) => id);
+  rightMap.on("style.load", () => {
+    for (const id of rightDemSourceIds) applyTerrainLod(rightMap, id);
   });
 
   applyViewMode();

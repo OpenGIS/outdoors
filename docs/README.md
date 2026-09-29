@@ -1,6 +1,6 @@
 ---
 git_hash: "7b3b115523b73d1f3a054a81e3b7eefbecd141ea"
-modified: "2026-08-24"
+modified: "2026-09-29"
 ---
 
 # Project Documentation
@@ -17,6 +17,7 @@ modified: "2026-08-24"
 6. [Client-side rendering](6.client.md) — how the style is rendered by client mapping libraries: renderer compatibility, metric/imperial unit switching, and the compare app
 7. [Tile Server](7.server.md) — the hosted tile.ogis.app services: POIs, paths and contours, and the feeds this repo provides
 8. [Activities](8.activities.md) — activity-specific overlays considered for the style: hiking routes and MTB scale, and why the style stays activity-agnostic
+9. [Performance](9.performance.md) — the Playwright draw and load benchmarks for the compare app, their recorded baselines and findings, and the DEM source and terrain-LOD optimisations
 
 ---
 

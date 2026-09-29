@@ -317,15 +317,38 @@ const BUILDING_OUTLINE_COLOUR = {
 // the satellite ground. The source-layer carries render_height &
 // render_min_height on every feature (raw height/min_height are absent), so
 // the extrusion is mapped from those directly — no invented heights. Features
-// missing render_height fall back to 0 and render flat. The extrusion is
-// inserted immediately before the outline so the roof outline draws on top.
+// missing render_height fall back to 0 and render flat. OpenMapTiles tags
+// footprint outlines that duplicate building:part geometry with hide_3d, so 3D
+// renderers can skip them; the layer filters on that. A per-feature
+// building:colour, where present, colours the massing, otherwise a muted
+// height ramp applies. The extrusion is inserted immediately before the
+// outline so the roof outline draws on top.
 const BUILDING_3D_LAYER_ID = "building-3d";
 const BUILDING_3D_SOURCE_LAYER = "building";
 const BUILDING_3D_MINZOOM = 15;
-// Pale neutral massing that does not compete with the imagery; the opacity
-// lets the satellite ground tint through.
-const BUILDING_3D_COLOUR = "rgb(140, 136, 130)";
+const BUILDING_3D_HIDE_PROPERTY = "hide_3d";
+const BUILDING_3D_COLOUR_PROPERTY = "colour";
+// Muted warm-grey height ramp: the mid stop keeps the previous flat tone, and
+// the tones subtly darken with height so tall massing reads without competing
+// with the imagery. This is a calibration starting point — expect to tune the
+// stops against the imagery.
+const BUILDING_3D_COLOUR_RAMP = [
+  [0, "rgb(150, 145, 138)"],
+  [10, "rgb(140, 136, 130)"],
+  [30, "rgb(122, 117, 111)"],
+];
 const BUILDING_3D_OPACITY = 0.85;
+
+// Top-level light shared by the 3D extrusion and (where MapLibre derives its
+// illumination from it) the hillshade. A warm, high-azimuth key light gives the
+// massing a soft sunlit side. anchor viewport keeps the shading locked to the
+// screen as the map rotates and pitches. Calibration starting point.
+const STYLE_LIGHT = {
+  anchor: "viewport",
+  color: "rgb(255, 250, 242)",
+  intensity: 0.6,
+  position: [1.3, 300, 45],
+};
 
 // Remaining man-made surfaces recede over the imagery. The opaque urban area
 // fills drop to a light translucent wash; the runway/taxiway tarmac is
@@ -382,16 +405,23 @@ const IMAGERY_RAIL_LAYERS = [
 // DEM — Mapterhorn raster-dem source, hillshade layer & 3D terrain.
 // Values ported from the pre-refactor build. The raster-dem source feeds
 // both the hillshade layer and the terrain. Mapterhorn serves
-// Terrarium-encoded WebP tiles at 512px, maxzoom 17 (service max; z0-12
-// global, z13-17 regional only). The source is added when either DEM
-// toggle is enabled.
+// Terrarium-encoded WebP tiles at 512px, but its z16 coverage has gaps
+// (e.g. around Bolzano) and the resulting 404s leave the terrain
+// mis-sampled — at z16 pitched views the camera and ground come out
+// malformed. Declaring the source at maxzoom 15 lets MapLibre overzoom the
+// complete z15 tiles instead: no 404s, consistent terrain, and visually
+// indistinguishable in stills. Separately, we declare the source at 256px,
+// half the served size, so the terrain mesh and hillshade texture cost less
+// to build: measured ~+23% fps at pitched high-zoom views, visually
+// indistinguishable in stills. The source is added when either DEM toggle
+// is enabled.
 const DEM_SOURCE_ID = "demSource";
 const DEM_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 const DEM_SOURCE_ENCODING = "terrarium";
-const DEM_SOURCE_TILESIZE = 512;
+const DEM_SOURCE_TILESIZE = 256;
 const DEM_SOURCE_ATTRIBUTION =
   '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>';
-const DEM_SOURCE_MAXZOOM = 17;
+const DEM_SOURCE_MAXZOOM = 15;
 
 // style.terrain.exaggeration — ratio by which the terrain is exaggerated
 // relative to the real world.
@@ -1362,17 +1392,34 @@ function applyImageryLegibility(style) {
     );
   }
 
+  // Set the top-level light once so the 3D massing is shaded consistently;
+  // MapLibre may also derive hillshade illumination from it. See STYLE_LIGHT.
+  style.light = STYLE_LIGHT;
+
   // 3D massing sits immediately beneath the outline so the roof outline draws
   // on top of the extrusion. Heights come straight from the source-layer; no
-  // filter, so every feature extrudes and those without a height render flat.
+  // invented heights, and features without one render flat.
   const building3d = {
     id: BUILDING_3D_LAYER_ID,
     type: "fill-extrusion",
     source: "openmaptiles",
     "source-layer": BUILDING_3D_SOURCE_LAYER,
     minzoom: BUILDING_3D_MINZOOM,
+    // hide_3d footprints duplicate building:part geometry; a missing property
+    // yields null ≠ true, so ordinary footprints are kept.
+    filter: ["!=", ["get", BUILDING_3D_HIDE_PROPERTY], true],
     paint: {
-      "fill-extrusion-color": BUILDING_3D_COLOUR,
+      "fill-extrusion-color": [
+        "case",
+        ["has", BUILDING_3D_COLOUR_PROPERTY],
+        ["get", BUILDING_3D_COLOUR_PROPERTY],
+        [
+          "interpolate",
+          ["linear"],
+          ["coalesce", ["get", "render_height"], 0],
+          ...BUILDING_3D_COLOUR_RAMP.flat(),
+        ],
+      ],
       "fill-extrusion-height": ["get", "render_height"],
       "fill-extrusion-base": ["get", "render_min_height"],
       "fill-extrusion-opacity": BUILDING_3D_OPACITY,
