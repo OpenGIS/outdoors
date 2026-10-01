@@ -16,6 +16,8 @@ import { parseHashCamera } from "./hashCamera";
 const CONTOURS_TO_IMPERIAL = false;
 const API_KEYS_STORAGE = "outdoors_dev_apiKeys";
 const VIEW_MODE_STORAGE = "outdoors_dev_viewMode";
+const MAPLIBRE_ATTRIBUTION =
+  '<a href="https://maplibre.org/" target="_blank">❤️ MapLibre</a>';
 
 // ── Provider selection state (sections, selectedKey, persistence) ──
 const { sections, allProviders, selectedKey, selectedEntry } =
@@ -261,6 +263,10 @@ onMounted(async () => {
     center: [9, 48],
     zoom: 3,
     hash: true,
+    attributionControl: {
+      compact: true,
+      customAttribution: MAPLIBRE_ATTRIBUTION,
+    },
   });
 
   attachDemOverlay(leftMap);
@@ -279,6 +285,11 @@ onMounted(async () => {
     zoom: hashCamera?.zoom ?? 3,
     bearing: hashCamera?.bearing ?? 0,
     pitch: hashCamera?.pitch ?? 0,
+    attributionControl: {
+      compact: true,
+      customAttribution:
+        rightStyle.metadata?.attributionLine ?? MAPLIBRE_ATTRIBUTION,
+    },
   });
 
   // Expose both maps on window so tooling (the draw/load benchmark harness)

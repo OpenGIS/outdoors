@@ -21,7 +21,7 @@
     <div id="map"></div>
     <script src="/maplibre-gl.js"></script>
     <script>
-      (function () {
+      (async function () {
         var params = new URLSearchParams(window.location.search);
         var center = (params.get("center") || "-3.23,54.45")
           .split(",")
@@ -41,15 +41,42 @@
           recordError(event.message);
         });
 
+        // Preload the served style so the control can render the build's
+        // composed single-line attribution (`metadata.attributionLine`)
+        // instead of per-source fragments joined by "|". Falls back to the
+        // bare MapLibre link if the metadata is absent.
+        var style = "/style.json";
+        var customAttribution =
+          '<a href="https://maplibre.org/" target="_blank">❤️ MapLibre</a>';
+        try {
+          var response = await fetch("/style.json");
+          if (response.ok) {
+            var loadedStyle = await response.json();
+            if (
+              loadedStyle &&
+              loadedStyle.metadata &&
+              loadedStyle.metadata.attributionLine
+            ) {
+              customAttribution = loadedStyle.metadata.attributionLine;
+            }
+            style = loadedStyle;
+          }
+        } catch (error) {
+          recordError("style preload failed: " + error.message);
+        }
+
         var mapOptions = {
           container: "map",
-          style: "/style.json",
+          style: style,
           center: [center[0], center[1]],
           zoom: zoom,
           bearing: bearing,
           pitch: pitch,
           interactive: false,
-          attributionControl: true,
+          attributionControl: {
+            compact: true,
+            customAttribution: customAttribution,
+          },
           fadeDuration: 0,
         };
 

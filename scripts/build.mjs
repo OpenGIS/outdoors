@@ -13,11 +13,11 @@
  * hosted contour vector source, the contour line layer and the contour
  * elevation labels; slice 5 adds the outdoor path family and the low-zoom
  * paths overlay; slice 6 replaces the Liberty POI tiers with the single
- * config-driven outdoor-POI overlay. The basemap's own
- * sources, glyphs, sprite and attribution pass through untouched, since the
- * published basemap is already fully rewritten (glyphs & sprite point at
- * www.ogis.org/basemap, tiles at tiles.openfreemap.org/planet, attribution
- * baked into the style).
+ * config-driven outdoor-POI overlay. The basemap's own sources, glyphs and
+ * sprite pass through untouched, since the published basemap is already
+ * fully rewritten (glyphs & sprite point at www.ogis.org/basemap, tiles at
+ * tiles.openfreemap.org/planet). Attribution is not passed through: the
+ * build owns every attribution string — see the ATTRIBUTION config below.
  *
  * Later slices add the remaining outdoor mutations (paths, routes, POIs, …)
  * inside applyModifications().
@@ -68,6 +68,46 @@ const SPRITE_CACHE_META_FILE = resolve(CACHE_DIR, "basemap-sprite-etag.txt");
 // top-level `name` property (see the style spec's Root section). The
 // published basemap carries its own name ("Basemap"); it is overridden here.
 const STYLE_NAME = "Outdoors";
+
+// ═════════════════════════════════════════════════════════════════════════
+// ATTRIBUTION — single source of truth for every attribution string
+// ═════════════════════════════════════════════════════════════════════════
+// The build owns all attribution text; no other literal lives elsewhere.
+// Entries are defined in rendered order: the basemap (OpenFreeMap/OSM) group
+// first, Mapterhorn next, then MapLibre, Esri last. The pseudo-source
+// attributions are still needed individually for licence compliance and for
+// third-party style consumers (the style spec exposes them per source), but
+// the per-map AttributionControl should show one seamless line: apps pass the
+// composed `LINE` below as `customAttribution`. Because the line contains
+// every source attribution verbatim, maplibre-gl v5's substring dedupe
+// collapses each per-source entry into it, so the control renders exactly
+// this one string — no `|` separators. No space separates an emoji from its
+// label because the emoji glyph carries its own trailing advance, and a
+// literal space on top would render as a doubled gap.
+const ATTRIBUTION = {
+  // Basemap vector tiles (OpenFreeMap / OpenMapTiles / OpenStreetMap).
+  // Applied to the live `openmaptiles` source and to the basemap's
+  // `attribution` pseudo-source (a licence requirement) so they cannot drift.
+  BASEMAP:
+    '<a href="https://openfreemap.org" target="_blank">❤️OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank">©️OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">❤️©️OpenStreetMap</a>',
+  // Mapterhorn terrain raster-dem — see the DEM config section.
+  MAPTERHORN: '<a href="https://mapterhorn.com/attribution">©️Mapterhorn</a>',
+  // MapLibre GL JS itself. Not attached to any source; the app's maps add it
+  // via the control's `customAttribution`.
+  MAPLIBRE: '<a href="https://maplibre.org/" target="_blank">❤️MapLibre</a>',
+  // Esri World Imagery raster ground — see the SATELLITE config section.
+  ESRI: '<a href="https://www.esri.com" target="_blank">©️Esri</a>',
+};
+
+// The single rendered line: every fragment joined by one space. Written into
+// the style metadata as `attributionLine` and used by apps/harness as the
+// control's `customAttribution`.
+ATTRIBUTION.LINE = [
+  ATTRIBUTION.BASEMAP,
+  ATTRIBUTION.MAPTERHORN,
+  ATTRIBUTION.MAPLIBRE,
+  ATTRIBUTION.ESRI,
+].join(" ");
 
 // ═════════════════════════════════════════════════════════════════════════
 // Modification — outdoor-specific mutations, gated by feature toggles
@@ -186,8 +226,6 @@ const SATELLITE_TILE_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const SATELLITE_TILE_SIZE = 256;
 const SATELLITE_MAXZOOM = 20;
-const SATELLITE_ATTRIBUTION =
-  '<a href="https://www.esri.com" target="_blank">© Esri</a>';
 
 // IMAGERY GROUND — with the satellite raster sitting beneath the vector
 // stack, every large opaque fill would hide the imagery it is drawn over, so
@@ -419,8 +457,6 @@ const DEM_SOURCE_ID = "demSource";
 const DEM_SOURCE_URL = "https://tiles.mapterhorn.com/{z}/{x}/{y}.webp";
 const DEM_SOURCE_ENCODING = "terrarium";
 const DEM_SOURCE_TILESIZE = 256;
-const DEM_SOURCE_ATTRIBUTION =
-  '<a href="https://mapterhorn.com/attribution">© Mapterhorn</a>';
 const DEM_SOURCE_MAXZOOM = 15;
 
 // style.terrain.exaggeration — ratio by which the terrain is exaggerated
@@ -1284,7 +1320,7 @@ function applySatelliteGround(style) {
       tiles: [SATELLITE_TILE_URL],
       tileSize: SATELLITE_TILE_SIZE,
       maxzoom: SATELLITE_MAXZOOM,
-      attribution: SATELLITE_ATTRIBUTION,
+      attribution: ATTRIBUTION.ESRI,
     };
   }
 
@@ -1623,7 +1659,7 @@ function applyDemSource(style) {
     encoding: DEM_SOURCE_ENCODING,
     tileSize: DEM_SOURCE_TILESIZE,
     maxzoom: DEM_SOURCE_MAXZOOM,
-    attribution: DEM_SOURCE_ATTRIBUTION,
+    attribution: ATTRIBUTION.MAPTERHORN,
   };
 }
 
@@ -2361,6 +2397,27 @@ async function build() {
     ...JSON.parse(JSON.stringify(basemap)),
   };
   style.name = STYLE_NAME;
+
+  // Attribution — the build owns all attribution text (see the ATTRIBUTION
+  // config). The basemap string goes on the live `openmaptiles` source, where
+  // maplibre v5 actually reads it (a style-level attribution overrides the
+  // source's TileJSON), and on the basemap's `attribution` pseudo-source,
+  // which references no layer but must stay for licence compliance. Both are
+  // synchronised from the same string; guards skip a renamed/removed source.
+  if (style.sources.openmaptiles) {
+    style.sources.openmaptiles.attribution = ATTRIBUTION.BASEMAP;
+  }
+  if (style.sources.attribution) {
+    style.sources.attribution.attribution = ATTRIBUTION.BASEMAP;
+  }
+
+  // Publish the composed single-line attribution as style metadata for apps
+  // and the screenshot harness to pass to the control's `customAttribution`.
+  // Merge rather than clobber so any upstream basemap metadata survives.
+  style.metadata = {
+    ...style.metadata,
+    attributionLine: ATTRIBUTION.LINE,
+  };
 
   // Sprite sheet wiring — MapLibre accepts a sprite ARRAY of {id, url}
   // pairs (string arrays and relative URLs are rejected by maplibre-gl v5).
