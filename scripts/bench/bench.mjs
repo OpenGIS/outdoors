@@ -34,7 +34,7 @@
  *   --warm       <n>          load mode: warm reloads per round; default 1
  *   --dpr        <n>          device pixel ratio (separate Chrome launch); default 2
  *   --screenshot <label>      capture-only mode: load each shot, fully settle,
- *                             write `.opencode/tmp/bench/quality-<shot>-<label>.png`
+ *                             write `.opencode/tmp/bench/quality-<shot>-<label>.jpg`
  *                             and exit (no interaction or measurement)
  *
  * The move method (map access, warm-up, sampling, camera drives) mirrors a prior
@@ -264,7 +264,7 @@ function usage() {
     "  --cap      <ms>         load mode: hard cap per load (default 60000)",
     "  --warm     <n>          load mode: warm reloads per round (default 1)",
     "  --dpr      <n>          device pixel ratio (default 2)",
-    "  --screenshot <label>    capture-only screenshots (quality-<shot>-<label>.png)",
+    "  --screenshot <label>    capture-only screenshots (quality-<shot>-<label>.jpg)",
     "",
     `  shots:    ${Object.keys(SHOTS).join(", ")}`,
     `  variants: ${VARIANTS.join(", ")}`,
@@ -1791,8 +1791,8 @@ async function executeRun(
 
 /**
  * Capture-only mode: load each shot, wait for a full load plus a longer settle
- * so terrain, hillshade and labels finish painting, then write a full-page PNG
- * per shot to `.opencode/tmp/bench/quality-<shot>-<label>.png`. Used for
+ * so terrain, hillshade and labels finish painting, then write a full-page JPEG
+ * per shot to `.opencode/tmp/bench/quality-<shot>-<label>.jpg`. Used for
  * visual quality comparisons (e.g. 512 vs 256 DEM tiles) without measuring.
  */
 async function runScreenshots(options, shots) {
@@ -1821,9 +1821,14 @@ async function runScreenshots(options, shots) {
     await page.waitForTimeout(QUALITY_SETTLE_MS);
     const filePath = resolve(
       OUTPUT_DIR,
-      `quality-${shot.id}-${options.screenshot}.png`,
+      `quality-${shot.id}-${options.screenshot}.jpg`,
     );
-    await page.screenshot({ path: filePath, fullPage: true });
+    await page.screenshot({
+      path: filePath,
+      type: "jpeg",
+      quality: 85,
+      fullPage: true,
+    });
     outputs.push(filePath);
     console.log(`  ${shot.id} -> ${filePath}`);
   }

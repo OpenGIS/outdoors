@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Generate named PNG screenshots of the project's MapLibre style.
+ * Generate named JPEG screenshots of the project's MapLibre style.
  *
  * Usage:
  *   node scripts/screenshots/generate.mjs            # all shots
@@ -13,7 +13,7 @@
  * context per shot (clean tile cache), waiting for the harness to
  * signal window.__shotReady before capturing the screenshot.
  *
- * Output PNGs land in screenshots/ at the project root at
+ * Output JPEGs land in screenshots/ at the project root at
  * width*scale x height*scale CSS pixels.
  */
 
@@ -178,7 +178,7 @@ function shotUrl(port, shot) {
 
 /**
  * Render one shot: fresh context (viewport + device scale), load the
- * harness, wait for the readiness flag, capture the PNG, and return any
+ * harness, wait for the readiness flag, capture the JPEG, and return any
  * console/page errors so the caller can warn without dropping the shot.
  */
 async function captureShot(browser, port, shot) {
@@ -210,12 +210,14 @@ async function captureShot(browser, port, shot) {
       timeout: 4880000,
     });
 
-    const outputPath = resolve(SCREENSHOTS_DIR, `${shot.id}.png`);
+    const outputPath = resolve(SCREENSHOTS_DIR, `${shot.id}.jpg`);
     await page.screenshot({
       path: outputPath,
+      type: "jpeg",
+      quality: 85,
       clip: { x: 0, y: 0, width: shot.width, height: shot.height },
       // Large shots (e.g. 10000x10000 CSS px at scale 2) take minutes to
-      // encode; 8192x8192 PNGs in particular can take several minutes.
+      // encode; 8192x8192 images in particular can take several minutes.
       timeout: 600000,
     });
 

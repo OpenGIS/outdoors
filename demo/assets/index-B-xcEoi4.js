@@ -831,10 +831,10 @@ ${x.shaderPreludeCode.vertexSource}`,define:x.shaderDefine},defaultProjectionDat
     "openmaptiles": {
       "type": "vector",
       "url": "https://tiles.openfreemap.org/planet",
-      "attribution": "<a href=\\"https://openfreemap.org\\" target=\\"_blank\\">❤️OpenFreeMap</a> <a href=\\"https://www.openmaptiles.org/\\" target=\\"_blank\\">©️OpenMapTiles</a> <a href=\\"https://www.openstreetmap.org/copyright\\" target=\\"_blank\\">❤️©️OpenStreetMap</a>"
+      "attribution": "❤️ <a href=\\"https://openfreemap.org\\" target=\\"_blank\\">OpenFreeMap</a> ©️ <a href=\\"https://www.openmaptiles.org/\\" target=\\"_blank\\">OpenMapTiles</a> ❤️©️ <a href=\\"https://www.openstreetmap.org/copyright\\" target=\\"_blank\\">OpenStreetMap</a>"
     },
     "attribution": {
-      "attribution": "<a href=\\"https://openfreemap.org\\" target=\\"_blank\\">❤️OpenFreeMap</a> <a href=\\"https://www.openmaptiles.org/\\" target=\\"_blank\\">©️OpenMapTiles</a> <a href=\\"https://www.openstreetmap.org/copyright\\" target=\\"_blank\\">❤️©️OpenStreetMap</a>",
+      "attribution": "❤️ <a href=\\"https://openfreemap.org\\" target=\\"_blank\\">OpenFreeMap</a> ©️ <a href=\\"https://www.openmaptiles.org/\\" target=\\"_blank\\">OpenMapTiles</a> ❤️©️ <a href=\\"https://www.openstreetmap.org/copyright\\" target=\\"_blank\\">OpenStreetMap</a>",
       "type": "vector"
     },
     "esri-satellite": {
@@ -844,7 +844,7 @@ ${x.shaderPreludeCode.vertexSource}`,define:x.shaderDefine},defaultProjectionDat
       ],
       "tileSize": 256,
       "maxzoom": 20,
-      "attribution": "<a href=\\"https://www.esri.com\\" target=\\"_blank\\">©️Esri</a>"
+      "attribution": "©️ <a href=\\"https://www.esri.com\\" target=\\"_blank\\">Esri</a>"
     },
     "demSource": {
       "type": "raster-dem",
@@ -854,7 +854,7 @@ ${x.shaderPreludeCode.vertexSource}`,define:x.shaderDefine},defaultProjectionDat
       "encoding": "terrarium",
       "tileSize": 256,
       "maxzoom": 15,
-      "attribution": "<a href=\\"https://mapterhorn.com/attribution\\">©️Mapterhorn</a>"
+      "attribution": "©️ <a href=\\"https://mapterhorn.com/attribution\\">Mapterhorn</a>"
     },
     "contour-source": {
       "type": "vector",
@@ -32508,7 +32508,7 @@ ${x.shaderPreludeCode.vertexSource}`,define:x.shaderDefine},defaultProjectionDat
     }
   ],
   "metadata": {
-    "attributionLine": "<a href=\\"https://openfreemap.org\\" target=\\"_blank\\">❤️OpenFreeMap</a> <a href=\\"https://www.openmaptiles.org/\\" target=\\"_blank\\">©️OpenMapTiles</a> <a href=\\"https://www.openstreetmap.org/copyright\\" target=\\"_blank\\">❤️©️OpenStreetMap</a> <a href=\\"https://mapterhorn.com/attribution\\">©️Mapterhorn</a> <a href=\\"https://maplibre.org/\\" target=\\"_blank\\">❤️MapLibre</a> <a href=\\"https://www.esri.com\\" target=\\"_blank\\">©️Esri</a>"
+    "attributionLine": "❤️ <a href=\\"https://openfreemap.org\\" target=\\"_blank\\">OpenFreeMap</a> ©️ <a href=\\"https://www.openmaptiles.org/\\" target=\\"_blank\\">OpenMapTiles</a> ❤️©️ <a href=\\"https://www.openstreetmap.org/copyright\\" target=\\"_blank\\">OpenStreetMap</a> ©️ <a href=\\"https://mapterhorn.com/attribution\\">Mapterhorn</a> ❤️ <a href=\\"https://maplibre.org/\\" target=\\"_blank\\">MapLibre</a> ©️ <a href=\\"https://www.esri.com\\" target=\\"_blank\\">Esri</a>"
   },
   "terrain": {
     "source": "demSource",
