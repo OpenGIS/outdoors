@@ -89,14 +89,14 @@ const ATTRIBUTION = {
   // Applied to the live `openmaptiles` source and to the basemap's
   // `attribution` pseudo-source (a licence requirement) so they cannot drift.
   BASEMAP:
-    '<a href="https://openfreemap.org" target="_blank">❤️OpenFreeMap</a> <a href="https://www.openmaptiles.org/" target="_blank">©️OpenMapTiles</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">❤️©️OpenStreetMap</a>',
+    '❤️ <a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> ©️<a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> ❤️©️<a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
   // Mapterhorn terrain raster-dem — see the DEM config section.
-  MAPTERHORN: '<a href="https://mapterhorn.com/attribution">©️Mapterhorn</a>',
+  MAPTERHORN: '©️ <a href="https://mapterhorn.com/attribution">Mapterhorn</a>',
   // MapLibre GL JS itself. Not attached to any source; the app's maps add it
   // via the control's `customAttribution`.
-  MAPLIBRE: '<a href="https://maplibre.org/" target="_blank">❤️MapLibre</a>',
+  MAPLIBRE: '❤️ <a href="https://maplibre.org/" target="_blank">MapLibre</a>',
   // Esri World Imagery raster ground — see the SATELLITE config section.
-  ESRI: '<a href="https://www.esri.com" target="_blank">©️Esri</a>',
+  ESRI: '©️ <a href="https://www.esri.com" target="_blank">Esri</a>',
 };
 
 // The single rendered line: every fragment joined by one space. Written into
