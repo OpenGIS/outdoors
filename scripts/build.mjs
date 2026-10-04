@@ -99,16 +99,6 @@ const ATTRIBUTION = {
   ESRI: '©️ <a href="https://www.esri.com" target="_blank">Esri</a>',
 };
 
-// The single rendered line: every fragment joined by one space. Written into
-// the style metadata as `attributionLine` and used by apps/harness as the
-// control's `customAttribution`.
-ATTRIBUTION.LINE = [
-  ATTRIBUTION.BASEMAP,
-  ATTRIBUTION.MAPTERHORN,
-  ATTRIBUTION.MAPLIBRE,
-  ATTRIBUTION.ESRI,
-].join(" ");
-
 // ═════════════════════════════════════════════════════════════════════════
 // Modification — outdoor-specific mutations, gated by feature toggles
 // ═════════════════════════════════════════════════════════════════════════
@@ -144,31 +134,44 @@ const FEATURES = {
   OUTDOOR_POI: true,
 };
 
+// The single rendered line: every fragment joined by one space. Written into
+// the style metadata as `attributionLine` and used by apps/harness as the
+// control's `customAttribution`. The Esri fragment is appended only while the
+// satellite ground is enabled (its source is otherwise absent); this composes
+// after FEATURES so the toggle is in scope — referencing it earlier would hit
+// the temporal dead zone.
+ATTRIBUTION.LINE = [
+  ATTRIBUTION.BASEMAP,
+  ATTRIBUTION.MAPTERHORN,
+  ATTRIBUTION.MAPLIBRE,
+  ...(FEATURES.SATELLITE_GROUND ? [ATTRIBUTION.ESRI] : []),
+].join(" ");
+
 // Every colour literal used by the modifications, nested by feature. Values are
 // ported from the pre-refactor build (the project's established outdoor
 // look), adapted where the new basemap's layer structure differs.
 const COLOURS = {
   // Terrain fills (TERRAIN_PALETTE)
   TERRAIN: {
-    BACKGROUND: "hsl(47, 26%, 88%)", // warm pale base
-    GRASS: "hsl(82, 46%, 72%)", // muted yellow-green — grass, meadow, wetland, garden
-    WOOD: "hsl(82, 46%, 72%)", // muted yellow-green — wood, forest, mangrove
+    BACKGROUND: "hsl(18, 12%, 45%)", // earthy reddish-grey core canvas tone
+    GRASS: "hsl(84, 42%, 61%)", // muted yellow-green — grass, meadow, wetland, garden
+    WOOD: "hsl(112, 22%, 32%)", // muted green — wood, forest, mangrove; distinctly darker than grass
     ICE: "hsl(47, 22%, 94%)", // warm pale — glacier
-    RESIDENTIAL: "hsl(47, 13%, 86%)", // warm pale — residential
-    SAND: "hsl(45, 55%, 82%)", // muted sand (old value was a bright yellow tuned for 30% opacity)
+    RESIDENTIAL: "hsl(45, 10%, 74%)", // warm pale — residential
+    SAND: "hsl(35, 62%, 66%)", // warm, saturated sand for the vector ground — sand, dune, beach
   },
 
   // Landcover accents (TERRAIN_PALETTE)
   LANDCOVER: {
-    ROCK: "hsl(40, 15%, 78%)", // pale taupe — rock, scree, bare rock
-    FARMLAND: "hsl(75, 35%, 88%)", // pale yellow-green — farmland, farm, orchard
-    HEATH: "hsl(60, 30%, 78%)", // muted yellow — heath, scrub
+    ROCK: "hsl(35, 10%, 61%)", // muted taupe — rock, scree, bare rock
+    FARMLAND: "hsl(82, 38%, 60%)", // muted yellow-green — farmland, farm, orchard
+    HEATH: "hsl(58, 28%, 59%)", // muted yellow — heath, scrub
   },
 
   // Landuse accents (TERRAIN_PALETTE)
   LANDUSE: {
     MILITARY: "hsl(0, 55%, 90%)", // muted red tint (old value was an rgba wash)
-    QUARRY: "hsl(25, 15%, 82%)", // muted brown tint (old value was an rgba wash)
+    QUARRY: "hsl(30, 18%, 74%)", // muted brown tint (old value was an rgba wash)
   },
 
   // Water (WATER_PALETTE)
@@ -216,6 +219,293 @@ const COLOURS = {
   },
 };
 
+// ═════════════════════════════════════════════════════════════════════════
+// RENDER STACK — the ordered source of truth for the render stack
+// ═════════════════════════════════════════════════════════════════════════
+// applyModifications() walks this list bottom-to-top: each group is a band of
+// the rendered map (the Background floor first, the POI labels last) and each
+// step runs only when its predicate is true. Groups with no steps document a
+// band owned entirely by the upstream basemap. The metadata on each group —
+// title, summary, palette, satellite and layers — is documentation only and
+// never affects the build.
+//
+// FINISHING_PASSES runs after the walk; its overrides deliberately beat every
+// group above.
+
+const RENDER_STACK = [
+  {
+    id: "core",
+    title: "Core canvas",
+    summary:
+      "Recolours the Background floor, the earthy canvas tone beneath every other layer.",
+    palette: ["COLOURS.TERRAIN.BACKGROUND"],
+    satellite:
+      "Unchanged: the ground raster sits above the floor, which only shows where the imagery does not.",
+    layers: ["Background"],
+    steps: [{ when: () => FEATURES.TERRAIN_PALETTE, run: applyCorePalette }],
+  },
+  {
+    id: "natural-earth",
+    title: "Natural-earth vectors",
+    summary:
+      "Recolours the calibrated landcover and landuse fills that sit under the ground raster.",
+    palette: ["COLOURS.TERRAIN", "COLOURS.LANDCOVER", "COLOURS.LANDUSE"],
+    satellite:
+      "Retained beneath the raster at GROUND_RASTER_OPACITY so the imagery reads over them.",
+    layers: [
+      "Grass (medium scale)",
+      "Grass",
+      "Meadow",
+      "Garden",
+      "Recreation ground",
+      "Cemetery",
+      "Wetland (medium scale)",
+      "Wetland and swamp",
+      "Marsh",
+      "Wood (medium scale)",
+      "Wood",
+      "Forest",
+      "Mangrove",
+      "Rock (medium scale)",
+      "Scree",
+      "Bare rock",
+      "Sand (medium scale)",
+      "Sand",
+      "Dune",
+      "Beach",
+      "Farmland (medium scale)",
+      "Farmland",
+      "Farm",
+      "Orchard and vineyard",
+      "Heath",
+      "Scrub",
+      "Allotments",
+      "Stadium",
+      "Residential",
+      "Military",
+      "Quarry",
+      "Glacier",
+      "Glacier outline",
+      "Park",
+      "National parks",
+      "National park outline",
+      "Local park",
+      "National park labels",
+    ],
+    steps: [
+      { when: () => FEATURES.TERRAIN_PALETTE, run: applyNaturalEarthPalette },
+      {
+        when: () => FEATURES.PARK_DIFFERENTIATION,
+        run: applyParkDifferentiation,
+      },
+    ],
+  },
+  {
+    id: "ground-raster",
+    title: "Ground raster",
+    summary:
+      "Adds the Esri World Imagery raster ground above the natural-earth vectors and strips any retained opaque fills.",
+    palette: [],
+    satellite:
+      "This is the satellite ground itself; the raster sits beneath the water and every later vector layer.",
+    layers: ["satellite"],
+    steps: [
+      { when: () => FEATURES.SATELLITE_GROUND, run: applySatelliteGround },
+      { when: () => FEATURES.SATELLITE_GROUND, run: applyGroundRetention },
+    ],
+  },
+  {
+    id: "water",
+    title: "Water",
+    summary:
+      "Recolours the water fills and lines and, under the raster, lets the imagery show through as a tint.",
+    palette: ["COLOURS.WATER"],
+    satellite:
+      "Water stays above the raster and is made translucent so it reads as a palette tint.",
+    layers: [
+      "Water",
+      "Water intermittent",
+      "River",
+      "River intermittent",
+      "Other waterway",
+      "Other waterway intermittent",
+      "River tunnel",
+      "River bridge",
+    ],
+    steps: [
+      { when: () => FEATURES.WATER_PALETTE, run: applyWaterPalette },
+      { when: () => FEATURES.SATELLITE_GROUND, run: applyWaterTint },
+    ],
+  },
+  {
+    id: "terrain",
+    title: "Terrain & contours",
+    summary:
+      "Adds the Mapterhorn DEM source with its hillshade and 3D terrain, plus the hosted contour lines and elevation labels.",
+    palette: ["COLOURS.CONTOURS"],
+    satellite:
+      "Unaffected by the raster; the finishing pass recedes the contour opacities over the imagery.",
+    layers: ["hillshade-layer", "contour-lines", "contour-labels"],
+    steps: [
+      {
+        when: () => FEATURES.DEM_HILLSHADE || FEATURES.DEM_TERRAIN,
+        run: applyDemSource,
+      },
+      { when: () => FEATURES.DEM_HILLSHADE, run: applyDemHillshade },
+      { when: () => FEATURES.DEM_TERRAIN, run: applyDemTerrain },
+      { when: () => FEATURES.CONTOURS, run: applyContours },
+      { when: () => FEATURES.CONTOURS, run: applyContourLabels },
+    ],
+  },
+  {
+    id: "roads-paths",
+    title: "Roads & paths",
+    summary:
+      "Restyles the basemap roads surface-by-surface, adds the low-zoom path overlay and repaints the native path family.",
+    palette: ["COLOURS.ROADS", "COLOURS.PATHS"],
+    satellite:
+      "Mostly unaffected; the finishing pass tones the man-made surfaces, path casings and road labels back over the imagery.",
+    layers: [
+      "Highway road",
+      "Trunk road",
+      "Primary road",
+      "Highway road link",
+      "Trunk road link",
+      "Primary road link",
+      "Secondary road",
+      "Tertiary road",
+      "Minor road",
+      "Service road",
+      "Raceway road",
+      "Highway road outline",
+      "Trunk road outline",
+      "Primary road outline",
+      "Highway link outline",
+      "Trunk road link outline",
+      "Primary road link outline",
+      "Highway tunnel outline",
+      "Trunk tunnel outline",
+      "Primary tunnel outline",
+      "Highway link tunnel outline",
+      "Highway bridge outline",
+      "Trunk bridge outline",
+      "Primary bridge outline",
+      "Highway link bridge outline",
+      "Secondary road outline",
+      "Tertiary road outline",
+      "Secondary road link outline",
+      "Secondary tunnel outline",
+      "Tertiary tunnel outline",
+      "Secondary bridge outline",
+      "Tertiary bridge outline",
+      "Minor road outline",
+      "Pedestrian road outline",
+      "Service road link outline",
+      "Service tunnel outline",
+      "Street tunnel outline",
+      "Link tunnel outline",
+      "Service bridge outline",
+      "Street bridge outline",
+      "Link bridge outline",
+      "Highway bridge",
+      "Trunk bridge",
+      "Primary bridge",
+      "Highway link bridge",
+      "Secondary bridge",
+      "Tertiary bridge",
+      "Minor bridge",
+      "Service bridge",
+      "Link bridge",
+      "Highway tunnel",
+      "Trunk tunnel",
+      "Primary tunnel",
+      "Highway link tunnel",
+      "Secondary tunnel",
+      "Tertiary tunnel",
+      "Minor tunnel",
+      "Service tunnel",
+      "Link tunnel",
+      "Secondary road under construction",
+      "Primary road under construction",
+      "Trunk road under construction",
+      "Highway road under construction",
+      "Secondary bridge under construction",
+      "Primary bridge under construction",
+      "Trunk bridge under construction",
+      "Highway bridge under construction",
+      "Secondary tunnel under construction",
+      "Primary tunnel under construction",
+      "Trunk tunnel under construction",
+      "Highway tunnel under construction",
+      "Trunk tunnel under construction outline",
+      "Highway tunnel under construction outline",
+      "outdoor-paths-track-casing",
+      "outdoor-paths-track-fill",
+      "outdoor-paths",
+      "Footway path",
+      "Footway path tunnel",
+      "Footway bridge",
+      "Bridleway path",
+      "Bridleway path tunnel",
+      "Bridleway bridge",
+      "Cycleway path",
+      "Cycleway path tunnel",
+      "Cycleway bridge",
+      "Steps path",
+    ],
+    steps: [
+      { when: () => FEATURES.ROAD_SURFACE_AWARE, run: applyRoadSurfaceAware },
+      { when: () => FEATURES.LOW_ZOOM_PATHS, run: applyLowZoomPaths },
+      { when: () => FEATURES.PATH_STYLING, run: applyPathStyling },
+    ],
+  },
+  {
+    id: "buildings",
+    title: "Buildings",
+    summary:
+      "Upstream Building fills stay below the roads; under the raster the finishing pass swaps them for the outline and 3D massing.",
+    palette: [],
+    satellite:
+      "The base Building fill is removed and replaced by building-outline and building-3d only while the ground raster is on.",
+    layers: [],
+    steps: [],
+  },
+  {
+    id: "borders",
+    title: "Borders",
+    summary:
+      "Administrative boundaries drawn by the upstream basemap and left untouched.",
+    palette: [],
+    satellite: "Unaffected by the ground raster.",
+    layers: ["Other border", "Country border", "Disputed border"],
+    steps: [],
+  },
+  {
+    id: "labels-poi",
+    title: "Labels & POI",
+    summary:
+      "Rewrites the basemap POI icon templates and adds the config-driven outdoor-POI and planet-amenity overlays.",
+    palette: [],
+    satellite:
+      "Unaffected, except the finishing pass widens the halos on the small road and street labels.",
+    layers: ["outdoor-amenities", "outdoor-poi"],
+    steps: [
+      {
+        when: () => true,
+        run: (style, ctx) => applyBasemapPoiIcons(style, ctx.spriteKeys),
+      },
+      { when: () => FEATURES.OUTDOOR_POI, run: applyOutdoorPoi },
+    ],
+  },
+];
+
+// Cross-group override passes, run after the bottom-to-top walk. The imagery
+// legibility pass must remain the last thing that runs so its setPaint
+// overrides beat every group above (contours, roads, paths).
+const FINISHING_PASSES = [
+  { when: () => FEATURES.SATELLITE_GROUND, run: applyImageryLegibility },
+];
+
 // SATELLITE — Esri World Imagery raster ground, inserted directly above the
 // Background canvas floor so it sits beneath every vector layer. The URL
 // template is z/y/x (row before column) — the Esri MapServer convention —
@@ -226,84 +516,28 @@ const SATELLITE_TILE_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const SATELLITE_TILE_SIZE = 256;
 const SATELLITE_MAXZOOM = 20;
+// The raster sits above the calibrated natural-earth vectors so the imagery
+// reads as the ground while the vectors still show through. Low-zoom imagery
+// is coarser, so keep more of it there and ease down to the base value by z14.
+const GROUND_RASTER_OPACITY = 0.8;
+const GROUND_RASTER_OPACITY_LOW_ZOOM = 0.9;
+// Zoom stops for the raster-opacity ramp: the low-zoom value holds down to
+// GROUND_RASTER_RAMP_ZOOM_LOW and eases to the base value by
+// GROUND_RASTER_RAMP_ZOOM_HIGH.
+const GROUND_RASTER_RAMP_ZOOM_LOW = 8;
+const GROUND_RASTER_RAMP_ZOOM_HIGH = 14;
 
-// IMAGERY GROUND — with the satellite raster sitting beneath the vector
-// stack, every large opaque fill would hide the imagery it is drawn over, so
-// these base-style landuse/landcover fills and the outline strokes that
-// belong to them are stripped instead. Ids are the base style's layers at
-// indices 1–47 plus 59–61, grouped by intent below. The water fills stay
-// (they read as a translucent palette tint — see WATER_TINT_OPACITY).
-const SAT_STRIP_LANDUSE_FILLS = [
-  // 1–12: large landuse fills.
-  "Residential",
-  "Cemetery",
-  "Military",
-  "Railway",
-  "Garage",
-  "Dam",
-  "Quarry",
-  "Industrial",
-  "Retail",
-  "Commercial",
-  "Education and Health",
-  "Aeroway",
-];
-
-const SAT_STRIP_LANDCOVER_FILLS = [
-  // 13–18: medium-scale landcover fills.
-  "Wetland (medium scale)",
-  "Sand (medium scale)",
-  "Grass (medium scale)",
-  "Rock (medium scale)",
-  "Wood (medium scale)",
-  "Farmland (medium scale)",
-  // 19–44: detailed landcover/landuse fills, including the pattern fills.
-  "Marsh",
-  "Park",
-  "Stadium",
-  "Pitch",
-  "Garden",
-  "Garden pattern",
-  "Wood",
-  "Tidalflat",
-  "Wetland and swamp",
-  "Scree",
-  "Sand",
-  "Recreation ground",
-  "Orchard and vineyard",
-  "Meadow",
-  "Mangrove",
-  "Heath",
-  "Forest",
-  "Farmland",
-  "Farm",
-  "Scrub",
-  "Dune",
-  "Beach",
-  "Bare rock",
-  "Allotments",
-  "Landcover patterns",
-  "Grass",
-  // 46: glacier fill.
-  "Glacier",
-];
-
-const SAT_STRIP_OUTLINE_STROKES = [
-  // 45, 47 & 60: the outline strokes drawn around the stripped fills.
-  "Landcover outline",
-  "Glacier outline",
-  "Landuse outline",
-];
-
-const SAT_STRIP_OTHER = [
-  // 59 & 61: misc pattern & themed-area layers.
-  "Landuse pattern",
-  "Theme park",
-];
+// IMAGERY GROUND — the natural-earth landcover/landuse vectors are retained
+// and calibrated beneath the satellite raster (see GROUND_RASTER_OPACITY), so
+// the imagery reads over them rather than replacing them. This carry-over
+// lists layers that must still be stripped when the satellite is enabled;
+// currently none. Water fills stay above the raster and are made translucent
+// (they read as a palette tint — see WATER_TINT_OPACITY).
+const SAT_STRIP_LAYERS = [];
 
 // fill-opacity applied to the base water fills so the imagery shows through
 // the palette tint.
-const WATER_TINT_OPACITY = 0.45;
+const WATER_TINT_OPACITY = 0.3;
 
 // IMAGERY LEGIBILITY — final overrides applied by applyImageryLegibility() so
 // the vector overlay stays readable on the satellite ground. The contour
@@ -439,6 +673,10 @@ const IMAGERY_RAIL_LAYERS = [
   "Major rail bridge hatching",
   "Subway line",
 ];
+
+// line-opacity for the national-park boundary fill and its outline over the
+// imagery, faded so the boundary reads as ground detail.
+const IMAGERY_PARK_BOUNDARY_OPACITY = 0.25;
 
 // DEM — Mapterhorn raster-dem source, hillshade layer & 3D terrain.
 // Values ported from the pre-refactor build. The raster-dem source feeds
@@ -1273,44 +1511,32 @@ function insertBefore(style, layer, anchorId) {
 /**
  * Apply outdoor-specific mutations to the basemap style.
  *
- * Slice 2 recolours the muted base with the project's terrain, water and
- * park palettes; slice 3 adds the DEM source, the hillshade layer and the
- * terrain config; slice 4 adds the hosted contour vector source, the contour
- * line layer and the contour elevation labels. The satellite-ground slice
- * adds the Esri World Imagery raster beneath all vector layers. Each is gated
- * by its FEATURES toggle. Later slices add the remaining outdoor sections
- * (paths, routes, POIs, …) here, mutating `style` in place and returning it.
+ * Walks RENDER_STACK bottom-to-top — core canvas first, POI labels last —
+ * running each step whose predicate is true, then runs FINISHING_PASSES so
+ * its cross-group overrides win. The stack is the single source of truth for
+ * render order; each group carries the documentation describing the band it
+ * renders. Mutates `style` in place and returns it.
  */
 function applyModifications(style, spriteKeys = []) {
-  // Ground raster first, so it sits beneath every vector layer.
-  if (FEATURES.SATELLITE_GROUND) applySatelliteGround(style);
-  // Then clear the opaque fills that would hide it, before the palettes run.
-  if (FEATURES.SATELLITE_GROUND) applyImageryGround(style);
-  if (FEATURES.TERRAIN_PALETTE) applyTerrainPalette(style);
-  if (FEATURES.WATER_PALETTE) applyWaterPalette(style);
-  if (FEATURES.PARK_DIFFERENTIATION) applyParkDifferentiation(style);
-  if (FEATURES.DEM_HILLSHADE || FEATURES.DEM_TERRAIN) applyDemSource(style);
-  if (FEATURES.DEM_HILLSHADE) applyDemHillshade(style);
-  if (FEATURES.DEM_TERRAIN) applyDemTerrain(style);
-  if (FEATURES.CONTOURS) applyContours(style);
-  if (FEATURES.CONTOURS) applyContourLabels(style);
-  // Always: swap the basemap's dynamic POI icon templates for expressions
-  // that can never resolve to a name the sprite lacks. Independent of the
-  // outdoor overlay, like the always-on sprite wiring in build().
-  applyBasemapPoiIcons(style, spriteKeys);
-  if (FEATURES.OUTDOOR_POI) applyOutdoorPoi(style);
-  if (FEATURES.ROAD_SURFACE_AWARE) applyRoadSurfaceAware(style);
-  if (FEATURES.LOW_ZOOM_PATHS) applyLowZoomPaths(style);
-  if (FEATURES.PATH_STYLING) applyPathStyling(style);
-  // Last, so its overrides beat the contour & road/path styling above.
-  if (FEATURES.SATELLITE_GROUND) applyImageryLegibility(style);
+  const ctx = { spriteKeys };
+  for (const group of RENDER_STACK) {
+    for (const step of group.steps) {
+      if (step.when()) step.run(style, ctx);
+    }
+  }
+  for (const pass of FINISHING_PASSES) {
+    if (pass.when()) pass.run(style, ctx);
+  }
   return style;
 }
 
 /**
  * Add the Esri World Imagery raster source and a ground layer directly above
- * the Background canvas floor, so satellite imagery sits beneath every vector
- * layer. Uses the default raster opacity — no paint overrides. Gated by
+ * the natural-earth band — at the first Water/River layer — so the raster
+ * sits beneath the water (and every later vector layer) but above the
+ * calibrated landcover/landuse vectors. If no water anchor is available it
+ * falls back to directly above the Background canvas floor. Painted at
+ * GROUND_RASTER_OPACITY so the vectors beneath show through. Gated by
  * SATELLITE_GROUND.
  */
 function applySatelliteGround(style) {
@@ -1329,28 +1555,46 @@ function applySatelliteGround(style) {
     type: "raster",
     source: SATELLITE_SOURCE_ID,
     minzoom: 0,
+    paint: {
+      "raster-opacity": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        GROUND_RASTER_RAMP_ZOOM_LOW,
+        GROUND_RASTER_OPACITY_LOW_ZOOM,
+        GROUND_RASTER_RAMP_ZOOM_HIGH,
+        GROUND_RASTER_OPACITY,
+      ],
+    },
   };
-  insertAfter(style, layer, "Background");
+  const anchor = waterStackIndex(style);
+  if (anchor !== -1) {
+    style.layers.splice(anchor, 0, layer);
+  } else {
+    insertAfter(style, layer, "Background");
+  }
 }
 
 /**
- * Let the satellite ground read through: strip the large-area opaque
- * landuse/landcover fills and their outline strokes (see the SAT_STRIP_*
- * config), and make the water fills translucent. Layer ids are matched
- * exactly and missing layers are skipped silently. Gated by SATELLITE_GROUND;
- * a no-op when it is off.
+ * Retain the natural-earth vectors beneath the raster: strip only the layers
+ * listed in the SAT_STRIP_LAYERS carry-over (currently none). Layer ids are
+ * matched exactly and missing layers are skipped silently. Gated by
+ * SATELLITE_GROUND; a no-op when it is off.
  */
-function applyImageryGround(style) {
-  const removed = removeLayers(style, [
-    ...SAT_STRIP_LANDUSE_FILLS,
-    ...SAT_STRIP_LANDCOVER_FILLS,
-    ...SAT_STRIP_OUTLINE_STROKES,
-    ...SAT_STRIP_OTHER,
-  ]);
-  console.log(`[build] imagery ground: removed ${removed} opaque layers`);
+function applyGroundRetention(style) {
+  const removed = removeLayers(style, SAT_STRIP_LAYERS);
+  if (removed > 0) {
+    console.log(`[build] imagery ground: removed ${removed} layers`);
+  }
+}
 
-  // Translucent water so the imagery shows through the palette tint. The
-  // intermittent fill's own fill-opacity is overridden in the process.
+/**
+ * With the water fills kept above the raster, this pass makes them
+ * translucent so the imagery shows through as a palette tint. The
+ * intermittent fill's own fill-opacity is overridden in the process. Gated by
+ * SATELLITE_GROUND; a no-op when it is off.
+ */
+function applyWaterTint(style) {
   setPaint(style, "Water", "fill-opacity", WATER_TINT_OPACITY);
   setPaint(style, "Water intermittent", "fill-opacity", WATER_TINT_OPACITY);
 }
@@ -1531,15 +1775,36 @@ function applyImageryLegibility(style) {
   for (const id of IMAGERY_RAIL_LAYERS) {
     setPaint(style, id, "line-opacity", IMAGERY_RAIL_OPACITY);
   }
+
+  // The bright national-park boundary line floats loudly over the imagery;
+  // fade it back so it reads as ground detail rather than an overlay.
+  setPaint(
+    style,
+    "National parks",
+    "line-opacity",
+    IMAGERY_PARK_BOUNDARY_OPACITY,
+  );
+  setPaint(
+    style,
+    "National park outline",
+    "line-opacity",
+    IMAGERY_PARK_BOUNDARY_OPACITY,
+  );
 }
 
 /**
- * Recolour the muted landcover & landuse fills with the terrain palette.
- * Gated by TERRAIN_PALETTE.
+ * Recolour the Background canvas floor — the core-canvas half of the terrain
+ * palette. Gated by TERRAIN_PALETTE.
  */
-function applyTerrainPalette(style) {
+function applyCorePalette(style) {
   setPaint(style, "Background", "background-color", COLOURS.TERRAIN.BACKGROUND);
+}
 
+/**
+ * Recolour the muted landcover & landuse fills with the terrain palette — the
+ * natural-earth half of the terrain palette. Gated by TERRAIN_PALETTE.
+ */
+function applyNaturalEarthPalette(style) {
   // Grass-family fills
   setPaint(style, "Grass (medium scale)", "fill-color", COLOURS.TERRAIN.GRASS);
   setPaint(style, "Grass", "fill-color", COLOURS.TERRAIN.GRASS);

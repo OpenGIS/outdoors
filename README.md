@@ -26,7 +26,7 @@
 - [© OpenStreetMap Contributors](https://www.openstreetmap.org/copyright)
 - [OpenFreeMap](https://openfreemap.org/) — OSM vector tiles of the entire planet.
 - [© Mapterhorn](https://mapterhorn.com/) — 3D terrain, hillshading & contour lines.
-- [© Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster.
+- [© Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster blended over the natural-earth vectors (used when the `SATELLITE_GROUND` feature is enabled).
 - [Open GIS](https://tile.ogis.app/)
   - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, low-level paths & contours.
   - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
