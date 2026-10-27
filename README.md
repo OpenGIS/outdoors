@@ -1,11 +1,11 @@
 # Outdoors
 
-> A Free and Open-Source map style for the great outdoors.
+> A Free and Open-Source map style for the Great Outdoors.
 
-[View Demo →](https://www.ogis.org/outdoors/)
+🌎🌍🌏 **[[DEMO]](https://www.ogis.app/)** 🌎🌍🌏
 
 > [!WARNING]
-> This project is currently a **Proof of Concept**. It's a work in progress, so please treat it as such.
+> This project is a **work in progress**, expect changes!
 
 ---
 
