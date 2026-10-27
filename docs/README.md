@@ -1,6 +1,6 @@
 ---
-git_hash: "0e658902c173e80eab838ece84f51adb8ef55204"
-modified: "2026-10-25"
+git_hash: "840e7f1df1fb036ccf3ab331a47d82e39a684a4e"
+modified: "2026-10-26"
 ---
 
 # Project Documentation
@@ -18,6 +18,7 @@ modified: "2026-10-25"
 7. [Tile Server](7.server.md) — the hosted tile.ogis.app services: POIs, waymarked hiking routes, paths and contours, and the feeds this repo provides
 8. [Activities](8.activities.md) — the waymarked hiking-routes overlay in the style, the MTB scale reference implementation, and the activity trade-offs
 9. [Performance](9.performance.md) — the Playwright draw and load benchmarks for the compare app, their recorded baselines and findings, and the DEM source and terrain-LOD optimisations
+10. [Natural Earth & the Ground Raster](10.natural-earth.md) — the calibrated natural-earth vector ground, the bottom-to-top `RENDER_STACK`, and how the Esri World Imagery raster is blended over it
 
 ---
 
