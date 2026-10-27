@@ -8,6 +8,15 @@
       "height": 600
     },
     {
+      "id": "helvellyn-3d",
+      "center": [-3.001451, 54.525076],
+      "zoom": 14.25,
+      "width": 1875,
+      "height": 992,
+      "bearing": 60,
+      "pitch": 60
+    },
+    {
       "id": "dolomites",
       "center": [11.74098, 45.81321],
       "zoom": 13,
