@@ -12,12 +12,14 @@
 ## Screenshots
 
 [![Helvellyn](screenshots/helvellyn.jpg)](https://www.ogis.org/outdoors/#12/54.52653/-3.01724)
+[![Helvellyn 3D](screenshots/helvellyn-3d.jpg)](https://www.ogis.org/outdoors/#15/54.525076/-3.001451/60/47)
 [![Dolomites 3D](screenshots/dolomites-3d.jpg)](https://www.ogis.org/outdoors/#13.03/45.81048/11.73434/-27.6/60)
 [![Sunshine Coast](screenshots/sunshine-coast.jpg)](https://www.ogis.org/outdoors/#12/49.97661/-124.45956)
 [![Cape Scott](screenshots/cape-scott.jpg)](https://www.ogis.org/outdoors/#12.93/50.77868/-128.39204)
 [![Vancouver Island](screenshots/vancouver-island.jpg)](https://www.ogis.org/outdoors/#6.82/49.617/-126.76)
 [![Andermatt at z10, showing oxblood waymarked-route linework and a major route badge](screenshots/andermatt-routes.jpg)](https://www.ogis.org/outdoors/#10/46.6344/8.5931)
 [![Chamonix at z15, showing the neutral line-only unmarked route tier](screenshots/chamonix-unmarked.jpg)](https://www.ogis.org/outdoors/#15/45.9607/6.8773)
+[![Long Trail](screenshots/long-trail.jpg)](https://www.ogis.org/outdoors/#12/43.65876/-72.83825)
 
 ---
 
