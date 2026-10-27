@@ -73,6 +73,20 @@
       "zoom": 13.5,
       "width": 800,
       "height": 600
+    },
+    {
+      "id": "andermatt-routes",
+      "center": [8.5931, 46.6344],
+      "zoom": 10,
+      "width": 800,
+      "height": 600
+    },
+    {
+      "id": "chamonix-unmarked",
+      "center": [6.8773, 45.9607],
+      "zoom": 15,
+      "width": 800,
+      "height": 600
     }
   ]
 }

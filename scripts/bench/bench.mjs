@@ -34,19 +34,19 @@
  *   --warm       <n>          load mode: warm reloads per round; default 1
  *   --dpr        <n>          device pixel ratio (separate Chrome launch); default 2
  *   --screenshot <label>      capture-only mode: load each shot, fully settle,
- *                             write `.opencode/tmp/bench/quality-<shot>-<label>.jpg`
+ *                             write `.cache/bench/quality-<shot>-<label>.jpg`
  *                             and exit (no interaction or measurement)
  *
  * The move method (map access, warm-up, sampling, camera drives) mirrors a prior
  * manual profiling pass, so numbers stay comparable with the recorded 1640x777
  * baseline. In load mode every timestamp is `performance.now()` — ms since the
  * document's navigation start. Raw per-run samples plus environment are written
- * to `.opencode/tmp/bench/<iso-timestamp>.json`; move fields are unchanged and a
+ * to `.cache/bench/<iso-timestamp>.json`; move fields are unchanged and a
  * `load` section is added.
  */
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,13 +54,13 @@ import { chromium } from "playwright";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "..", "..");
-const OUTPUT_DIR = resolve(PROJECT_ROOT, ".opencode", "tmp", "bench");
+const OUTPUT_DIR = resolve(PROJECT_ROOT, ".cache", "bench");
 
 // Host and port range mirror scripts/screenshots/generate.mjs. Bind IPv4
-// loopback and reach the server by 127.0.0.1 so we can never hit a session
-// Vite server that listens on IPv6 loopback (::1).
+// loopback and reach the server by 127.0.0.1 so we can never hit a Vite
+// server that listens on IPv6 loopback (::1).
 const HOST = "127.0.0.1";
-const PORT_MIN = 11001; // 11000 is reserved for a session dev server.
+const PORT_MIN = 11001; // Ephemeral range, clear of the Vite dev/preview defaults.
 const PORT_MAX = 11999;
 
 // The recorded 1640x777 CSS baseline. `--window-size` is expressed in
@@ -118,6 +118,7 @@ const VARIANTS = [
   "no-road-labels",
   "no-poi-labels",
   "no-path-labels",
+  "no-route-labels",
   "no-contour-labels",
   "no-park-labels",
   "no-misc-labels",
@@ -132,9 +133,11 @@ const VARIANTS = [
  * per-family cost can be isolated. Ids are grouped by meaning: settlements and
  * administrative names (place), road names/shields/direction marks (road),
  * point-of-interest labels including the outdoor overlays (poi), the outdoor
- * paths overlay labels (path — currently no symbol layers), elevation labels
- * (contour), park and protected-area names (park), and the remaining basemap
- * names such as water, house numbers, airports and peaks (misc).
+ * paths overlay labels (path — currently no symbol layers), waymarked-route
+ * shields from the `outdoor-routes` source, distinct from road shields and POI
+ * labels (route), elevation labels (contour), park and protected-area names
+ * (park), and the remaining basemap names such as water, house numbers,
+ * airports and peaks (misc).
  *
  * `no-path-labels` is intentionally present but empty because the built style
  * defines no symbol layers on the `outdoor-paths` source; the harness reports
@@ -188,6 +191,10 @@ const SYMBOL_GROUPS = {
     "outdoor-poi",
   ],
   "no-path-labels": [],
+  "no-route-labels": [
+    "outdoor-routes-badges-major",
+    "outdoor-routes-badges-local",
+  ],
   "no-contour-labels": ["contour-labels"],
   "no-park-labels": ["Local park", "National park labels", "Zoo"],
   "no-misc-labels": [
@@ -202,6 +209,42 @@ const SYMBOL_GROUPS = {
     "Mountain peak labels",
   ],
 };
+
+/**
+ * Fail fast when the built style's symbol layers drift out of the family map:
+ * every symbol layer must be assigned to exactly one family so each family
+ * variant isolates a real slice of symbol cost.
+ */
+function assertSymbolCoverage() {
+  const style = JSON.parse(
+    readFileSync(resolve(PROJECT_ROOT, "style.json"), "utf8"),
+  );
+  const symbolIds = style.layers
+    .filter((layer) => layer.type === "symbol")
+    .map((layer) => layer.id);
+  const counts = new Map();
+  for (const ids of Object.values(SYMBOL_GROUPS)) {
+    for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+
+  const unassigned = symbolIds.filter((id) => !counts.has(id));
+  const duplicates = [...counts]
+    .filter(([, count]) => count > 1)
+    .map(([id]) => id);
+
+  const problems = [];
+  if (unassigned.length) {
+    problems.push(`unassigned symbol layer(s): ${unassigned.join(", ")}`);
+  }
+  if (duplicates.length) {
+    problems.push(
+      `duplicate symbol layer(s) across families: ${duplicates.join(", ")}`,
+    );
+  }
+  if (problems.length) {
+    throw new Error(`symbol family coverage: ${problems.join("; ")}`);
+  }
+}
 
 /**
  * `setSourceTileLodParams(maxZoomLevelsOnScreen, tileCountMaxMinRatio, sourceId)`
@@ -384,7 +427,7 @@ function resolveVariants(variantsOption) {
 
 /**
  * Find a free port by binding it briefly, then releasing it for Vite. The
- * reserved 11000 is skipped entirely so a session dev server can keep it.
+ * range starts at 11001, leaving 11000 unused.
  */
 async function findFreePort() {
   for (let port = PORT_MIN; port <= PORT_MAX; port++) {
@@ -750,7 +793,9 @@ async function applyVariant(page, variant) {
             .layers.map((layer) => layer.id)
             .filter(
               (id) =>
-                id.startsWith("outdoor-poi") || id.startsWith("outdoor-paths"),
+                id.startsWith("outdoor-poi") ||
+                id.startsWith("outdoor-paths") ||
+                id.startsWith("outdoor-routes"),
             );
           for (const id of ids) {
             if (rightMap.getLayer(id)) rightMap.removeLayer(id);
@@ -1792,8 +1837,8 @@ async function executeRun(
 /**
  * Capture-only mode: load each shot, wait for a full load plus a longer settle
  * so terrain, hillshade and labels finish painting, then write a full-page JPEG
- * per shot to `.opencode/tmp/bench/quality-<shot>-<label>.jpg`. Used for
- * visual quality comparisons (e.g. 512 vs 256 DEM tiles) without measuring.
+ * per shot to `.cache/bench/quality-<shot>-<label>.jpg`. Used for visual
+ * quality comparisons (e.g. 512 vs 256 DEM tiles) without measuring.
  */
 async function runScreenshots(options, shots) {
   const port = await findFreePort();
@@ -1845,6 +1890,8 @@ async function run(options) {
     console.log(usage());
     return 0;
   }
+
+  assertSymbolCoverage();
 
   const shots = resolveShots(options.shot, options.mode);
   mkdirSync(OUTPUT_DIR, { recursive: true });

@@ -1,6 +1,6 @@
 ---
-git_hash: "7b3b115523b73d1f3a054a81e3b7eefbecd141ea"
-modified: "2026-09-29"
+git_hash: "0e658902c173e80eab838ece84f51adb8ef55204"
+modified: "2026-10-25"
 ---
 
 # Project Documentation
@@ -15,8 +15,8 @@ modified: "2026-09-29"
 4. [Outdoor POIs](4.pois.md) — the two-tier POI system: the shared config, the generated Planetiler schema and the coverage checker
 5. [Elevation & Terrain](5.dem.md) — the Mapterhorn DEM — hillshade, 3D terrain, and the server-generated contour overlay
 6. [Client-side rendering](6.client.md) — how the style is rendered by client mapping libraries: renderer compatibility, metric/imperial unit switching, and the compare app
-7. [Tile Server](7.server.md) — the hosted tile.ogis.app services: POIs, paths and contours, and the feeds this repo provides
-8. [Activities](8.activities.md) — activity-specific overlays considered for the style: hiking routes and MTB scale, and why the style stays activity-agnostic
+7. [Tile Server](7.server.md) — the hosted tile.ogis.app services: POIs, waymarked hiking routes, paths and contours, and the feeds this repo provides
+8. [Activities](8.activities.md) — the waymarked hiking-routes overlay in the style, the MTB scale reference implementation, and the activity trade-offs
 9. [Performance](9.performance.md) — the Playwright draw and load benchmarks for the compare app, their recorded baselines and findings, and the DEM source and terrain-LOD optimisations
 
 ---

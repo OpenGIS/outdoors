@@ -61,6 +61,14 @@
       ],
       "minzoom": 9,
       "maxzoom": 13
+    },
+    "outdoor-routes": {
+      "type": "vector",
+      "tiles": [
+        "https://tile.ogis.app/routes/{z}/{x}/{y}.pbf"
+      ],
+      "minzoom": 8,
+      "maxzoom": 14
     }
   },
   "glyphs": "https://www.ogis.org/basemap/fonts/{fontstack}/{range}.pbf",
@@ -17624,6 +17632,666 @@
           1
         ]
       ]
+    },
+    {
+      "id": "outdoor-routes-unmarked-casing",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "!",
+        [
+          "in",
+          [
+            "coalesce",
+            [
+              "get",
+              "network"
+            ],
+            ""
+          ],
+          [
+            "literal",
+            [
+              "iwn",
+              "nwn",
+              "rwn",
+              "lwn"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(255, 248, 240, 0.25)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.16,
+          14,
+          2.7,
+          16,
+          3.5100000000000002
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-unmarked",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "!",
+        [
+          "in",
+          [
+            "coalesce",
+            [
+              "get",
+              "network"
+            ],
+            ""
+          ],
+          [
+            "literal",
+            [
+              "iwn",
+              "nwn",
+              "rwn",
+              "lwn"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(111, 104, 98, 0.5)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.6,
+          14,
+          2,
+          16,
+          2.6
+        ],
+        "line-dasharray": [
+          4,
+          2
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-lwn-casing",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "lwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(255, 248, 240, 0.3)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2.43,
+          14,
+          3.5100000000000002,
+          16,
+          4.86
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-lwn",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "lwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(142, 59, 59, 0.65)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          1.8,
+          14,
+          2.6,
+          16,
+          3.6
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-rwn-casing",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "rwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(255, 248, 240, 0.3)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          2.16,
+          11,
+          3.24,
+          13,
+          4.59,
+          15,
+          6.48,
+          16,
+          7.0200000000000005
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-rwn",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 9,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "rwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(142, 59, 59, 0.65)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          1.6,
+          11,
+          2.4,
+          13,
+          3.4,
+          15,
+          4.8,
+          16,
+          5.2
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-nwn-casing",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "nwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(255, 248, 240, 0.4)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.16,
+          10,
+          3.375,
+          12,
+          4.7250000000000005,
+          14,
+          6.75,
+          16,
+          8.91
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-nwn",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "nwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(142, 59, 59, 0.57)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          1.6,
+          10,
+          2.5,
+          12,
+          3.5,
+          14,
+          5,
+          16,
+          6.6
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-iwn-casing",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "iwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(255, 248, 240, 0.4)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2.7,
+          10,
+          4.32,
+          12,
+          5.940000000000001,
+          14,
+          8.91,
+          16,
+          11.880000000000003
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-iwn",
+      "type": "line",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 8,
+      "filter": [
+        "==",
+        [
+          "get",
+          "network"
+        ],
+        "iwn"
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "rgba(142, 59, 59, 0.57)",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          8,
+          2,
+          10,
+          3.2,
+          12,
+          4.4,
+          14,
+          6.6,
+          16,
+          8.8
+        ]
+      }
+    },
+    {
+      "id": "outdoor-routes-badges-major",
+      "type": "symbol",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 10,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "coalesce",
+            [
+              "get",
+              "network"
+            ],
+            ""
+          ],
+          [
+            "literal",
+            [
+              "iwn",
+              "nwn"
+            ]
+          ]
+        ],
+        [
+          "any",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 400,
+        "symbol-avoid-edges": true,
+        "icon-image": "outdoors:route_marked",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          2,
+          4,
+          2,
+          4
+        ],
+        "icon-rotation-alignment": "viewport",
+        "icon-pitch-alignment": "viewport",
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "get",
+            "ref"
+          ],
+          [
+            "get",
+            "name"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          14,
+          11,
+          16,
+          12
+        ],
+        "text-rotation-alignment": "viewport",
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "#fff8f0"
+      }
+    },
+    {
+      "id": "outdoor-routes-badges-local",
+      "type": "symbol",
+      "source": "outdoor-routes",
+      "source-layer": "outdoor_routes",
+      "minzoom": 12,
+      "filter": [
+        "all",
+        [
+          "in",
+          [
+            "coalesce",
+            [
+              "get",
+              "network"
+            ],
+            ""
+          ],
+          [
+            "literal",
+            [
+              "rwn",
+              "lwn"
+            ]
+          ]
+        ],
+        [
+          "any",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "name"
+              ],
+              ""
+            ],
+            ""
+          ]
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 400,
+        "symbol-avoid-edges": true,
+        "icon-image": "outdoors:route_marked",
+        "icon-text-fit": "both",
+        "icon-text-fit-padding": [
+          2,
+          4,
+          2,
+          4
+        ],
+        "icon-rotation-alignment": "viewport",
+        "icon-pitch-alignment": "viewport",
+        "text-field": [
+          "case",
+          [
+            "!=",
+            [
+              "coalesce",
+              [
+                "get",
+                "ref"
+              ],
+              ""
+            ],
+            ""
+          ],
+          [
+            "get",
+            "ref"
+          ],
+          [
+            "get",
+            "name"
+          ]
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          9,
+          14,
+          11,
+          16,
+          12
+        ],
+        "text-rotation-alignment": "viewport",
+        "text-pitch-alignment": "viewport"
+      },
+      "paint": {
+        "text-color": "#fff8f0"
+      }
     },
     {
       "id": "River labels",

@@ -13,14 +13,15 @@
  * hosted contour vector source, the contour line layer and the contour
  * elevation labels; slice 5 adds the outdoor path family and the low-zoom
  * paths overlay; slice 6 replaces the Liberty POI tiers with the single
- * config-driven outdoor-POI overlay. The basemap's own sources, glyphs and
+ * config-driven outdoor-POI overlay; slice 7 adds the hosted waymarked-route
+ * source, its nine network-tiered line layers and the ref/name badge symbol
+ * layers. The basemap's own sources, glyphs and
  * sprite pass through untouched, since the published basemap is already
  * fully rewritten (glyphs & sprite point at www.ogis.org/basemap, tiles at
  * tiles.openfreemap.org/planet). Attribution is not passed through: the
  * build owns every attribution string — see the ATTRIBUTION config below.
  *
- * Later slices add the remaining outdoor mutations (paths, routes, POIs, …)
- * inside applyModifications().
+ * The outdoor mutations are applied in applyModifications().
  *
  * Cache: the downloaded basemap style is cached in .cache/basemap.json, with
  * the response ETag in .cache/basemap-etag.txt; the default sprite sheet is
@@ -142,6 +143,8 @@ const FEATURES = {
   LOW_ZOOM_PATHS: true,
   // Hosted outdoor POI overlay — config-driven symbol layer (see poi-config.mjs).
   OUTDOOR_POI: true,
+  // Hosted waymarked-route overlay — network-tiered linework (see ROUTE_TIERS).
+  WAYMARKED_ROUTES: true,
 };
 
 // Every colour literal used by the modifications, nested by feature. Values are
@@ -206,6 +209,17 @@ const COLOURS = {
   // Paths (PATH_STYLING & LOW_ZOOM_PATHS) — the outdoor trail colour shared
   // by the low-zoom overlay and the basemap path layers.
   PATHS: { PATH: "#c05a2a" },
+
+  // Waymarked routes (WAYMARKED_ROUTES) — a single muted oxblood for every
+  // marked network. Hierarchy comes from line width, not hue; the neutral
+  // unmarked tier is a deliberate dark warm grey so it reads on both light and
+  // dark ground. The warm ivory casing lifts the line clear of the darker
+  // basemap and the burnt-orange path network beneath it.
+  ROUTES: {
+    LINE: "#8e3b3b",
+    UNMARKED: "#6f6862",
+    CASING: "#fff8f0",
+  },
 
   // Contours (CONTOURS)
   CONTOURS: {
@@ -955,6 +969,185 @@ const PATHS_TRACK_MINZOOM = 12; // below z12 nothing renders, matching the basem
 // Track fill & casing widths come from the road width engine (3.5 m, local
 // floor) so the overlay tracks match the basemap's local-road rendering.
 
+// WAYMARKED ROUTES — hosted vector tiles with hiking-route member ways from
+// OSM. Each way carries a `network` property (iwn/nwn/rwn/lwn) or none at
+// all; the tiers below draw every way once, from lowest to highest network,
+// so higher networks win shared segments. Source-layer: 'outdoor_routes'.
+const ROUTES_SOURCE_ID = "outdoor-routes";
+const ROUTES_SOURCE_LAYER = "outdoor_routes";
+const ROUTES_TILE_URL = "https://tile.ogis.app/routes/{z}/{x}/{y}.pbf";
+const ROUTES_SOURCE_MINZOOM = 8;
+const ROUTES_SOURCE_MAXZOOM = 14;
+const ROUTE_LINE_JOIN = "round";
+const ROUTE_LINE_CAP = "round";
+const ROUTE_UNMARKED_DASHARRAY = [4, 2]; // broken neutral line for ways without a network
+const ROUTE_CASING_SCALE = 1.35;
+// Route lines are an ivory casing under a coloured fill, so the two alphas
+// compound where they overlap. Major marked fills use 0.57 with a 0.4 casing;
+// regional and local fills use 0.65 with a 0.3 casing so their thin oxblood
+// lines stay saturated over pale ground; the unmarked fill uses 0.5 with a
+// softer 0.25 casing so its grey dashed line stays subordinate.
+const ROUTE_CASING_OPACITY_MAJOR = 0.4;
+const ROUTE_CASING_OPACITY_LOCAL = 0.3;
+const ROUTE_CASING_OPACITY_UNMARKED = 0.25;
+const ROUTE_FILL_OPACITY = 0.57;
+const ROUTE_FILL_OPACITY_LOCAL = 0.65;
+const ROUTE_FILL_OPACITY_UNMARKED = 0.5;
+
+function routeColour(hex, alpha) {
+  const value = parseInt(hex.slice(1), 16);
+  const r = (value >> 16) & 255;
+  const g = (value >> 8) & 255;
+  const b = value & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// Network tiers in draw order — unmarked first, international last, so a way
+// shared by several networks renders at the highest network's width. Every tier
+// gets a warm ivory casing beneath its fill; unmarked ways are dashed. Widths
+// interpolate linearly by zoom.
+const ROUTE_TIERS = [
+  {
+    network: "unmarked",
+    minzoom: 12,
+    // Absent, null, empty and unknown `network` values all count as unmarked,
+    // so no way slips through without a line. The four marked tiers below keep
+    // their strict equality filters.
+    filter: [
+      "!",
+      [
+        "in",
+        ["coalesce", ["get", "network"], ""],
+        ["literal", ["iwn", "nwn", "rwn", "lwn"]],
+      ],
+    ],
+    casing: true,
+    cap: "butt",
+    width: ["interpolate", ["linear"], ["zoom"], 12, 1.6, 14, 2.0, 16, 2.6],
+    dasharray: ROUTE_UNMARKED_DASHARRAY,
+  },
+  {
+    network: "lwn",
+    minzoom: 12,
+    filter: ["==", ["get", "network"], "lwn"],
+    casing: true,
+    cap: ROUTE_LINE_CAP,
+    width: ["interpolate", ["linear"], ["zoom"], 12, 1.8, 14, 2.6, 16, 3.6],
+  },
+  {
+    network: "rwn",
+    minzoom: 9,
+    filter: ["==", ["get", "network"], "rwn"],
+    casing: true,
+    cap: ROUTE_LINE_CAP,
+    width: [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      9,
+      1.6,
+      11,
+      2.4,
+      13,
+      3.4,
+      15,
+      4.8,
+      16,
+      5.2,
+    ],
+  },
+  {
+    network: "nwn",
+    minzoom: 8,
+    filter: ["==", ["get", "network"], "nwn"],
+    casing: true,
+    cap: ROUTE_LINE_CAP,
+    width: [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      8,
+      1.6,
+      10,
+      2.5,
+      12,
+      3.5,
+      14,
+      5,
+      16,
+      6.6,
+    ],
+  },
+  {
+    network: "iwn",
+    minzoom: 8,
+    filter: ["==", ["get", "network"], "iwn"],
+    casing: true,
+    cap: ROUTE_LINE_CAP,
+    width: [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      8,
+      2,
+      10,
+      3.2,
+      12,
+      4.4,
+      14,
+      6.6,
+      16,
+      8.8,
+    ],
+  },
+];
+
+// Waymarked-route badges — two symbol layers that repeat a `ref`/`name` pill
+// along the marked route lines. The sprite is one plain full-bleed rounded
+// rectangle: `icon-text-fit` stretches it around the text at render time, so
+// a single flat shape serves every label. Spacing is in tile units (pixels at
+// the current zoom); the text grows with zoom so pills stay legible without
+// turning into sails at low zoom.
+const ROUTE_BADGE_SPACING = 400;
+const ROUTE_BADGE_FONT = ["Noto Sans Bold"];
+const ROUTE_BADGE_TEXT_SIZE = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  10,
+  9,
+  14,
+  11,
+  16,
+  12,
+];
+// Symmetric [top, right, bottom, left] padding between the shield edge and
+// its text, in icon pixels — the icon-text-fit contract.
+const ROUTE_BADGE_TEXT_FIT_PADDING = [2, 4, 2, 4];
+// The badge pill is oxblood with cream text, so it reads as part of the route
+// family rather than a pale road shield. It paints fully opaque, so its fill
+// is the exact route token rather than a blend with the ground beneath.
+const ROUTE_BADGE_TEXT_COLOUR = "#fff8f0";
+
+// `ref` wins over `name`: a route's official short reference (e.g. "SWCP")
+// is designed to fit a shield, while `name` is a fallback for ways that have
+// no ref. Names can be long and produce wide shields — the text-field is
+// deliberately not truncated, and the symbol layer's placement handles the
+// overflow by dropping a badge rather than clipping its text.
+const ROUTE_BADGE_TEXT = [
+  "case",
+  ["!=", ["coalesce", ["get", "ref"], ""], ""],
+  ["get", "ref"],
+  ["get", "name"],
+];
+// Draw a badge only when at least one of `ref` or `name` is present, so a
+// feature with neither never emits an empty shield.
+const ROUTE_BADGE_TEXT_FILTER = [
+  "any",
+  ["!=", ["coalesce", ["get", "ref"], ""], ""],
+  ["!=", ["coalesce", ["get", "name"], ""], ""],
+];
+
 // POIs — the config-driven outdoor-poi overlay (see poi-config.mjs). All
 // expressions below are derived from OUTDOOR_POI.kinds so the filter, icon
 // and elevation-label kind sets can never drift from the schema.
@@ -1013,6 +1206,8 @@ const OUTDOOR_SPRITE_ICONS = [
   "route_marker",
   "trail_blaze",
   "ruins",
+  // Waymarked-route badge shield (referenced from build.mjs route layers).
+  "route_marked",
 ];
 const outdoorIcon = (name) =>
   OUTDOOR_SPRITE_ICONS.includes(name) ? `${OUTDOOR_SPRITE_ID}:${name}` : name;
@@ -1277,9 +1472,10 @@ function insertBefore(style, layer, anchorId) {
  * park palettes; slice 3 adds the DEM source, the hillshade layer and the
  * terrain config; slice 4 adds the hosted contour vector source, the contour
  * line layer and the contour elevation labels. The satellite-ground slice
- * adds the Esri World Imagery raster beneath all vector layers. Each is gated
- * by its FEATURES toggle. Later slices add the remaining outdoor sections
- * (paths, routes, POIs, …) here, mutating `style` in place and returning it.
+ * adds the Esri World Imagery raster beneath all vector layers. The outdoors
+ * slices add the path family, the low-zoom paths overlay, the outdoor-POI
+ * overlay and the waymarked-route linework and badges. Each is gated by its
+ * FEATURES toggle and mutates `style` in place; the function returns it.
  */
 function applyModifications(style, spriteKeys = []) {
   // Ground raster first, so it sits beneath every vector layer.
@@ -1302,6 +1498,7 @@ function applyModifications(style, spriteKeys = []) {
   if (FEATURES.ROAD_SURFACE_AWARE) applyRoadSurfaceAware(style);
   if (FEATURES.LOW_ZOOM_PATHS) applyLowZoomPaths(style);
   if (FEATURES.PATH_STYLING) applyPathStyling(style);
+  if (FEATURES.WAYMARKED_ROUTES) applyWaymarkedRoutes(style);
   // Last, so its overrides beat the contour & road/path styling above.
   if (FEATURES.SATELLITE_GROUND) applyImageryLegibility(style);
   return style;
@@ -2065,6 +2262,166 @@ function applyPathStyling(style) {
       layer.layout["line-join"] = PATH_LINE_JOIN;
       layer.minzoom = PATH_BASE_MINZOOM;
     }
+  }
+}
+
+/**
+ * Add the waymarked-route overlay — its own render section above all
+ * transportation linework and boundaries, but below every label. Each network
+ * tier draws once, lowest first; higher networks draw last so they win shared
+ * segments. Marked routes share the single oxblood fill with hierarchy
+ * expressed by width; regional and local routes use a slightly stronger fill so
+ * their thin lines stay saturated. The neutral unmarked tier is a line-only
+ * dashed grey route with no badge, because it has no waymarked network. Every
+ * tier gets a subtle ivory casing: the major tiers the stronger one, local the
+ * softer one and unmarked the softest, with a softer unmarked fill. Two symbol
+ * layers then repeat `ref`/`name` badges: major badges for the international
+ * and national networks, and local badges for regional and local ways. Both
+ * badge layers are line-placed. Gated by WAYMARKED_ROUTES.
+ */
+function applyWaymarkedRoutes(style) {
+  style.sources[ROUTES_SOURCE_ID] = {
+    type: "vector",
+    tiles: [ROUTES_TILE_URL],
+    minzoom: ROUTES_SOURCE_MINZOOM,
+    maxzoom: ROUTES_SOURCE_MAXZOOM,
+  };
+
+  // Casing width is a constant multiple of the fill width, so the ivory halo
+  // scales with the tier rather than adding a flat shoulder that flattens the
+  // hierarchy. The style spec only allows a zoom expression at the top of an
+  // interpolate, so each width stop is scaled rather than wrapping the whole
+  // expression in a top-level ["*", …].
+  const casingWidth = (width) =>
+    width.map((value, i) =>
+      i >= 4 && i % 2 === 0 ? value * ROUTE_CASING_SCALE : value,
+    );
+
+  const layers = [];
+  for (const tier of ROUTE_TIERS) {
+    const layout = {
+      "line-cap": tier.cap,
+      "line-join": ROUTE_LINE_JOIN,
+    };
+    const common = {
+      type: "line",
+      source: ROUTES_SOURCE_ID,
+      "source-layer": ROUTES_SOURCE_LAYER,
+      minzoom: tier.minzoom,
+      filter: tier.filter,
+      layout,
+    };
+
+    if (tier.casing) {
+      const casingOpacity =
+        tier.network === "unmarked"
+          ? ROUTE_CASING_OPACITY_UNMARKED
+          : tier.network === "iwn" || tier.network === "nwn"
+            ? ROUTE_CASING_OPACITY_MAJOR
+            : ROUTE_CASING_OPACITY_LOCAL;
+      layers.push({
+        id: `${ROUTES_SOURCE_ID}-${tier.network}-casing`,
+        ...common,
+        paint: {
+          "line-color": routeColour(COLOURS.ROUTES.CASING, casingOpacity),
+          "line-width": casingWidth(tier.width),
+        },
+      });
+    }
+
+    const fillColour =
+      tier.network === "unmarked"
+        ? COLOURS.ROUTES.UNMARKED
+        : COLOURS.ROUTES.LINE;
+    const fillOpacity =
+      tier.network === "unmarked"
+        ? ROUTE_FILL_OPACITY_UNMARKED
+        : tier.network === "rwn" || tier.network === "lwn"
+          ? ROUTE_FILL_OPACITY_LOCAL
+          : ROUTE_FILL_OPACITY;
+    const paint = {
+      "line-color": routeColour(fillColour, fillOpacity),
+      "line-width": tier.width,
+    };
+    if (tier.dasharray) paint["line-dasharray"] = tier.dasharray;
+
+    layers.push({
+      id: `${ROUTES_SOURCE_ID}-${tier.network}`,
+      ...common,
+      paint,
+    });
+  }
+
+  // Badge layout shared by the marked symbol layers. Both badge layers are
+  // line-placed: placement follows the line, and the viewport alignment keeps
+  // shields upright and unskewed. No icon-size, overlap allowance or halo:
+  // shields collide like any other symbol and text contrast comes from the
+  // fitted icon behind it. The shield icon paints at full opacity so its fill
+  // matches the route token exactly; the text remains cream and opaque.
+  const badgeLayout = (iconImage) => ({
+    "symbol-placement": "line",
+    "symbol-spacing": ROUTE_BADGE_SPACING,
+    "symbol-avoid-edges": true,
+    "icon-image": iconImage,
+    "icon-text-fit": "both",
+    "icon-text-fit-padding": ROUTE_BADGE_TEXT_FIT_PADDING,
+    "icon-rotation-alignment": "viewport",
+    "icon-pitch-alignment": "viewport",
+    "text-field": ROUTE_BADGE_TEXT,
+    "text-font": ROUTE_BADGE_FONT,
+    "text-size": ROUTE_BADGE_TEXT_SIZE,
+    "text-rotation-alignment": "viewport",
+    "text-pitch-alignment": "viewport",
+  });
+
+  // Major badges first, so international and national shields win placement
+  // collisions against the local tier that follows.
+  layers.push({
+    id: "outdoor-routes-badges-major",
+    type: "symbol",
+    source: ROUTES_SOURCE_ID,
+    "source-layer": ROUTES_SOURCE_LAYER,
+    minzoom: 10,
+    filter: [
+      "all",
+      ["in", ["coalesce", ["get", "network"], ""], ["literal", ["iwn", "nwn"]]],
+      ROUTE_BADGE_TEXT_FILTER,
+    ],
+    layout: badgeLayout("outdoors:route_marked"),
+    paint: {
+      "text-color": ROUTE_BADGE_TEXT_COLOUR,
+    },
+  });
+
+  layers.push({
+    id: "outdoor-routes-badges-local",
+    type: "symbol",
+    source: ROUTES_SOURCE_ID,
+    "source-layer": ROUTES_SOURCE_LAYER,
+    minzoom: 12,
+    filter: [
+      "all",
+      ["in", ["coalesce", ["get", "network"], ""], ["literal", ["rwn", "lwn"]]],
+      ROUTE_BADGE_TEXT_FILTER,
+    ],
+    layout: badgeLayout("outdoors:route_marked"),
+    paint: {
+      "text-color": ROUTE_BADGE_TEXT_COLOUR,
+    },
+  });
+
+  // Insert the whole block after the disputed-border linework; fall back to
+  // the first label layer, then to the end of the stack.
+  let idx = style.layers.findIndex((l) => l.id === "Disputed border");
+  if (idx !== -1) {
+    idx += 1;
+  } else {
+    idx = style.layers.findIndex((l) => l.id === "River labels");
+  }
+  if (idx === -1) {
+    style.layers.push(...layers);
+  } else {
+    style.layers.splice(idx, 0, ...layers);
   }
 }
 

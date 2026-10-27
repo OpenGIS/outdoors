@@ -48,95 +48,102 @@
     "x": 16,
     "y": 112
   },
-  "route_marker": {
+  "route_marked": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 28,
     "y": 28
+  },
+  "route_marker": {
+    "height": 28,
+    "pixelRatio": 2,
+    "width": 28,
+    "x": 28,
+    "y": 56
   },
   "ruins": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 28,
-    "y": 56
+    "y": 84
   },
   "running": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
-    "x": 28,
-    "y": 84
+    "x": 56,
+    "y": 0
   },
   "skateboard": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 56,
-    "y": 0
+    "y": 28
   },
   "skiing": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 56,
-    "y": 28
+    "y": 56
   },
   "soccer": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 56,
-    "y": 56
+    "y": 84
   },
   "sports_centre": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
-    "x": 56,
-    "y": 84
+    "x": 84,
+    "y": 0
   },
   "stadium": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 84,
-    "y": 0
+    "y": 28
   },
   "swimming_pool": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 84,
-    "y": 28
+    "y": 56
   },
   "tennis": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 84,
-    "y": 56
-  },
-  "trail_blaze": {
-    "height": 28,
-    "pixelRatio": 2,
-    "width": 28,
-    "x": 84,
     "y": 84
   },
-  "trailhead": {
+  "trail_blaze": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 112,
     "y": 0
   },
-  "volleyball": {
+  "trailhead": {
     "height": 28,
     "pixelRatio": 2,
     "width": 28,
     "x": 112,
     "y": 28
+  },
+  "volleyball": {
+    "height": 28,
+    "pixelRatio": 2,
+    "width": 28,
+    "x": 112,
+    "y": 56
   }
 }

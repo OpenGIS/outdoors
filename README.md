@@ -16,6 +16,8 @@
 [![Sunshine Coast](screenshots/sunshine-coast.jpg)](https://www.ogis.org/outdoors/#12/49.97661/-124.45956)
 [![Cape Scott](screenshots/cape-scott.jpg)](https://www.ogis.org/outdoors/#12.93/50.77868/-128.39204)
 [![Vancouver Island](screenshots/vancouver-island.jpg)](https://www.ogis.org/outdoors/#6.82/49.617/-126.76)
+[![Andermatt at z10, showing oxblood waymarked-route linework and a major route badge](screenshots/andermatt-routes.jpg)](https://www.ogis.org/outdoors/#10/46.6344/8.5931)
+[![Chamonix at z15, showing the neutral line-only unmarked route tier](screenshots/chamonix-unmarked.jpg)](https://www.ogis.org/outdoors/#15/45.9607/6.8773)
 
 ---
 
@@ -28,7 +30,7 @@
 - [© Mapterhorn](https://mapterhorn.com/) — 3D terrain, hillshading & contour lines.
 - [© Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster.
 - [Open GIS](https://tile.ogis.app/)
-  - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, low-level paths & contours.
+  - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, waymarked hiking routes, low-level paths & contours.
   - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
 
 ### Core

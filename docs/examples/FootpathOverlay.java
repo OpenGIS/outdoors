@@ -121,8 +121,8 @@ public class FootpathOverlay implements Profile {
     var routeInfos = sourceFeature.relationInfo(PathRelationInfo.class, true);
 
     // Lowest zoom among member relation tiers wins; no membership → 12
-    // (all paths appear from z12 — changed 2026-08-03 per Joe: "all paths at
-    // z12"; long-distance tiers keep their earlier zooms: iwn 9, nwn 10, rwn 11).
+    // (all paths appear from z12; long-distance tiers keep their earlier
+    // zooms: iwn 9, nwn 10, rwn 11).
     String network = null;
     int minZoom = 12;
     if (routeInfos != null) {
