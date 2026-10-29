@@ -1,9 +1,10 @@
 /**
- * Planetiler Java profile for outdoor hiking route vector tiles.
+ * Planetiler Java profile for outdoor route vector tiles.
  *
- * Processes OSM hiking route relations (type=route, route=hiking|foot|walking)
- * and emits line features for each member way, tagged with relation-level
- * attributes (name, ref, network, osmc:symbol, etc.).
+ * Processes OSM hiking and cycling route relations (type=route,
+ * route=hiking|foot|walking for hiking, route=bicycle for cycling) and emits
+ * line features for each member way, tagged with relation-level attributes
+ * (name, ref, network, osmc:symbol, route_type, etc.).
  *
  * Patterned on Planetiler's BikeRouteOverlay example:
  *   https://github.com/onthegomap/planetiler/blob/main/planetiler-examples/src/main/java/com/onthegomap/planetiler/examples/BikeRouteOverlay.java
@@ -14,7 +15,7 @@
  *   3. postProcessLayerFeatures — merge touching line segments
  *
  * Usage:
- *   java -cp ../.planetiler/planetiler.jar scripts/HikingRouteOverlay.java \
+ *   java -cp ../.planetiler/planetiler.jar scripts/RouteOverlay.java \
  *     --area=italy --download --bounds=10.48,45.27,11.78,46.18
  *
  * Output: routes/outdoor_routes.pmtiles
@@ -32,15 +33,16 @@ import com.onthegomap.planetiler.reader.osm.OsmRelationInfo;
 import java.nio.file.Path;
 import java.util.List;
 
-public class HikingRouteOverlay implements Profile {
+public class RouteOverlay implements Profile {
 
   /**
-   * Minimal container for hiking route relation data held in RAM during processing.
+   * Minimal container for outdoor route relation data held in RAM during processing.
    */
   private record RouteRelationInfo(
     long id,
     String name,
     String ref,
+    String routeType,
     String network,
     String osmcSymbol,
     String operator,
@@ -52,14 +54,17 @@ public class HikingRouteOverlay implements Profile {
   ) implements OsmRelationInfo {}
 
   /**
-   * Phase 1: Extract hiking route relation data.
+   * Phase 1: Extract outdoor route relation data.
    *
    * Matches OSM relations with:
    *   type = route | superroute
-   *   route = hiking | foot | walking
+   *   route = hiking | foot | walking | bicycle
    *
-   * Stores name, ref, network, osmc:symbol, operator, distance,
+   * Stores name, ref, route_type, network, osmc:symbol, operator, distance,
    * ascent, descent, cai_scale, and roundtrip for each matched relation.
+   *
+   * A relation that carries both activities is emitted once as hiking, which
+   * takes precedence and matches the overlay's draw order.
    */
   @Override
   public List<OsmRelationInfo> preprocessOsmRelation(OsmElement.Relation relation) {
@@ -67,30 +72,57 @@ public class HikingRouteOverlay implements Profile {
       String route = relation.getString("route");
       if (route != null) {
         // Support semicolon-separated values: "hiking;foot"
+        String routeType = null;
         for (var r : route.split(";")) {
           r = r.trim();
           if (r.equals("hiking") || r.equals("foot") || r.equals("walking")) {
-            return List.of(new RouteRelationInfo(
-              relation.id(),
-              relation.getString("name"),
-              relation.getString("ref"),
-              // Map network abbreviation to human-readable
-              switch (relation.getString("network", "")) {
-                case "iwn" -> "iwn";
-                case "nwn" -> "nwn";
-                case "rwn" -> "rwn";
-                case "lwn" -> "lwn";
-                default -> null;
-              },
-              relation.getString("osmc:symbol"),
-              relation.getString("operator"),
-              relation.getString("distance"),
-              relation.getString("ascent"),
-              relation.getString("descent"),
-              relation.getString("cai_scale"),
-              relation.getString("roundtrip")
-            ));
+            routeType = "hiking";
+            break;
           }
+          if (r.equals("bicycle")) {
+            routeType = "bicycle";
+          }
+        }
+        if (routeType != null) {
+          if (routeType.equals("bicycle")) {
+            // Proposed routes are not yet signposted on the ground.
+            if (relation.hasTag("state", "proposed")) return null;
+            // Node networks are dense, short-hop route webs out of scope here.
+            if (relation.hasTag("network:type", "node_network")) return null;
+          }
+
+          // Normalise the network abbreviation to the activity's vocabulary.
+          String network = relation.getString("network", "");
+          String normalisedNetwork = routeType.equals("hiking")
+            ? switch (network) {
+              case "iwn" -> "iwn";
+              case "nwn" -> "nwn";
+              case "rwn" -> "rwn";
+              case "lwn" -> "lwn";
+              default -> null;
+            }
+            : switch (network) {
+              case "icn" -> "icn";
+              case "ncn" -> "ncn";
+              case "rcn" -> "rcn";
+              case "lcn" -> "lcn";
+              default -> null;
+            };
+
+          return List.of(new RouteRelationInfo(
+            relation.id(),
+            relation.getString("name"),
+            relation.getString("ref"),
+            routeType,
+            normalisedNetwork,
+            relation.getString("osmc:symbol"),
+            relation.getString("operator"),
+            relation.getString("distance"),
+            relation.getString("ascent"),
+            relation.getString("descent"),
+            relation.getString("cai_scale"),
+            relation.getString("roundtrip")
+          ));
         }
       }
     }
@@ -98,7 +130,7 @@ public class HikingRouteOverlay implements Profile {
   }
 
   /**
-   * Phase 2: Emit line features for ways that belong to hiking route relations.
+   * Phase 2: Emit line features for ways that belong to route relations.
    *
    * Each way member of a matched relation emits a line string in the
    * outdoor_routes layer with the relation's attributes attached.
@@ -106,7 +138,7 @@ public class HikingRouteOverlay implements Profile {
   @Override
   public void processFeature(SourceFeature sourceFeature, FeatureCollector features) {
     if (sourceFeature.canBeLine()) {
-      // Get all hiking route relations this way belongs to
+      // Get all route relations this way belongs to
       var routeInfos = sourceFeature.relationInfo(RouteRelationInfo.class, true);
       if (routeInfos == null) return;
 
@@ -116,6 +148,7 @@ public class HikingRouteOverlay implements Profile {
         var feature = features.line("outdoor_routes")
           .setAttr("name", rel.name)
           .setAttr("ref", rel.ref)
+          .setAttr("route_type", rel.routeType)
           .setAttr("network", rel.network)
           .setAttr("osmc_symbol", rel.osmcSymbol)
           .setAttr("operator", rel.operator)
@@ -162,7 +195,7 @@ public class HikingRouteOverlay implements Profile {
 
   @Override
   public String description() {
-    return "Hiking route relations (hiking, foot, walking) from OpenStreetMap";
+    return "Hiking (hiking, foot, walking) and cycling (bicycle) route relations from OpenStreetMap";
   }
 
   @Override
@@ -193,7 +226,7 @@ public class HikingRouteOverlay implements Profile {
     String url = "geofabrik:" + area;
 
     Planetiler.create(arguments)
-      .setProfile(new HikingRouteOverlay())
+      .setProfile(new RouteOverlay())
       .addOsmSource("osm", osmPath, url)
       .overwriteOutput(outputPath)
       .run();

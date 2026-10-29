@@ -135,6 +135,8 @@ const FEATURES = {
   OUTDOOR_POI: true,
   // Hosted waymarked-route overlay — network-tiered linework (see ROUTE_TIERS).
   WAYMARKED_ROUTES: true,
+  // Hosted waymarked-route overlay, cycling family — see ROUTE_FAMILIES.
+  WAYMARKED_CYCLING_ROUTES: true,
 };
 
 // The single rendered line: every fragment joined by one space. Written into
@@ -213,13 +215,17 @@ const COLOURS = {
   // by the low-zoom overlay and the basemap path layers.
   PATHS: { PATH: "#c05a2a" },
 
-  // Waymarked routes (WAYMARKED_ROUTES) — a single muted oxblood for every
-  // marked network. Hierarchy comes from line width, not hue; the neutral
-  // unmarked tier is a deliberate dark warm grey so it reads on both light and
-  // dark ground. The warm ivory casing lifts the line clear of the darker
-  // basemap and the burnt-orange path network beneath it.
+  // Waymarked routes (WAYMARKED_ROUTES & WAYMARKED_CYCLING_ROUTES) — one muted
+  // hue per family: hiking oxblood reads as arteries, cycling indigo as veins;
+  // hierarchy comes from line width, not hue. The indigo sits darker and more
+  // violet than the pale water blue, and stays distinct from the orange path
+  // family and the azure basemap chips. The neutral unmarked tier is a
+  // deliberate dark warm grey so it reads on both light and dark ground. The
+  // warm ivory casing lifts the line clear of the darker basemap and the
+  // burnt-orange path network beneath it.
   ROUTES: {
     LINE: "#8e3b3b",
+    CYCLING_LINE: "#46589f",
     UNMARKED: "#6f6862",
     CASING: "#fff8f0",
   },
@@ -498,11 +504,23 @@ const RENDER_STACK = [
     id: "routes",
     title: "Waymarked routes",
     summary:
-      "Adds the hosted waymarked-route linework and the marked-network ref/name badges.",
+      "Adds the hosted waymarked-route linework and marked-network ref/name badges for the hiking and cycling families.",
     palette: ["COLOURS.ROUTES"],
     satellite:
       "Unaffected by the ground raster; the ivory casing keeps route linework legible over imagery.",
     layers: [
+      "outdoor-cycling-routes-unmarked-casing",
+      "outdoor-cycling-routes-unmarked",
+      "outdoor-cycling-routes-lcn-casing",
+      "outdoor-cycling-routes-lcn",
+      "outdoor-cycling-routes-rcn-casing",
+      "outdoor-cycling-routes-rcn",
+      "outdoor-cycling-routes-ncn-casing",
+      "outdoor-cycling-routes-ncn",
+      "outdoor-cycling-routes-icn-casing",
+      "outdoor-cycling-routes-icn",
+      "outdoor-cycling-routes-badges-major",
+      "outdoor-cycling-routes-badges-local",
       "outdoor-routes-unmarked-casing",
       "outdoor-routes-unmarked",
       "outdoor-routes-lwn-casing",
@@ -517,7 +535,11 @@ const RENDER_STACK = [
       "outdoor-routes-badges-local",
     ],
     steps: [
-      { when: () => FEATURES.WAYMARKED_ROUTES, run: applyWaymarkedRoutes },
+      {
+        when: () =>
+          FEATURES.WAYMARKED_ROUTES || FEATURES.WAYMARKED_CYCLING_ROUTES,
+        run: applyWaymarkedRoutes,
+      },
     ],
   },
   {
@@ -1233,10 +1255,12 @@ const PATHS_TRACK_MINZOOM = 12; // below z12 nothing renders, matching the basem
 // Track fill & casing widths come from the road width engine (3.5 m, local
 // floor) so the overlay tracks match the basemap's local-road rendering.
 
-// WAYMARKED ROUTES — hosted vector tiles with hiking-route member ways from
-// OSM. Each way carries a `network` property (iwn/nwn/rwn/lwn) or none at
-// all; the tiers below draw every way once, from lowest to highest network,
-// so higher networks win shared segments. Source-layer: 'outdoor_routes'.
+// WAYMARKED ROUTES — hosted vector tiles carrying the member ways of both
+// waymarked-route families. Each way carries a `route_type` property
+// ("hiking" or "bicycle") and a `network` property in the family's own
+// vocabulary, or none at all; the tiers below draw every way once, from lowest
+// to highest network, so higher networks win shared segments. The two families
+// share one archive and one source-layer: 'outdoor_routes'.
 const ROUTES_SOURCE_ID = "outdoor-routes";
 const ROUTES_SOURCE_LAYER = "outdoor_routes";
 const ROUTES_TILE_URL = "https://tile.ogis.app/routes/{z}/{x}/{y}.pbf";
@@ -1266,28 +1290,85 @@ function routeColour(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Tier widths interpolate linearly by zoom. Kept as a shared table so every
+// route family reuses the same width hierarchy.
+const ROUTE_WIDTHS = {
+  unmarked: ["interpolate", ["linear"], ["zoom"], 12, 1.6, 14, 2.0, 16, 2.6],
+  local: ["interpolate", ["linear"], ["zoom"], 12, 1.8, 14, 2.6, 16, 3.6],
+  regional: [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    9,
+    1.6,
+    11,
+    2.4,
+    13,
+    3.4,
+    15,
+    4.8,
+    16,
+    5.2,
+  ],
+  national: [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    8,
+    1.6,
+    10,
+    2.5,
+    12,
+    3.5,
+    14,
+    5,
+    16,
+    6.6,
+  ],
+  international: [
+    "interpolate",
+    ["linear"],
+    ["zoom"],
+    8,
+    2,
+    10,
+    3.2,
+    12,
+    4.4,
+    14,
+    6.6,
+    16,
+    8.8,
+  ],
+};
+
 // Network tiers in draw order — unmarked first, international last, so a way
 // shared by several networks renders at the highest network's width. Every tier
-// gets a warm ivory casing beneath its fill; unmarked ways are dashed. Widths
-// interpolate linearly by zoom.
+// gets a warm ivory casing beneath its fill; unmarked ways are dashed.
 const ROUTE_TIERS = [
   {
     network: "unmarked",
     minzoom: 12,
     // Absent, null, empty and unknown `network` values all count as unmarked,
-    // so no way slips through without a line. The four marked tiers below keep
-    // their strict equality filters.
+    // so no way slips through without a line. The `route_type` guard keeps the
+    // cycling family's unmarked ways out of this hiking tier, since both share
+    // the archive. The four marked tiers below keep their strict equality
+    // filters.
     filter: [
-      "!",
+      "all",
+      ["!=", ["coalesce", ["get", "route_type"], ""], "bicycle"],
       [
-        "in",
-        ["coalesce", ["get", "network"], ""],
-        ["literal", ["iwn", "nwn", "rwn", "lwn"]],
+        "!",
+        [
+          "in",
+          ["coalesce", ["get", "network"], ""],
+          ["literal", ["iwn", "nwn", "rwn", "lwn"]],
+        ],
       ],
     ],
     casing: true,
     cap: "butt",
-    width: ["interpolate", ["linear"], ["zoom"], 12, 1.6, 14, 2.0, 16, 2.6],
+    width: ROUTE_WIDTHS.unmarked,
     dasharray: ROUTE_UNMARKED_DASHARRAY,
   },
   {
@@ -1296,7 +1377,7 @@ const ROUTE_TIERS = [
     filter: ["==", ["get", "network"], "lwn"],
     casing: true,
     cap: ROUTE_LINE_CAP,
-    width: ["interpolate", ["linear"], ["zoom"], 12, 1.8, 14, 2.6, 16, 3.6],
+    width: ROUTE_WIDTHS.local,
   },
   {
     network: "rwn",
@@ -1304,21 +1385,7 @@ const ROUTE_TIERS = [
     filter: ["==", ["get", "network"], "rwn"],
     casing: true,
     cap: ROUTE_LINE_CAP,
-    width: [
-      "interpolate",
-      ["linear"],
-      ["zoom"],
-      9,
-      1.6,
-      11,
-      2.4,
-      13,
-      3.4,
-      15,
-      4.8,
-      16,
-      5.2,
-    ],
+    width: ROUTE_WIDTHS.regional,
   },
   {
     network: "nwn",
@@ -1326,21 +1393,7 @@ const ROUTE_TIERS = [
     filter: ["==", ["get", "network"], "nwn"],
     casing: true,
     cap: ROUTE_LINE_CAP,
-    width: [
-      "interpolate",
-      ["linear"],
-      ["zoom"],
-      8,
-      1.6,
-      10,
-      2.5,
-      12,
-      3.5,
-      14,
-      5,
-      16,
-      6.6,
-    ],
+    width: ROUTE_WIDTHS.national,
   },
   {
     network: "iwn",
@@ -1348,21 +1401,65 @@ const ROUTE_TIERS = [
     filter: ["==", ["get", "network"], "iwn"],
     casing: true,
     cap: ROUTE_LINE_CAP,
-    width: [
-      "interpolate",
-      ["linear"],
-      ["zoom"],
-      8,
-      2,
-      10,
-      3.2,
-      12,
-      4.4,
-      14,
-      6.6,
-      16,
-      8.8,
+    width: ROUTE_WIDTHS.international,
+  },
+];
+
+// Cycling network tiers in the same five-rank shape and draw order as the
+// hiking family, lowest first, so a way shared by several networks renders at
+// the highest network's width. The riding vocabulary (lcn/rcn/ncn/icn) is
+// disjoint from the hiking one, so the marked tiers need no `route_type`
+// guard; only the unmarked tier filters on it to keep the families apart.
+const CYCLING_ROUTE_TIERS = [
+  {
+    network: "unmarked",
+    minzoom: 12,
+    filter: [
+      "all",
+      ["==", ["coalesce", ["get", "route_type"], ""], "bicycle"],
+      [
+        "!",
+        [
+          "in",
+          ["coalesce", ["get", "network"], ""],
+          ["literal", ["icn", "ncn", "rcn", "lcn"]],
+        ],
+      ],
     ],
+    casing: true,
+    cap: "butt",
+    width: ROUTE_WIDTHS.unmarked,
+    dasharray: ROUTE_UNMARKED_DASHARRAY,
+  },
+  {
+    network: "lcn",
+    minzoom: 12,
+    filter: ["==", ["get", "network"], "lcn"],
+    casing: true,
+    cap: ROUTE_LINE_CAP,
+    width: ROUTE_WIDTHS.local,
+  },
+  {
+    network: "rcn",
+    minzoom: 9,
+    filter: ["==", ["get", "network"], "rcn"],
+    casing: true,
+    cap: ROUTE_LINE_CAP,
+    width: ROUTE_WIDTHS.regional,
+  },
+  {
+    network: "ncn",
+    minzoom: 8,
+    filter: ["==", ["get", "network"], "ncn"],
+    casing: true,
+    width: ROUTE_WIDTHS.national,
+  },
+  {
+    network: "icn",
+    minzoom: 8,
+    filter: ["==", ["get", "network"], "icn"],
+    casing: true,
+    width: ROUTE_WIDTHS.international,
   },
 ];
 
@@ -1388,9 +1485,10 @@ const ROUTE_BADGE_TEXT_SIZE = [
 // Symmetric [top, right, bottom, left] padding between the shield edge and
 // its text, in icon pixels — the icon-text-fit contract.
 const ROUTE_BADGE_TEXT_FIT_PADDING = [2, 4, 2, 4];
-// The badge pill is oxblood with cream text, so it reads as part of the route
-// family rather than a pale road shield. It paints fully opaque, so its fill
-// is the exact route token rather than a blend with the ground beneath.
+// The badge pill takes its family's hue — oxblood for hiking, blue for
+// cycling — with cream text, so it reads as part of the route family rather
+// than a pale road shield. It paints fully opaque, so its fill is the exact
+// route token rather than a blend with the ground beneath.
 const ROUTE_BADGE_TEXT_COLOUR = "#fff8f0";
 
 // `ref` wins over `name`: a route's official short reference (e.g. "SWCP")
@@ -1410,6 +1508,90 @@ const ROUTE_BADGE_TEXT_FILTER = [
   "any",
   ["!=", ["coalesce", ["get", "ref"], ""], ""],
   ["!=", ["coalesce", ["get", "name"], ""], ""],
+];
+
+// Network groupings drive both the opacity choice and the badge split: major
+// networks get the stronger casing and the earlier badge pass, local networks
+// the softer casing and the later pass.
+const ROUTE_MAJOR_NETWORKS = ["iwn", "nwn"];
+const ROUTE_LOCAL_NETWORKS = ["rwn", "lwn"];
+
+// Route families — one descriptor per family. Each names its toggle, hosted
+// source, tier table, colours and badge styling, so a new family adds a
+// descriptor rather than another copy of the layer builder. `layerPrefix`
+// keeps every generated layer id in the family's namespace. The tile is a
+// single shared archive carrying both families' member ways, distinguished by
+// the `route_type` attribute; cycling is listed first so it draws beneath the
+// hiking arteries on ways the two share.
+const ROUTE_FAMILIES = [
+  {
+    id: "cycling",
+    // Shares the hiking archive; the `route_type` attribute separates the
+    // families' member ways.
+    toggle: "WAYMARKED_CYCLING_ROUTES",
+    sourceId: ROUTES_SOURCE_ID,
+    sourceLayer: ROUTES_SOURCE_LAYER,
+    layerPrefix: "outdoor-cycling-routes",
+    tileUrl: ROUTES_TILE_URL,
+    sourceMinzoom: ROUTES_SOURCE_MINZOOM,
+    sourceMaxzoom: ROUTES_SOURCE_MAXZOOM,
+    fill: COLOURS.ROUTES.CYCLING_LINE,
+    unmarked: COLOURS.ROUTES.UNMARKED,
+    casing: COLOURS.ROUTES.CASING,
+    casingScale: ROUTE_CASING_SCALE,
+    lineJoin: ROUTE_LINE_JOIN,
+    tiers: CYCLING_ROUTE_TIERS,
+    casingOpacity: {
+      unmarked: ROUTE_CASING_OPACITY_UNMARKED,
+      major: ROUTE_CASING_OPACITY_MAJOR,
+      local: ROUTE_CASING_OPACITY_LOCAL,
+    },
+    fillOpacity: {
+      unmarked: ROUTE_FILL_OPACITY_UNMARKED,
+      default: ROUTE_FILL_OPACITY,
+      local: ROUTE_FILL_OPACITY_LOCAL,
+    },
+    majorNetworks: ["icn", "ncn"],
+    localNetworks: ["rcn", "lcn"],
+    badgeIcon: "outdoors:route_marked_cycling",
+    badgeGroups: [
+      { suffix: "major", minzoom: 10, networks: ["icn", "ncn"] },
+      { suffix: "local", minzoom: 12, networks: ["rcn", "lcn"] },
+    ],
+  },
+  {
+    id: "hiking",
+    toggle: "WAYMARKED_ROUTES",
+    sourceId: ROUTES_SOURCE_ID,
+    sourceLayer: ROUTES_SOURCE_LAYER,
+    layerPrefix: ROUTES_SOURCE_ID,
+    tileUrl: ROUTES_TILE_URL,
+    sourceMinzoom: ROUTES_SOURCE_MINZOOM,
+    sourceMaxzoom: ROUTES_SOURCE_MAXZOOM,
+    fill: COLOURS.ROUTES.LINE,
+    unmarked: COLOURS.ROUTES.UNMARKED,
+    casing: COLOURS.ROUTES.CASING,
+    casingScale: ROUTE_CASING_SCALE,
+    lineJoin: ROUTE_LINE_JOIN,
+    tiers: ROUTE_TIERS,
+    casingOpacity: {
+      unmarked: ROUTE_CASING_OPACITY_UNMARKED,
+      major: ROUTE_CASING_OPACITY_MAJOR,
+      local: ROUTE_CASING_OPACITY_LOCAL,
+    },
+    fillOpacity: {
+      unmarked: ROUTE_FILL_OPACITY_UNMARKED,
+      default: ROUTE_FILL_OPACITY,
+      local: ROUTE_FILL_OPACITY_LOCAL,
+    },
+    majorNetworks: ROUTE_MAJOR_NETWORKS,
+    localNetworks: ROUTE_LOCAL_NETWORKS,
+    badgeIcon: "outdoors:route_marked",
+    badgeGroups: [
+      { suffix: "major", minzoom: 10, networks: ROUTE_MAJOR_NETWORKS },
+      { suffix: "local", minzoom: 12, networks: ROUTE_LOCAL_NETWORKS },
+    ],
+  },
 ];
 
 // POIs — the config-driven outdoor-poi overlay (see poi-config.mjs). All
@@ -1470,8 +1652,10 @@ const OUTDOOR_SPRITE_ICONS = [
   "route_marker",
   "trail_blaze",
   "ruins",
-  // Waymarked-route badge shield (referenced from build.mjs route layers).
+  // Waymarked-route badge shields (referenced from build.mjs route layers);
+  // one per family, the cycling shield in the family's blue.
   "route_marked",
+  "route_marked_cycling",
 ];
 const outdoorIcon = (name) =>
   OUTDOOR_SPRITE_ICONS.includes(name) ? `${OUTDOOR_SPRITE_ID}:${name}` : name;
@@ -2554,100 +2738,37 @@ function applyPathStyling(style) {
   }
 }
 
-/**
- * Add the waymarked-route overlay — its own render section above all
- * transportation linework and boundaries, but below every label. Each network
- * tier draws once, lowest first; higher networks draw last so they win shared
- * segments. Marked routes share the single oxblood fill with hierarchy
- * expressed by width; regional and local routes use a slightly stronger fill so
- * their thin lines stay saturated. The neutral unmarked tier is a line-only
- * dashed grey route with no badge, because it has no waymarked network. Every
- * tier gets a subtle ivory casing: the major tiers the stronger one, local the
- * softer one and unmarked the softest, with a softer unmarked fill. Two symbol
- * layers then repeat `ref`/`name` badges: major badges for the international
- * and national networks, and local badges for regional and local ways. Both
- * badge layers are line-placed. Gated by WAYMARKED_ROUTES.
- */
-function applyWaymarkedRoutes(style) {
-  style.sources[ROUTES_SOURCE_ID] = {
+// Casing width is a constant multiple of the fill width, so the ivory halo
+// scales with the tier rather than adding a flat shoulder that flattens the
+// hierarchy. The style spec only allows a zoom expression at the top of an
+// interpolate, so each width stop is scaled rather than wrapping the whole
+// expression in a top-level ["*", …].
+function routeCasingWidth(width, scale) {
+  return width.map((value, i) =>
+    i >= 4 && i % 2 === 0 ? value * scale : value,
+  );
+}
+
+// Register a family's hosted source once. Kept idempotent so several families
+// may share a source without overwriting it.
+function registerRouteSource(style, family) {
+  if (style.sources[family.sourceId]) return;
+  style.sources[family.sourceId] = {
     type: "vector",
-    tiles: [ROUTES_TILE_URL],
-    minzoom: ROUTES_SOURCE_MINZOOM,
-    maxzoom: ROUTES_SOURCE_MAXZOOM,
+    tiles: [family.tileUrl],
+    minzoom: family.sourceMinzoom,
+    maxzoom: family.sourceMaxzoom,
   };
+}
 
-  // Casing width is a constant multiple of the fill width, so the ivory halo
-  // scales with the tier rather than adding a flat shoulder that flattens the
-  // hierarchy. The style spec only allows a zoom expression at the top of an
-  // interpolate, so each width stop is scaled rather than wrapping the whole
-  // expression in a top-level ["*", …].
-  const casingWidth = (width) =>
-    width.map((value, i) =>
-      i >= 4 && i % 2 === 0 ? value * ROUTE_CASING_SCALE : value,
-    );
-
-  const layers = [];
-  for (const tier of ROUTE_TIERS) {
-    const layout = {
-      "line-cap": tier.cap,
-      "line-join": ROUTE_LINE_JOIN,
-    };
-    const common = {
-      type: "line",
-      source: ROUTES_SOURCE_ID,
-      "source-layer": ROUTES_SOURCE_LAYER,
-      minzoom: tier.minzoom,
-      filter: tier.filter,
-      layout,
-    };
-
-    if (tier.casing) {
-      const casingOpacity =
-        tier.network === "unmarked"
-          ? ROUTE_CASING_OPACITY_UNMARKED
-          : tier.network === "iwn" || tier.network === "nwn"
-            ? ROUTE_CASING_OPACITY_MAJOR
-            : ROUTE_CASING_OPACITY_LOCAL;
-      layers.push({
-        id: `${ROUTES_SOURCE_ID}-${tier.network}-casing`,
-        ...common,
-        paint: {
-          "line-color": routeColour(COLOURS.ROUTES.CASING, casingOpacity),
-          "line-width": casingWidth(tier.width),
-        },
-      });
-    }
-
-    const fillColour =
-      tier.network === "unmarked"
-        ? COLOURS.ROUTES.UNMARKED
-        : COLOURS.ROUTES.LINE;
-    const fillOpacity =
-      tier.network === "unmarked"
-        ? ROUTE_FILL_OPACITY_UNMARKED
-        : tier.network === "rwn" || tier.network === "lwn"
-          ? ROUTE_FILL_OPACITY_LOCAL
-          : ROUTE_FILL_OPACITY;
-    const paint = {
-      "line-color": routeColour(fillColour, fillOpacity),
-      "line-width": tier.width,
-    };
-    if (tier.dasharray) paint["line-dasharray"] = tier.dasharray;
-
-    layers.push({
-      id: `${ROUTES_SOURCE_ID}-${tier.network}`,
-      ...common,
-      paint,
-    });
-  }
-
-  // Badge layout shared by the marked symbol layers. Both badge layers are
-  // line-placed: placement follows the line, and the viewport alignment keeps
-  // shields upright and unskewed. No icon-size, overlap allowance or halo:
-  // shields collide like any other symbol and text contrast comes from the
-  // fitted icon behind it. The shield icon paints at full opacity so its fill
-  // matches the route token exactly; the text remains cream and opaque.
-  const badgeLayout = (iconImage) => ({
+// Badge layout shared by the marked symbol layers. Both badge layers are
+// line-placed: placement follows the line, and the viewport alignment keeps
+// shields upright and unskewed. No icon-size, overlap allowance or halo:
+// shields collide like any other symbol and text contrast comes from the
+// fitted icon behind it. The shield icon paints at full opacity so its fill
+// matches the route token exactly; the text remains cream and opaque.
+function routeBadgeLayout(iconImage) {
+  return {
     "symbol-placement": "line",
     "symbol-spacing": ROUTE_BADGE_SPACING,
     "symbol-avoid-edges": true,
@@ -2661,46 +2782,97 @@ function applyWaymarkedRoutes(style) {
     "text-size": ROUTE_BADGE_TEXT_SIZE,
     "text-rotation-alignment": "viewport",
     "text-pitch-alignment": "viewport",
-  });
+  };
+}
+
+// Build one family's casing, fill and badge layers, registering its source
+// first. Layers come back in draw order: every tier lowest first, then the
+// badge groups.
+function buildRouteFamilyLayers(style, family) {
+  registerRouteSource(style, family);
+
+  const layers = [];
+  for (const tier of family.tiers) {
+    const isUnmarked = tier.network === "unmarked";
+    const layout = {
+      "line-cap": tier.cap,
+      "line-join": family.lineJoin,
+    };
+    const common = {
+      type: "line",
+      source: family.sourceId,
+      "source-layer": family.sourceLayer,
+      minzoom: tier.minzoom,
+      filter: tier.filter,
+      layout,
+    };
+
+    if (tier.casing) {
+      const casingOpacity = isUnmarked
+        ? family.casingOpacity.unmarked
+        : family.majorNetworks.includes(tier.network)
+          ? family.casingOpacity.major
+          : family.casingOpacity.local;
+      layers.push({
+        id: `${family.layerPrefix}-${tier.network}-casing`,
+        ...common,
+        paint: {
+          "line-color": routeColour(family.casing, casingOpacity),
+          "line-width": routeCasingWidth(tier.width, family.casingScale),
+        },
+      });
+    }
+
+    const fillColour = isUnmarked ? family.unmarked : family.fill;
+    const fillOpacity = isUnmarked
+      ? family.fillOpacity.unmarked
+      : family.localNetworks.includes(tier.network)
+        ? family.fillOpacity.local
+        : family.fillOpacity.default;
+    const paint = {
+      "line-color": routeColour(fillColour, fillOpacity),
+      "line-width": tier.width,
+    };
+    if (tier.dasharray) paint["line-dasharray"] = tier.dasharray;
+
+    layers.push({
+      id: `${family.layerPrefix}-${tier.network}`,
+      ...common,
+      paint,
+    });
+  }
 
   // Major badges first, so international and national shields win placement
   // collisions against the local tier that follows.
-  layers.push({
-    id: "outdoor-routes-badges-major",
-    type: "symbol",
-    source: ROUTES_SOURCE_ID,
-    "source-layer": ROUTES_SOURCE_LAYER,
-    minzoom: 10,
-    filter: [
-      "all",
-      ["in", ["coalesce", ["get", "network"], ""], ["literal", ["iwn", "nwn"]]],
-      ROUTE_BADGE_TEXT_FILTER,
-    ],
-    layout: badgeLayout("outdoors:route_marked"),
-    paint: {
-      "text-color": ROUTE_BADGE_TEXT_COLOUR,
-    },
-  });
+  for (const group of family.badgeGroups) {
+    layers.push({
+      id: `${family.layerPrefix}-badges-${group.suffix}`,
+      type: "symbol",
+      source: family.sourceId,
+      "source-layer": family.sourceLayer,
+      minzoom: group.minzoom,
+      filter: [
+        "all",
+        [
+          "in",
+          ["coalesce", ["get", "network"], ""],
+          ["literal", group.networks],
+        ],
+        ROUTE_BADGE_TEXT_FILTER,
+      ],
+      layout: routeBadgeLayout(family.badgeIcon),
+      paint: {
+        "text-color": ROUTE_BADGE_TEXT_COLOUR,
+      },
+    });
+  }
 
-  layers.push({
-    id: "outdoor-routes-badges-local",
-    type: "symbol",
-    source: ROUTES_SOURCE_ID,
-    "source-layer": ROUTES_SOURCE_LAYER,
-    minzoom: 12,
-    filter: [
-      "all",
-      ["in", ["coalesce", ["get", "network"], ""], ["literal", ["rwn", "lwn"]]],
-      ROUTE_BADGE_TEXT_FILTER,
-    ],
-    layout: badgeLayout("outdoors:route_marked"),
-    paint: {
-      "text-color": ROUTE_BADGE_TEXT_COLOUR,
-    },
-  });
+  return layers;
+}
 
-  // Insert the whole block after the disputed-border linework; fall back to
-  // the first label layer, then to the end of the stack.
+// Insert a flat layer block after the disputed-border linework; fall back to
+// the first label layer, then to the end of the stack.
+function insertRouteLayers(style, layers) {
   let idx = style.layers.findIndex((l) => l.id === "Disputed border");
   if (idx !== -1) {
     idx += 1;
@@ -2712,6 +2884,36 @@ function applyWaymarkedRoutes(style) {
   } else {
     style.layers.splice(idx, 0, ...layers);
   }
+}
+
+/**
+ * Add the waymarked-route overlay — its own render section above all
+ * transportation linework and boundaries, but below every label. Two families
+ * share one hosted archive, distinguished by the `route_type` attribute, and
+ * each is gated by its own feature toggle. Cycling is assembled first so it
+ * draws beneath hiking on shared ways. Each family builds from its descriptor:
+ * every network tier draws once, lowest first; higher networks draw last so
+ * they win shared segments. Marked routes share the family's fill with
+ * hierarchy expressed by width, and each family's badge shield carries its own
+ * hue (hiking oxblood, cycling blue). Regional and local routes use a slightly
+ * stronger fill so their thin lines stay saturated. The neutral unmarked tier
+ * is a line-only dashed grey route with no badge, because it has no waymarked
+ * network; its filter carries the `route_type` guard that keeps the two
+ * families' unmarked ways on their own tier. Every tier gets a subtle ivory
+ * casing: the major tiers the stronger one, local the softer one and unmarked
+ * the softest, with a softer unmarked fill. Two symbol layers then repeat
+ * `ref`/`name` badges per family: major badges for the international and
+ * national networks, and local badges for regional and local ways. Both badge
+ * layers are line-placed. Gated by WAYMARKED_CYCLING_ROUTES and
+ * WAYMARKED_ROUTES.
+ */
+function applyWaymarkedRoutes(style) {
+  // Assemble every enabled family's layers in descriptor order, then insert
+  // them as one block so families keep their relative order.
+  const layers = ROUTE_FAMILIES.filter(
+    (family) => FEATURES[family.toggle],
+  ).flatMap((family) => buildRouteFamilyLayers(style, family));
+  insertRouteLayers(style, layers);
 }
 
 // Matches a bare "{class}" / "{subclass}" token-template icon name in the
