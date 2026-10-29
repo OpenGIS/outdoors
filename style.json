@@ -19262,7 +19262,7 @@
       ]
     },
     {
-      "id": "outdoor-cycling-routes-unmarked-casing",
+      "id": "outdoor-routes-cycling-unmarked-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
@@ -19270,36 +19270,160 @@
       "filter": [
         "all",
         [
-          "==",
+          "all",
           [
-            "coalesce",
+            "==",
             [
-              "get",
-              "route_type"
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
             ],
-            ""
+            "cycling"
           ],
-          "bicycle"
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
         [
           "!",
           [
             "in",
             [
-              "coalesce",
-              [
-                "get",
-                "network"
-              ],
-              ""
+              "get",
+              "network"
             ],
             [
               "literal",
               [
-                "icn",
-                "ncn",
+                "lcn",
                 "rcn",
-                "lcn"
+                "ncn",
+                "icn"
               ]
             ]
           ]
@@ -19329,7 +19453,7 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-unmarked",
+      "id": "outdoor-routes-cycling-unmarked",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
@@ -19337,36 +19461,160 @@
       "filter": [
         "all",
         [
-          "==",
+          "all",
           [
-            "coalesce",
+            "==",
             [
-              "get",
-              "route_type"
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
             ],
-            ""
+            "cycling"
           ],
-          "bicycle"
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
         [
           "!",
           [
             "in",
             [
-              "coalesce",
-              [
-                "get",
-                "network"
-              ],
-              ""
+              "get",
+              "network"
             ],
             [
               "literal",
               [
-                "icn",
-                "ncn",
+                "lcn",
                 "rcn",
-                "lcn"
+                "ncn",
+                "icn"
               ]
             ]
           ]
@@ -19400,18 +19648,161 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-lcn-casing",
+      "id": "outdoor-routes-cycling-lcn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "lcn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "lcn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -19437,18 +19828,161 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-lcn",
+      "id": "outdoor-routes-cycling-lcn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "lcn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "lcn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -19474,18 +20008,161 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-rcn-casing",
+      "id": "outdoor-routes-cycling-rcn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 9,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "rcn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "rcn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -19515,18 +20192,161 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-rcn",
+      "id": "outdoor-routes-cycling-rcn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 9,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "rcn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "rcn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -19556,20 +20376,164 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-ncn-casing",
+      "id": "outdoor-routes-cycling-ncn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "ncn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "ncn"
+        ]
       ],
       "layout": {
+        "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
@@ -19596,20 +20560,164 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-ncn",
+      "id": "outdoor-routes-cycling-ncn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "ncn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "ncn"
+        ]
       ],
       "layout": {
+        "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
@@ -19636,20 +20744,164 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-icn-casing",
+      "id": "outdoor-routes-cycling-icn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "icn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "icn"
+        ]
       ],
       "layout": {
+        "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
@@ -19676,20 +20928,164 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-icn",
+      "id": "outdoor-routes-cycling-icn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
         ],
-        "icn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "icn"
+        ]
       ],
       "layout": {
+        "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
@@ -19716,13 +21112,153 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-badges-major",
+      "id": "outdoor-routes-cycling-badges-major",
       "type": "symbol",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 10,
       "filter": [
         "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
+        ],
         [
           "in",
           [
@@ -19736,8 +21272,8 @@
           [
             "literal",
             [
-              "icn",
-              "ncn"
+              "ncn",
+              "icn"
             ]
           ]
         ],
@@ -19832,13 +21368,153 @@
       }
     },
     {
-      "id": "outdoor-cycling-routes-badges-local",
+      "id": "outdoor-routes-cycling-badges-local",
       "type": "symbol",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 12,
       "filter": [
         "all",
+        [
+          "all",
+          [
+            "==",
+            [
+              "coalesce",
+              [
+                "get",
+                "activity"
+              ],
+              [
+                "case",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lcn",
+                      "rcn",
+                      "ncn",
+                      "icn"
+                    ]
+                  ]
+                ],
+                "cycling",
+                [
+                  "in",
+                  [
+                    "get",
+                    "network"
+                  ],
+                  [
+                    "literal",
+                    [
+                      "lwn",
+                      "rwn",
+                      "nwn",
+                      "iwn"
+                    ]
+                  ]
+                ],
+                "hiking",
+                [
+                  "==",
+                  [
+                    "get",
+                    "route_type"
+                  ],
+                  "bicycle"
+                ],
+                "cycling",
+                "hiking"
+              ]
+            ],
+            "cycling"
+          ],
+          [
+            "!",
+            [
+              "any",
+              [
+                "in",
+                "hiking",
+                [
+                  "split",
+                  [
+                    "coalesce",
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activities"
+                      ],
+                      [
+                        "coalesce",
+                        [
+                          "get",
+                          "activity"
+                        ],
+                        [
+                          "case",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lcn",
+                                "rcn",
+                                "ncn",
+                                "icn"
+                              ]
+                            ]
+                          ],
+                          "cycling",
+                          [
+                            "in",
+                            [
+                              "get",
+                              "network"
+                            ],
+                            [
+                              "literal",
+                              [
+                                "lwn",
+                                "rwn",
+                                "nwn",
+                                "iwn"
+                              ]
+                            ]
+                          ],
+                          "hiking",
+                          [
+                            "==",
+                            [
+                              "get",
+                              "route_type"
+                            ],
+                            "bicycle"
+                          ],
+                          "cycling",
+                          "hiking"
+                        ]
+                      ]
+                    ],
+                    ""
+                  ],
+                  ";"
+                ]
+              ]
+            ]
+          ]
+        ],
         [
           "in",
           [
@@ -19852,8 +21528,8 @@
           [
             "literal",
             [
-              "rcn",
-              "lcn"
+              "lcn",
+              "rcn"
             ]
           ]
         ],
@@ -19948,7 +21624,7 @@
       }
     },
     {
-      "id": "outdoor-routes-unmarked-casing",
+      "id": "outdoor-routes-hiking-unmarked-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
@@ -19956,36 +21632,78 @@
       "filter": [
         "all",
         [
-          "!=",
+          "==",
           [
             "coalesce",
             [
               "get",
-              "route_type"
+              "activity"
             ],
-            ""
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
           ],
-          "bicycle"
+          "hiking"
         ],
         [
           "!",
           [
             "in",
             [
-              "coalesce",
-              [
-                "get",
-                "network"
-              ],
-              ""
+              "get",
+              "network"
             ],
             [
               "literal",
               [
-                "iwn",
-                "nwn",
+                "lwn",
                 "rwn",
-                "lwn"
+                "nwn",
+                "iwn"
               ]
             ]
           ]
@@ -20015,7 +21733,7 @@
       }
     },
     {
-      "id": "outdoor-routes-unmarked",
+      "id": "outdoor-routes-hiking-unmarked",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
@@ -20023,36 +21741,78 @@
       "filter": [
         "all",
         [
-          "!=",
+          "==",
           [
             "coalesce",
             [
               "get",
-              "route_type"
+              "activity"
             ],
-            ""
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
           ],
-          "bicycle"
+          "hiking"
         ],
         [
           "!",
           [
             "in",
             [
-              "coalesce",
-              [
-                "get",
-                "network"
-              ],
-              ""
+              "get",
+              "network"
             ],
             [
               "literal",
               [
-                "iwn",
-                "nwn",
+                "lwn",
                 "rwn",
-                "lwn"
+                "nwn",
+                "iwn"
               ]
             ]
           ]
@@ -20063,7 +21823,87 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgba(111, 104, 98, 0.5)",
+        "line-color": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "rgba(63, 122, 79, 0.5)",
+          "rgba(111, 104, 98, 0.5)"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -20086,18 +21926,79 @@
       }
     },
     {
-      "id": "outdoor-routes-lwn-casing",
+      "id": "outdoor-routes-hiking-lwn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "lwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "lwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -20123,25 +22024,166 @@
       }
     },
     {
-      "id": "outdoor-routes-lwn",
+      "id": "outdoor-routes-hiking-lwn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 12,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "lwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "lwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgba(142, 59, 59, 0.65)",
+        "line-color": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "rgba(63, 122, 79, 0.65)",
+          "rgba(142, 59, 59, 0.65)"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -20160,18 +22202,79 @@
       }
     },
     {
-      "id": "outdoor-routes-rwn-casing",
+      "id": "outdoor-routes-hiking-rwn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 9,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "rwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "rwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -20201,25 +22304,166 @@
       }
     },
     {
-      "id": "outdoor-routes-rwn",
+      "id": "outdoor-routes-hiking-rwn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 9,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "rwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "rwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgba(142, 59, 59, 0.65)",
+        "line-color": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "rgba(63, 122, 79, 0.65)",
+          "rgba(142, 59, 59, 0.65)"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -20242,18 +22486,79 @@
       }
     },
     {
-      "id": "outdoor-routes-nwn-casing",
+      "id": "outdoor-routes-hiking-nwn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "nwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "nwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -20283,25 +22588,166 @@
       }
     },
     {
-      "id": "outdoor-routes-nwn",
+      "id": "outdoor-routes-hiking-nwn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "nwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "nwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgba(142, 59, 59, 0.57)",
+        "line-color": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "rgba(63, 122, 79, 0.57)",
+          "rgba(142, 59, 59, 0.57)"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -20324,18 +22770,79 @@
       }
     },
     {
-      "id": "outdoor-routes-iwn-casing",
+      "id": "outdoor-routes-hiking-iwn-casing",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "iwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "iwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
@@ -20365,25 +22872,166 @@
       }
     },
     {
-      "id": "outdoor-routes-iwn",
+      "id": "outdoor-routes-hiking-iwn",
       "type": "line",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 8,
       "filter": [
-        "==",
+        "all",
         [
-          "get",
-          "network"
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
         ],
-        "iwn"
+        [
+          "==",
+          [
+            "get",
+            "network"
+          ],
+          "iwn"
+        ]
       ],
       "layout": {
         "line-cap": "round",
         "line-join": "round"
       },
       "paint": {
-        "line-color": "rgba(142, 59, 59, 0.57)",
+        "line-color": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "rgba(63, 122, 79, 0.57)",
+          "rgba(142, 59, 59, 0.57)"
+        ],
         "line-width": [
           "interpolate",
           [
@@ -20406,13 +23054,71 @@
       }
     },
     {
-      "id": "outdoor-routes-badges-major",
+      "id": "outdoor-routes-hiking-badges-major",
       "type": "symbol",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 10,
       "filter": [
         "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
+        ],
         [
           "in",
           [
@@ -20426,8 +23132,8 @@
           [
             "literal",
             [
-              "iwn",
-              "nwn"
+              "nwn",
+              "iwn"
             ]
           ]
         ],
@@ -20463,7 +23169,87 @@
         "symbol-placement": "line",
         "symbol-spacing": 400,
         "symbol-avoid-edges": true,
-        "icon-image": "outdoors:route_marked",
+        "icon-image": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "outdoors:route_marked_mixed",
+          "outdoors:route_marked_hiking"
+        ],
         "icon-text-fit": "both",
         "icon-text-fit-padding": [
           2,
@@ -20522,13 +23308,71 @@
       }
     },
     {
-      "id": "outdoor-routes-badges-local",
+      "id": "outdoor-routes-hiking-badges-local",
       "type": "symbol",
       "source": "outdoor-routes",
       "source-layer": "outdoor_routes",
       "minzoom": 12,
       "filter": [
         "all",
+        [
+          "==",
+          [
+            "coalesce",
+            [
+              "get",
+              "activity"
+            ],
+            [
+              "case",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lcn",
+                    "rcn",
+                    "ncn",
+                    "icn"
+                  ]
+                ]
+              ],
+              "cycling",
+              [
+                "in",
+                [
+                  "get",
+                  "network"
+                ],
+                [
+                  "literal",
+                  [
+                    "lwn",
+                    "rwn",
+                    "nwn",
+                    "iwn"
+                  ]
+                ]
+              ],
+              "hiking",
+              [
+                "==",
+                [
+                  "get",
+                  "route_type"
+                ],
+                "bicycle"
+              ],
+              "cycling",
+              "hiking"
+            ]
+          ],
+          "hiking"
+        ],
         [
           "in",
           [
@@ -20542,8 +23386,8 @@
           [
             "literal",
             [
-              "rwn",
-              "lwn"
+              "lwn",
+              "rwn"
             ]
           ]
         ],
@@ -20579,7 +23423,87 @@
         "symbol-placement": "line",
         "symbol-spacing": 400,
         "symbol-avoid-edges": true,
-        "icon-image": "outdoors:route_marked",
+        "icon-image": [
+          "case",
+          [
+            "any",
+            [
+              "in",
+              "cycling",
+              [
+                "split",
+                [
+                  "coalesce",
+                  [
+                    "coalesce",
+                    [
+                      "get",
+                      "activities"
+                    ],
+                    [
+                      "coalesce",
+                      [
+                        "get",
+                        "activity"
+                      ],
+                      [
+                        "case",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lcn",
+                              "rcn",
+                              "ncn",
+                              "icn"
+                            ]
+                          ]
+                        ],
+                        "cycling",
+                        [
+                          "in",
+                          [
+                            "get",
+                            "network"
+                          ],
+                          [
+                            "literal",
+                            [
+                              "lwn",
+                              "rwn",
+                              "nwn",
+                              "iwn"
+                            ]
+                          ]
+                        ],
+                        "hiking",
+                        [
+                          "==",
+                          [
+                            "get",
+                            "route_type"
+                          ],
+                          "bicycle"
+                        ],
+                        "cycling",
+                        "hiking"
+                      ]
+                    ]
+                  ],
+                  ""
+                ],
+                ";"
+              ]
+            ]
+          ],
+          "outdoors:route_marked_mixed",
+          "outdoors:route_marked_hiking"
+        ],
         "icon-text-fit": "both",
         "icon-text-fit-padding": [
           2,

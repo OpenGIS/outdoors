@@ -14,6 +14,7 @@
     "demo:build": "vite build",
     "demo:preview": "vite preview",
     "screenshots": "node scripts/screenshots/generate.mjs",
+    "screenshots:check": "node scripts/screenshots/check.mjs",
     "bench": "node scripts/bench/bench.mjs"
   },
   "devDependencies": {

@@ -192,10 +192,10 @@ const SYMBOL_GROUPS = {
   ],
   "no-path-labels": [],
   "no-route-labels": [
-    "outdoor-routes-badges-major",
-    "outdoor-routes-badges-local",
-    "outdoor-cycling-routes-badges-major",
-    "outdoor-cycling-routes-badges-local",
+    "outdoor-routes-cycling-badges-major",
+    "outdoor-routes-cycling-badges-local",
+    "outdoor-routes-hiking-badges-major",
+    "outdoor-routes-hiking-badges-local",
   ],
   "no-contour-labels": ["contour-labels"],
   "no-park-labels": ["Local park", "National park labels", "Zoo"],
@@ -797,8 +797,7 @@ async function applyVariant(page, variant) {
               (id) =>
                 id.startsWith("outdoor-poi") ||
                 id.startsWith("outdoor-paths") ||
-                id.startsWith("outdoor-routes") ||
-                id.startsWith("outdoor-cycling-routes"),
+                id.startsWith("outdoor-routes"),
             );
           for (const id of ids) {
             if (rightMap.getLayer(id)) rightMap.removeLayer(id);

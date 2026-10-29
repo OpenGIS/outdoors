@@ -131,10 +131,11 @@ async function fetchWithCache(url, cachePath, etagPath, label) {
 // ─────────────────────────────────────────────────────────────────────
 // Sprite icon names — literal icon-image values from a layer layout.
 // Plain strings, the VALUE positions of a match expression (never the
-// keys), and the values of a legacy `{ stops: [...] }` function. Token
-// templates ("{subclass}") and empty strings are skipped — they are
-// resolved at render time. Other expressions (coalesce, image, step,
-// get) are dynamic — skipped.
+// keys), the VALUE positions and fallback of a case expression (never
+// the conditions), and the values of a legacy `{ stops: [...] }`
+// function. Token templates ("{subclass}") and empty strings are
+// skipped — they are resolved at render time. Other expressions
+// (coalesce, image, step, get) are dynamic — skipped.
 // ─────────────────────────────────────────────────────────────────────
 
 function collectSpriteIconNames(img) {
@@ -147,7 +148,8 @@ function collectSpriteIconNames(img) {
 
   // Recursive walk that only treats *icon value* positions as sprite names:
   // plain strings, the value positions + fallback of a match (never its
-  // labels), the literal second argument of ["image", name], and the children
+  // labels), the value positions + fallback of a case (never its conditions),
+  // the literal second argument of ["image", name], and the children
   // of a coalesce. Dynamic leaves (get/literal/zoom) are skipped.
   const walk = (node) => {
     if (typeof node === "string") {
@@ -159,6 +161,11 @@ function collectSpriteIconNames(img) {
       if (op === "get" || op === "literal" || op === "zoom") return;
       if (op === "match") {
         for (let i = 2; i < node.length - 1; i += 2) walk(node[i + 1]);
+        if (node.length > 2) walk(node[node.length - 1]);
+        return;
+      }
+      if (op === "case") {
+        for (let i = 2; i < node.length - 1; i += 2) walk(node[i]);
         if (node.length > 2) walk(node[node.length - 1]);
         return;
       }

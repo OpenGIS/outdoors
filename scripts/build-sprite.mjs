@@ -49,8 +49,9 @@ const EXPECTED_ICONS = [
   "trail_blaze",
   "ruins",
   // Waymarked-route badge shields (referenced from build.mjs route layers).
-  "route_marked",
+  "route_marked_hiking",
   "route_marked_cycling",
+  "route_marked_mixed",
 ];
 
 try {

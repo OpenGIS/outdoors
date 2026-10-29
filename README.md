@@ -74,6 +74,8 @@ npm run demo:preview                  # Preview demo
 npx playwright install chromium
 npm run screenshots                   # Regenerate every shot in shots.json
 npm run screenshots -- --name <id>    # Regenerate a single shot by id
+npm run screenshots:check             # Check shots, JPEGs and docs references
+npm run screenshots:check -- --stale  # Also flag images older than their inputs
 
 # Benchmark
 npm run bench                         # Draw-performance benchmark of the compare app
