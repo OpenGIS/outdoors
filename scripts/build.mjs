@@ -1491,15 +1491,14 @@ const ROUTE_ACTIVITIES = [
   },
 ];
 
-// Transitional fallback: new archives emit activity ("hiking" or "cycling")
-// and activities ("hiking;cycling"). The live hosted archive emits neither
-// activity nor route_type today — only the network vocabulary — so the marked
-// networks derived from ROUTE_ACTIVITIES' tier tables are the practical legacy
-// signal. A legacy route_type of "bicycle" remains a secondary compatibility
-// signal, and anything else defaults to hiking, matching the previous style's
-// default. Network wins over route_type because marked tiers are keyed by
-// network; this matches the old style and avoids mis-tiering inconsistent
-// legacy data.
+// Transitional fallback: the current profile emits activity ("hiking" or
+// "cycling") and activities ("hiking;cycling"). Older hosted archives may emit
+// neither, carrying only the network vocabulary, so the marked networks derived
+// from ROUTE_ACTIVITIES' tier tables are the practical legacy signal. A legacy
+// route_type of "bicycle" remains a secondary compatibility signal, and anything
+// else defaults to hiking, matching the previous style's default. Network wins
+// over route_type because marked tiers are keyed by network; this matches the
+// old style and avoids mis-tiering inconsistent legacy data.
 const LEGACY_ROUTE_ACTIVITY = [
   "case",
   ...ROUTE_ACTIVITIES.flatMap((activity) => [

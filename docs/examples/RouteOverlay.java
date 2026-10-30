@@ -17,9 +17,16 @@
  *   https://github.com/onthegomap/planetiler/blob/main/planetiler-examples/src/main/java/com/onthegomap/planetiler/examples/BikeRouteOverlay.java
  *
  * Three-phase processing:
- *   1. preprocessOsmRelation — store route relation info per activity
- *   2. processFeature — emit line features for matched ways
+ *   1. preprocessOsmRelation — store exactly one info per relation, carrying the
+ *      full activity set and a per-activity network map
+ *   2. processFeature — emit one line feature per activity for matched ways
  *   3. postProcessLayerFeatures — merge touching line segments
+ *
+ * Planetiler keeps only one OsmRelationInfo per relation id. Returning one
+ * info per activity would silently collapse a dual-activity relation to its
+ * last activity, so the profile returns one info per relation and expands the
+ * activities in processFeature instead. Do not revert to multiple infos for
+ * the same relation.
  *
  * Usage:
  *   java -cp ../.planetiler/planetiler.jar docs/examples/RouteOverlay.java \
@@ -40,7 +47,9 @@ import com.onthegomap.planetiler.reader.osm.OsmRelationInfo;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -92,17 +101,17 @@ public class RouteOverlay implements Profile {
   /**
    * Minimal container for outdoor route relation data held in RAM during processing.
    *
-   * One instance is produced per relation per surviving activity, so `activity`
-   * is this feature's activity while `activities` is the full set the way
-   * belongs to, in priority order, highest first.
+   * One instance is produced per relation, carrying the full activity set in
+   * priority order and the network normalised for each activity. Planetiler
+   * stores only one relation info per relation id, so the per-activity features
+   * are emitted in processFeature rather than by returning several infos.
    */
   private record RouteRelationInfo(
     long id,
     String name,
     String ref,
-    String activity,
     String activities,
-    String network,
+    Map<String, String> networkByActivity,
     String osmcSymbol,
     String operator,
     String distance,
@@ -121,11 +130,12 @@ public class RouteOverlay implements Profile {
    *
    * Every registry activity whose tokens match is kept, after applying that
    * activity's own exclusions. `activities` is the joined set of survivors in
-   * priority order. One RouteRelationInfo is returned per surviving activity;
-   * if none survive, returns null.
+   * priority order. One RouteRelationInfo is returned per relation; if none
+   * survive, returns null. Planetiler stores only one relation info per relation
+   * id, so the per-activity features are emitted later in processFeature.
    *
-   * Stores name, ref, activity, activities, network, osmc:symbol, operator,
-   * distance, ascent, descent, cai_scale, and roundtrip for each match.
+   * Stores name, ref, activities, per-activity networks, osmc:symbol, operator,
+   * distance, ascent, descent, cai_scale, and roundtrip.
    */
   @Override
   public List<OsmRelationInfo> preprocessOsmRelation(OsmElement.Relation relation) {
@@ -167,28 +177,28 @@ public class RouteOverlay implements Profile {
     // Keep the whole-value network; do not split on semicolons.
     String rawNetwork = relation.getString("network", "");
 
-    List<OsmRelationInfo> result = new ArrayList<>(surviving.size());
+    Map<String, String> networkByActivity = new LinkedHashMap<>();
     for (var activity : surviving) {
       // Normalise the network to this activity's own vocabulary.
-      String network = activity.networks().contains(rawNetwork) ? rawNetwork : null;
-
-      result.add(new RouteRelationInfo(
-        relation.id(),
-        relation.getString("name"),
-        relation.getString("ref"),
-        activity.id(),
-        activities,
-        network,
-        relation.getString("osmc:symbol"),
-        relation.getString("operator"),
-        relation.getString("distance"),
-        relation.getString("ascent"),
-        relation.getString("descent"),
-        relation.getString("cai_scale"),
-        relation.getString("roundtrip")
-      ));
+      if (activity.networks().contains(rawNetwork)) {
+        networkByActivity.put(activity.id(), rawNetwork);
+      }
     }
-    return result;
+
+    return List.of(new RouteRelationInfo(
+      relation.id(),
+      relation.getString("name"),
+      relation.getString("ref"),
+      activities,
+      networkByActivity,
+      relation.getString("osmc:symbol"),
+      relation.getString("operator"),
+      relation.getString("distance"),
+      relation.getString("ascent"),
+      relation.getString("descent"),
+      relation.getString("cai_scale"),
+      relation.getString("roundtrip")
+    ));
   }
 
   /**
@@ -208,22 +218,30 @@ public class RouteOverlay implements Profile {
       for (var routeInfo : routeInfos) {
         RouteRelationInfo rel = routeInfo.relation();
 
-        var feature = features.line("outdoor_routes")
-          .setAttr("name", rel.name)
-          .setAttr("ref", rel.ref)
-          .setAttr("activity", rel.activity)
-          .setAttr("activities", rel.activities)
-          .setAttr("network", rel.network)
-          .setAttr("osmc_symbol", rel.osmcSymbol)
-          .setAttr("operator", rel.operator)
-          .setAttr("distance", rel.distance)
-          .setAttr("ascent", rel.ascent)
-          .setAttr("descent", rel.descent)
-          .setAttr("cai_scale", rel.caiScale)
-          .setAttr("roundtrip", rel.roundtrip)
-          .setZoomRange(8, 14)
-          // Don't filter short segments — needed for line merging in phase 3
-          .setMinPixelSize(0);
+        for (String activity : rel.activities.split(";")) {
+          var feature = features.line("outdoor_routes")
+            .setAttr("name", rel.name)
+            .setAttr("ref", rel.ref)
+            .setAttr("activity", activity)
+            .setAttr("activities", rel.activities)
+            .setAttr("osmc_symbol", rel.osmcSymbol)
+            .setAttr("operator", rel.operator)
+            .setAttr("distance", rel.distance)
+            .setAttr("ascent", rel.ascent)
+            .setAttr("descent", rel.descent)
+            .setAttr("cai_scale", rel.caiScale)
+            .setAttr("roundtrip", rel.roundtrip);
+
+          String network = rel.networkByActivity.get(activity);
+          if (network != null) {
+            feature.setAttr("network", network);
+          }
+
+          feature
+            .setZoomRange(8, 14)
+            // Don't filter short segments — needed for line merging in phase 3
+            .setMinPixelSize(0);
+        }
       }
     }
   }

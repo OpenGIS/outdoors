@@ -124,7 +124,7 @@ The extract and the style each keep an activity registry, and their orders answe
 | `HIKING_ROUTE_TIERS`  | `scripts/build.mjs`               | draw order, lowest to highest | Tier stacking within the hiking family                                                      |
 | `CYCLING_ROUTE_TIERS` | `scripts/build.mjs`               | draw order, lowest to highest | Tier stacking within the cycling family                                                     |
 
-- **Extract priority:** `hiking` then `cycling`. The first entry is the highest priority. It determines the order of the `activities` string (`hiking;cycling`) and the order in which surviving activities are returned for a relation. A dual relation emits two `RouteRelationInfo` records, hiking first, when both survive.
+- **Extract priority:** `hiking` then `cycling`. The first entry is the highest priority. It determines the order of the `activities` string (`hiking;cycling`). A relation produces exactly one `RouteRelationInfo` carrying the full survivor set, so a dual relation contributes one record whose `activities` value is `hiking;cycling`.
 - **Style draw order:** `cycling` then `hiking`, bottom to top. Hiking draws on top. Later entries in `ROUTE_ACTIVITIES` are higher for ownership, so a way shared by both enabled activities is owned by hiking and painted mixed green.
 - **Tier draw order:** unmarked first, then local, regional, national, international. A segment shared by several networks renders at the highest network's width because the higher tier draws later.
 
@@ -209,7 +209,7 @@ Adding an activity is a coordinated change across the extract profile, the style
 
 1. **Define the id and both positions.** Choose a lower-case activity id. Decide its priority position in the extract registry (where it sits in the `activities` string) and its draw position in `ROUTE_ACTIVITIES` (whether it sits below or above the existing activities). These are separate decisions; the extract order is highest first, the style order is bottom to top.
 2. **Define the OSM selection.** Choose the `route` tokens, the network vocabulary and any per-activity exclusions. Record the vocabulary in the feature schema and the docs. If the activity has no marked-network hierarchy, give it an unmarked tier and no marked tiers; the style's badge groups will then be empty for it.
-3. **Add the extract registry entry.** Add a `RouteActivity` to `ACTIVITIES` in [`docs/examples/RouteOverlay.java`](docs/examples/RouteOverlay.java) at the priority position, with its token set, network set and exclusion predicate. `preprocessOsmRelation()` will then emit an `activities` value and one `RouteRelationInfo` per surviving activity with no further changes.
+3. **Add the extract registry entry.** Add a `RouteActivity` to `ACTIVITIES` in [`docs/examples/RouteOverlay.java`](docs/examples/RouteOverlay.java) at the priority position, with its token set, network set and exclusion predicate. `preprocessOsmRelation()` will then include the activity in the relation's `activities` value and per-activity network map, and `processFeature()` will emit one feature for it, with no further changes.
 4. **Add the style descriptor.** Add an entry to `ROUTE_ACTIVITIES` in [`scripts/build.mjs`](scripts/build.mjs) at the draw position, naming the id, its `FEATURES` toggle, its colour token, its badge icon and its tier table. Add the colour to `COLOURS.ROUTES`.
 5. **Add the tier table.** Create a tier table in the same five-rank shape and draw order as `HIKING_ROUTE_TIERS` and `CYCLING_ROUTE_TIERS`: unmarked first, then local, regional, national, international. Reuse the shared ranks where the hierarchy fits; `ROUTE_WIDTHS`, `ROUTE_FILL_OPACITY`, `ROUTE_CASING_OPACITY` and `ROUTE_BADGE_GROUPS` are keyed by rank. Only add a new rank if the existing five cannot express the activity, and then extend all four tables together.
 6. **Add the feature toggle.** Add the boolean to `FEATURES` beside the existing route toggles. Add the new layer ids to the `routes` band's `layers` metadata in `RENDER_STACK`; that list is documentation only, but it should stay accurate.
@@ -224,7 +224,10 @@ Adding an activity is a coordinated change across the extract profile, the style
 
 The profile selects relations by tag, remembers their attributes, and emits their member ways. It does not classify ways by `highway` type.
 
-`preprocessOsmRelation()` splits the `route` value on `;`, trims each token, and collects every registry activity whose token set matches. It applies each activity's exclusions before matching, joins the survivors in registry priority order into `activities`, and returns one `RouteRelationInfo` per survivor. `processFeature()` then loops over every `RouteRelationInfo` returned by `relationInfo(..., true)` for a member way and emits one `outdoor_routes` line per info, attaching `activity`, `activities` and the relation's other attributes. `postProcessLayerFeatures()` merges the resulting linework per tile.
+`preprocessOsmRelation()` splits the `route` value on `;`, trims each token, and collects every registry activity whose token set matches. It applies each activity's exclusions before matching, joins the survivors in registry priority order into `activities`, and returns exactly one `RouteRelationInfo` per relation carrying the full `activities` set and a per-activity network map. `processFeature()` then loops over every `RouteRelationInfo` returned by `relationInfo(..., true)` for a member way and emits one `outdoor_routes` line per activity, attaching `activity`, `activities` and the relation's other attributes. `postProcessLayerFeatures()` merges the resulting linework per tile.
+
+> [!WARNING]
+> Planetiler stores exactly one `OsmRelationInfo` per relation id, so returning one `RouteRelationInfo` per activity silently keeps only the last one written. A dual-activity relation would then lose an activity with no build error. Return one record per relation and expand the activities in `processFeature()` instead.
 
 | Rule                 | Behaviour                                                                                                                                                                                                                                                    |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -352,6 +355,24 @@ These are starting points, not guarantees. Size the heap from the input's node i
 ### Expected output
 
 `routes/outdoor_routes.pmtiles`, a PMTiles archive with one vector layer. `isOverlay()` returns true, so the archive metadata records the output as an overlay rather than a base layer. `attribution()` writes the OpenStreetMap credit into the archive metadata. No sidecar files are required. Confirm the file is non-zero and starts with the seven bytes `PMTiles` before moving it anywhere.
+
+### Measured reference build
+
+Snapshot from the **2026-10-26** planet PBF. Treat it as a dated reference, not a guarantee: OSM data volume and route coverage change over time.
+
+| Metric            | Value                                        |
+| ----------------- | -------------------------------------------- |
+| Input planet PBF  | 95.6 GB                                      |
+| Filtered PBF      | 830 MB                                       |
+| Archive           | 1.18 GB                                      |
+| z8–14 tiles       | 1,634,066                                    |
+| Build time        | 6 m 01 s                                     |
+| Peak RSS          | 24 GB on 16 vCPU / 32 GB RAM                 |
+| Machine           | Hetzner CPX62, roughly €0.21 per hour        |
+| Disk              | 600 GB holds the input, node map and output  |
+| Header centre     | repaired to `[0,0,8]` after the build        |
+
+Full-planet preparation dominates the wall clock: osmium scans every node and way to collect route relations and their referenced geometry, even though the filtered PBF and output archive are small. Planetiler then builds the archive in minutes.
 
 ## 7. Serving
 
