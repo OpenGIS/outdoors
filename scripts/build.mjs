@@ -786,7 +786,7 @@ const HILLSHADE_EXAGGERATION = [
 // the same Mapterhorn tile; the CDN sees it twice and serves the second
 // request from cache.
 const CONTOUR_SOURCE_ID = "contour-source";
-const CONTOUR_TILE_URL = "https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf";
+const CONTOUR_TILE_URL = "https://tile.ogis.app/contours/{z}/{x}/{y}.pbf";
 const CONTOUR_SOURCE_LAYER = "contours";
 const CONTOUR_SOURCE_MINZOOM = 9;
 const CONTOUR_SOURCE_MAXZOOM = 14;

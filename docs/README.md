@@ -1,6 +1,6 @@
 ---
-git_hash: "bcfd463c3eb48cd9e3bdd50215608e06eee124fc"
-modified: "2026-10-28"
+git_hash: "5aed7fccbad668c85d6025e00e2da2ffbf97bd07"
+modified: "2026-11-01"
 ---
 
 # Project Documentation
@@ -16,7 +16,7 @@ modified: "2026-10-28"
 5. [Elevation & Terrain](5.dem.md) — the Mapterhorn DEM — hillshade, 3D terrain, and the server-generated contour overlay
 6. [Client-side rendering](6.client.md) — how the style is rendered by client mapping libraries: renderer compatibility, metric/imperial unit switching, and the compare app
 7. [Tile Server](7.server.md) — the hosted tile.ogis.app services: POIs, waymarked hiking and cycling routes, paths and contours, and the feeds this repo provides
-8. [Activities](8.activities.md) — the waymarked hiking- and cycling-route overlays in the style, the MTB scale reference implementation, and the activity trade-offs
+8. [Activities](8.activities.md) — the waymarked hiking- and cycling-route overlays in the style, the MTB scale reference implementation, and the design rationale
 9. [Performance](9.performance.md) — the Playwright draw and load benchmarks for the compare app, their recorded baselines and findings, and the DEM source and terrain-LOD optimisations
 10. [Natural Earth & the Ground Raster](10.natural-earth.md) — the calibrated natural-earth vector ground, the bottom-to-top `RENDER_STACK`, and how the Esri World Imagery raster is blended over it
 

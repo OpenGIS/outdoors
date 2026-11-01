@@ -860,7 +860,7 @@ ${x.shaderPreludeCode.vertexSource}`,define:x.shaderDefine},defaultProjectionDat
       "type": "vector",
       "minzoom": 9,
       "tiles": [
-        "https://tile.ogis.app/terrain/{z}/{x}/{y}.pbf"
+        "https://tile.ogis.app/contours/{z}/{x}/{y}.pbf"
       ],
       "maxzoom": 14
     },

@@ -360,17 +360,17 @@ These are starting points, not guarantees. Size the heap from the input's node i
 
 Snapshot from the **2026-10-26** planet PBF. Treat it as a dated reference, not a guarantee: OSM data volume and route coverage change over time.
 
-| Metric            | Value                                        |
-| ----------------- | -------------------------------------------- |
-| Input planet PBF  | 95.6 GB                                      |
-| Filtered PBF      | 830 MB                                       |
-| Archive           | 1.18 GB                                      |
-| z8–14 tiles       | 1,634,066                                    |
-| Build time        | 6 m 01 s                                     |
-| Peak RSS          | 24 GB on 16 vCPU / 32 GB RAM                 |
-| Machine           | Hetzner CPX62, roughly €0.21 per hour        |
-| Disk              | 600 GB holds the input, node map and output  |
-| Header centre     | repaired to `[0,0,8]` after the build        |
+| Metric           | Value                                       |
+| ---------------- | ------------------------------------------- |
+| Input planet PBF | 95.6 GB                                     |
+| Filtered PBF     | 830 MB                                      |
+| Archive          | 1.18 GB                                     |
+| z8–14 tiles      | 1,634,066                                   |
+| Build time       | 6 m 01 s                                    |
+| Peak RSS         | 24 GB on 16 vCPU / 32 GB RAM                |
+| Machine          | Hetzner CPX62, roughly €0.21 per hour       |
+| Disk             | 600 GB holds the input, node map and output |
+| Header centre    | repaired to `[0,0,8]` after the build       |
 
 Full-planet preparation dominates the wall clock: osmium scans every node and way to collect route relations and their referenced geometry, even though the filtered PBF and output archive are small. Planetiler then builds the archive in minutes.
 
@@ -378,14 +378,14 @@ Full-planet preparation dominates the wall clock: osmium scans every node and wa
 
 ### Endpoint layout
 
-| Service  | Endpoint                   | Source-layer     | Geometry | Style source zooms |
-| -------- | -------------------------- | ---------------- | -------- | ------------------ |
-| POIs     | `/pois/{z}/{x}/{y}.pbf`    | `outdoor_pois`   | point    | z12–16             |
-| Paths    | `/paths/{z}/{x}/{y}.pbf`   | `outdoor_paths`  | line     | z9–13              |
-| Routes   | `/routes/{z}/{x}/{y}.pbf`  | `outdoor_routes` | line     | z8–14              |
-| Contours | `/terrain/{z}/{x}/{y}.pbf` | `contours`       | line     | z9–14              |
+| Service  | Endpoint                    | Source-layer     | Geometry | Style source zooms |
+| -------- | --------------------------- | ---------------- | -------- | ------------------ |
+| POIs     | `/pois/{z}/{x}/{y}.pbf`     | `outdoor_pois`   | point    | z12–16             |
+| Paths    | `/paths/{z}/{x}/{y}.pbf`    | `outdoor_paths`  | line     | z9–13              |
+| Routes   | `/routes/{z}/{x}/{y}.pbf`   | `outdoor_routes` | line     | z8–14              |
+| Contours | `/contours/{z}/{x}/{y}.pbf` | `contours`       | line     | z9–14              |
 
-Only `/routes/` is built by this profile. Each service has its own archive and zoom range; the style requests them independently. The hosted inventory at <https://tile.ogis.app/sources> lists the services with their tile URLs, zoom ranges and source-layers.
+Only `/routes/` is built by this profile. Each service is deployed independently with its own zoom range, and the style requests them separately. The hosted inventory at <https://tile.ogis.app/sources> lists the services with their tile URLs, zoom ranges and build ids; it does not list source-layers, which live in each service's TileJSON at `/{source}.json` (for example `/contours.json`). The contour service declares z1–15 while the style consumes z9–14.
 
 ### Range reads behind the tile host
 
@@ -409,8 +409,8 @@ Clients request individual zxy tiles, not the archive. The tile host maps `z/x/y
 - **CORS.** `*` is appropriate for public tiles. If the deployment restricts origins, allow the demo origin and the published style origin, and set the CORS header on error responses as well; otherwise the browser reports a CORS failure instead of the real status.
 - **Caching.** The stable URL has no version segment. Use a short TTL (for example `max-age=300`) plus `ETag` during rebuilds, or introduce a version prefix or query, change `ROUTE_OVERLAY.tileUrl` in [`scripts/build.mjs`](scripts/build.mjs), rebuild `style.json`, and serve the versioned URL as immutable. Keep the previous version reachable until its TTL has expired.
 - **HTTP/2.** Enable it. Route tiles arrive in bursts with the rest of the style's sources.
-- **404 versus empty 200.** Return 404 when the PMTiles directory has no entry for the requested tile — no features, outside coverage, or outside z8–14. Do not return 200 with a zero-length or HTML body: clients treat it as a parse failure, and it hides a missing archive behind a success. Return 503 when the archive is missing, unreadable or the range read fails, so monitoring can tell "no data here" from "service broken".
-- **404s are normal in open country.** A tile with no route features is legitimately absent. Every-tile 404s are a mount or zoom-range problem, not "no data".
+- **204 versus 404 versus 503.** Return **204 No Content** with no body for a tile that has no features — an empty in-range tile or a request outside the archive's zoom range. Send an `ETag` ending `-empty` so caches and monitoring can recognise the empty response. Return 404 only for an unknown source or path, and 503 when the archive is missing, unreadable or the range read fails, so monitoring can tell "no data here" from "service broken". Never return 200 with a zero-length or HTML body: clients treat it as a parse failure, and it hides a missing archive behind a success.
+- **204s are normal in open country.** A tile with no route features is legitimately empty. Every-tile 204s in covered areas are an archive or zoom-range problem, not "no data".
 - **Zoom range.** The archive must contain real tiles at z8–14 in covered areas. MapLibre trusts the source's declared `minzoom: 8` and `maxzoom: 14`: at z14 it requests z14 tiles and does not guarantee a fallback if they are absent, and at z15+ it overzooms the z14 tile. A server-side minzoom clamp above 8, or an archive that stops at z13, breaks the declared range even though the style is unchanged.
 
 ## 8. Rebuild and deploy
@@ -645,7 +645,7 @@ If the arrays are empty, pan to a feature first; an empty result proves nothing.
 
 ### 9.5 Console, network and style validation
 
-- With the Network panel filtered to `routes/`, every request inside the reference boxes at z8–14 should return 200, or 404 where the tile genuinely has no routes.
+- With the Network panel filtered to `routes/`, every request inside the reference boxes at z8–14 should return 200, or 204 where the tile genuinely has no routes.
 - There should be no CORS errors, no failed z14 tile loads, and no `styleimagemissing` errors. `styleimagemissing` is a sprite problem, not an archive problem.
 - The browser console should be clear.
 - `npm run validate:style` must pass. It validates the shipped style against the MapLibre style specification and does not inspect the archive; the tile checks above cover the data.
@@ -670,15 +670,16 @@ A new archive is ready to swap when:
 - the contract check passes on the Utrecht and Chamonix–Valais sample tiles, including the dual-feature pairing;
 - a build with both activity toggles enabled renders both activities at z13 and z14, with cycling beneath hiking and shared ways green;
 - badges appear at the right zooms, and unmarked ways carry none;
-- the browser console shows no errors, no CORS failures and no unexpected `/routes/` 404s;
+- the browser console shows no errors, no CORS failures and no unexpected `/routes/` 404s or 204s in covered areas;
 - `npm run validate:style` passes.
 
 ## 10. Troubleshooting
 
 | Symptom                                                                      | Likely cause                                                                                                                                                                                                                           | Fix                                                                                                                                                                                                                 |
 | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every `/routes/` request returns 404                                         | Archive not mounted, wrong path root, server pointed at the wrong file, or the archive was built outside z8–14                                                                                                                         | Check the mount, symlink and server path mapping; confirm the PMTiles header and zoom range; rebuild with `--minzoom=8 --maxzoom=14`                                                                                |
-| Tiles return 200 but nothing renders                                         | Source-layer name mismatch (`outdoor_route` or `outdoor-routes` instead of `outdoor_routes`), wrong source id, or an empty tile                                                                                                        | Decode the tile; compare `style.sources["outdoor-routes"]`, each layer's `source` and its `source-layer`; confirm the tile contains `outdoor_routes` features                                                       |
+| Every `/routes/` request returns 404                                         | Archive not mounted, wrong path root, or the server pointed at the wrong file                                                                                                                                                          | Check the mount, symlink and server path mapping; confirm the request path resolves to the archive                                                                                                                  |
+| Every `/routes/` tile returns 204 in covered areas                           | The archive was built or served outside z8–14, is empty, or the server is reading the wrong archive                                                                                                                                    | Check the PMTiles header's zoom range and tile count; rebuild with `--minzoom=8 --maxzoom=14`; confirm the server reads the current archive                                                                         |
+| Tiles return 200 but nothing renders                                         | Source-layer name mismatch (`outdoor_route` or `outdoor-routes` instead of `outdoor_routes`), wrong source id, or a server returning 200 for an empty tile (empty tiles are 204)                                                       | Decode the tile; compare `style.sources["outdoor-routes"]`, each layer's `source` and its `source-layer`; confirm the tile contains `outdoor_routes` features                                                       |
 | Tile decodes but has no `activity` or `activities`                           | Archive predates the multi-activity model. The style falls back to `network`, then `route_type`, then hiking                                                                                                                           | Run the contract check; rebuild with the current profile. Do not hand-patch one property                                                                                                                            |
 | Cycling renders as hiking, or as an unmarked grey line                       | `activity` is missing and no cycling network or `route_type` is present (the legacy fallback defaults to hiking); `activity` is wrong; or `network` is absent/foreign so the cycling feature lands in the unmarked tier                | Decode and inspect `activity`, `activities` and `network`; rebuild so the profile normalises network per activity. Never patch `network` without renormalising                                                      |
 | Dual ways are not green                                                      | `activities` is missing, one activity toggle is off, the two activity duplicates carry different `activities`, or only the cycling duplicate is present                                                                                | Decode both duplicates and compare `activities`; enable both toggles; rebuild. Mixed green also requires the archive to carry `activities`                                                                          |
