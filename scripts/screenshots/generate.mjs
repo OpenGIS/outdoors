@@ -8,7 +8,8 @@
  *   node scripts/screenshots/generate.mjs --name <id> # one shot only
  *
  * Serves a small static harness page (plus style.json and the MapLibre
- * UMD bundle) over a local http server on a free port in 11000-11999,
+ * ES module and worker bundles) over a local http server on a free port in
+ * 11000-11999,
  * then drives headless Chromium via Playwright: one fresh browser
  * context per shot (clean tile cache), waiting for the harness to
  * signal window.__shotReady before capturing the screenshot.
@@ -38,6 +39,7 @@ const MIME_TYPES = {
   ".html": "text/html",
   ".json": "application/json",
   ".js": "text/javascript",
+  ".mjs": "text/javascript",
   ".css": "text/css",
   ".png": "image/png",
 };
@@ -69,9 +71,9 @@ async function startServer() {
 }
 
 /**
- * Serve the harness page, style.json and the MapLibre UMD bundle. All
- * paths are resolved from this file's own location, never from the
- * current working directory.
+ * Serve the harness page, style.json and the MapLibre ES module and worker
+ * bundles. All paths are resolved from this file's own location, never
+ * from the current working directory.
  */
 function handleRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -80,8 +82,8 @@ function handleRequest(req, res) {
   // built sheet (/sprite.json, /sprite.png — served from dev/public below),
   // so screenshot runs verify the icons committed with the code instead of
   // the deployed https://www.ogis.org/outdoors/sprite. The basemap "default"
-  // sheet stays remote. maplibre-gl v5 rejects relative sprite URLs, so the
-  // local URL is absolute, built from the request's own origin.
+  // sheet stays remote. The local URL is absolute, built from the request's
+  // own origin.
   if (url.pathname === "/style.json") {
     try {
       const style = JSON.parse(
@@ -107,12 +109,19 @@ function handleRequest(req, res) {
     "/sprite.png": resolve(PROJECT_ROOT, "dev", "public", "sprite.png"),
     "/sprite@2x.json": resolve(PROJECT_ROOT, "dev", "public", "sprite@2x.json"),
     "/sprite@2x.png": resolve(PROJECT_ROOT, "dev", "public", "sprite@2x.png"),
-    "/maplibre-gl.js": resolve(
+    "/maplibre-gl.mjs": resolve(
       PROJECT_ROOT,
       "node_modules",
       "maplibre-gl",
       "dist",
-      "maplibre-gl.js",
+      "maplibre-gl.mjs",
+    ),
+    "/maplibre-gl-worker.mjs": resolve(
+      PROJECT_ROOT,
+      "node_modules",
+      "maplibre-gl",
+      "dist",
+      "maplibre-gl-worker.mjs",
     ),
     "/maplibre-gl.css": resolve(
       PROJECT_ROOT,
@@ -249,7 +258,6 @@ function parseNameFlag() {
 async function main() {
   const filterId = parseNameFlag();
   const shots = loadShots(filterId);
-  const isFiltered = filterId !== null;
 
   mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
@@ -298,7 +306,6 @@ async function main() {
   for (const failure of failures) console.error(`\nFAILED: ${failure}`);
 
   if (failures.length > 0) process.exitCode = 1;
-  if (isFiltered) process.exitCode = 0;
 }
 
 main().catch((error) => {

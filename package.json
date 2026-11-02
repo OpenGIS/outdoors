@@ -3,6 +3,9 @@
   "private": true,
   "version": "4.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "concurrently --names dev,build --prefix-colors cyan,green \"vite\" \"node scripts/watch.mjs\"",
     "build": "node scripts/build.mjs",
@@ -18,11 +21,11 @@
   },
   "devDependencies": {
     "@maplibre/maplibre-gl-compare": "^0.5.0",
-    "@maplibre/maplibre-gl-style-spec": "^26.2.1",
+    "@maplibre/maplibre-gl-style-spec": "^26.5.1",
     "@vitejs/plugin-vue": "^5.2.0",
     "concurrently": "^10.0.4",
     "events": "^3.3.0",
-    "maplibre-gl": "^5.0.0",
+    "maplibre-gl": "^6.16.0",
     "playwright": "^1.62.1",
     "prettier": "^3.9.6",
     "vite": "^6.0.7",

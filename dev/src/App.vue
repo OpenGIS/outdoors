@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MaplibreCompare from "@maplibre/maplibre-gl-compare";
 import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
@@ -11,6 +12,10 @@ import { useProviderSelection } from "./composables/useProviderSelection";
 import { useDemOverlay } from "./composables/useDemOverlay";
 import { applyTerrainLod } from "./terrainLod";
 import { parseHashCamera } from "./hashCamera";
+
+// MapLibre v6 ships its worker as a separate module; point the map at the
+// bundled worker URL before any map instance is created.
+maplibregl.setWorkerUrl(workerUrl);
 
 // ── Constants ──
 const CONTOURS_TO_IMPERIAL = false;
@@ -267,6 +272,7 @@ onMounted(async () => {
       compact: true,
       customAttribution: MAPLIBRE_ATTRIBUTION,
     },
+    zoomLevelsToOverscale: undefined,
   });
 
   attachDemOverlay(leftMap);
@@ -290,6 +296,7 @@ onMounted(async () => {
       customAttribution:
         rightStyle.metadata?.attributionLine ?? MAPLIBRE_ATTRIBUTION,
     },
+    zoomLevelsToOverscale: undefined,
   });
 
   // Expose both maps on window so tooling (the draw/load benchmark harness)
@@ -328,31 +335,30 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="compareEl" id="compare">
-    <div id="left" class="map">
-      <div class="style-selector">
-        <ProviderSelect v-model="selectedKey" :sections="sections" />
-        <select
-          v-model="viewMode"
-          class="view-mode-select"
-          aria-label="View mode"
-        >
-          <option value="overlay">Overlay</option>
-          <option value="side-by-side">Side by side</option>
-        </select>
-        <label class="dem-toggle" title="Show hillshading on the left map">
-          <input type="checkbox" v-model="hillshade" />
-          Hillshading
-        </label>
-        <label
-          class="dem-toggle"
-          title="Enable 3D terrain on the left map at 1.2× vertical exaggeration"
-        >
-          <input type="checkbox" v-model="terrain" />
-          3D terrain
-        </label>
-      </div>
-    </div>
+    <div id="left" class="map"></div>
     <div id="right" class="map"></div>
+    <div class="style-selector">
+      <ProviderSelect v-model="selectedKey" :sections="sections" />
+      <select
+        v-model="viewMode"
+        class="view-mode-select"
+        aria-label="View mode"
+      >
+        <option value="overlay">Overlay</option>
+        <option value="side-by-side">Side by side</option>
+      </select>
+      <label class="dem-toggle" title="Show hillshading on the left map">
+        <input type="checkbox" v-model="hillshade" />
+        Hillshading
+      </label>
+      <label
+        class="dem-toggle"
+        title="Enable 3D terrain on the left map at 1.2× vertical exaggeration"
+      >
+        <input type="checkbox" v-model="terrain" />
+        3D terrain
+      </label>
+    </div>
   </div>
 </template>
 

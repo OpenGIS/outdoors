@@ -19,8 +19,11 @@
   </head>
   <body>
     <div id="map"></div>
-    <script src="/maplibre-gl.js"></script>
-    <script>
+    <script type="module">
+      import * as maplibregl from "/maplibre-gl.mjs";
+
+      maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+
       (async function () {
         var params = new URLSearchParams(window.location.search);
         var center = (params.get("center") || "-3.23,54.45")
@@ -78,6 +81,7 @@
             customAttribution: customAttribution,
           },
           fadeDuration: 0,
+          zoomLevelsToOverscale: undefined,
         };
 
         if (maxCanvasSizeParam) {

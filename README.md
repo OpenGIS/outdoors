@@ -43,6 +43,8 @@
 
 ## Run
 
+Node.js 22 or newer is required.
+
 ### Build
 
 ```bash
@@ -79,6 +81,8 @@ npm run bench -- --shot bolzano-3d --variants full   # Focus a shot / variant
 npm run bench -- --mode load --serve demo            # Load-benchmark the demo bundle
 ```
 
+Screenshot runs exit non-zero on a capture failure, including a filtered `--name` run.
+
 ### Development
 
 Compare app with HMR support.
@@ -87,6 +91,11 @@ Compare app with HMR support.
 npm install                           # Install dependencies
 npm run dev                           # Start Vite dev server + auto-build watcher
 ```
+
+## CI & releases
+
+- **Deploy** — [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `master`: it installs dependencies, rebuilds the style and demo, and fails if either `style.json` or `demo/` differs from the committed output. It then validates the style, checks POI coverage and screenshots, and deploys `demo/` to GitHub Pages.
+- **Release** — [`.github/workflows/release.yml`](.github/workflows/release.yml) runs when `package.json` changes on `master`, or on manual dispatch. If the matching `v<version>` release does not exist, it runs the same checks and creates the GitHub Release and tag with generated notes; if the release already exists it skips, so reruns are safe.
 
 ---
 

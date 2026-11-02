@@ -1715,9 +1715,9 @@ function basemapPoiIconExpression(
   ];
 }
 
-// Elevation in the label — showEle kinds carry ele from the tiles, rendered
-// as "{name} {ele}m" like the peak labels. number-format(round(ele))
-// mirrors the contour-label approach (to-string would print raw decimals).
+// Elevation in the label — showEle kinds carry ele from the tiles as a
+// string, rendered as "{name} {ele}m" like the peak labels. Coerce it to a
+// number before round/number-format; the contour source already emits a number.
 const POI_ELE_KINDS = OUTDOOR_POI.kinds
   .filter((k) => k.showEle)
   .map((k) => k.kind);
@@ -1743,7 +1743,7 @@ const POI_TEXT_EXPR = [
     "concat",
     ["get", "name"],
     " ",
-    ["number-format", ["round", ["get", "ele"]], {}],
+    ["number-format", ["round", ["to-number", ["get", "ele"]]], {}],
     "m",
   ],
   ["get", "name"],

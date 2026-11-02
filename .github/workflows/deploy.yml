@@ -33,14 +33,33 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build demo
-        run: npm run demo:build
+      - name: Build style and demo
+        run: |
+          npm run build
+          npm run demo:build
+
+      - name: Verify generated outputs are current
+        run: |
+          if [ -n "$(git status --porcelain -- style.json demo/)" ]; then
+            git status --short -- style.json demo/
+            echo "Generated files are out of date. Run npm run build && npm run demo:build and commit the result."
+            exit 1
+          fi
+
+      - name: Validate style
+        run: npm run validate:style
+
+      - name: Check POI coverage
+        run: npm run check:pois
+
+      - name: Check screenshots
+        run: npm run screenshots:check
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

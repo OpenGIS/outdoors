@@ -36892,8 +36892,11 @@
               [
                 "round",
                 [
-                  "get",
-                  "ele"
+                  "to-number",
+                  [
+                    "get",
+                    "ele"
+                  ]
                 ]
               ],
               {}
