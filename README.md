@@ -29,10 +29,9 @@
 
 - [© OpenStreetMap Contributors](https://www.openstreetmap.org/copyright)
 - [OpenFreeMap](https://openfreemap.org/) — OSM vector tiles of the entire planet.
-- [© Mapterhorn](https://mapterhorn.com/) — 3D terrain, hillshading & contour lines.
+- [© Mapterhorn](https://mapterhorn.com/) — DEM source for 3D terrain and hillshading.
 - [© Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster blended over the natural-earth vectors (used when the `SATELLITE_GROUND` feature is enabled).
-- [Open GIS](https://tile.ogis.app/)
-  - [Tile Server](docs/7.server.md) - Outdoor-specific POIs, waymarked hiking and cycling routes, low-level paths & contours.
+- [Open GIS](https://tile.ogis.app/) — outdoor POI, waymarked-route, low-zoom path and contour tiles.
   - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
 
 ### Core
@@ -41,8 +40,6 @@
   - [Schema](https://openmaptiles.org/schema)
   - [OSM Style](https://github.com/openmaptiles/openmaptiles/tree/master/style)
 - [MapLibre Style Spec](https://maplibre.org/maplibre-style-spec/)
-- [Planetiler](https://github.com/onthegomap/planetiler)
-- [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 
 ## Run
 
@@ -63,8 +60,7 @@ npm run validate:style                # Validate `style.json` (MapLibre style sp
 npm run sprite:build                  # Build the outdoors sprite sheet from `icons/` into `dev/public/`
 
 # POIs
-npm run pois:schema                   # Regenerate `pois/pois-schema.yml` from `scripts/poi-config.mjs`
-npm run check:pois                    # Sprite / kind-coverage / schema-sync checks
+npm run check:pois                    # Sprite icons, orphan icons, token templates, kind coverage and sort priorities
 
 # Demo
 npm run demo:build                    # Build demo (`demo/`)

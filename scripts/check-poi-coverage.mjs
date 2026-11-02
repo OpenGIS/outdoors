@@ -6,8 +6,8 @@
  * Usage:
  *   node scripts/check-poi-coverage.mjs
  *
- * Checks, all against the built style.json, the shared OUTDOOR_POI
- * config and the generated pois/pois-schema.yml:
+ * Checks, all against the built style.json and the shared OUTDOOR_POI
+ * config:
  *
  *   [1] Sprite validation — every literal icon-image value used by the
  *       symbol layers of style.json must resolve against the sprite sheet it
@@ -39,9 +39,7 @@
  *   [2b] Sort priority — every OUTDOOR_POI.kind carries a numeric priority,
  *       and the outdoor-poi layer's symbol-sort-key is a match over kind with
  *       every kind covered at its config priority.
- *   [3] Schema sync — the kind set in pois/pois-schema.yml matches
- *       OUTDOOR_POI.kinds.
- *   [4] Planet layer — the PLANET_POI layer (outdoor-amenities) exists in
+ *   [3] Planet layer — the PLANET_POI layer (outdoor-amenities) exists in
  *       style.json with the correct source/source-layer/minzoom, its filter
  *       contains every PLANET_POI class, its symbol-sort-key covers every
  *       class at its config priority, and every PLANET_POI icon resolves
@@ -55,14 +53,12 @@
 import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import YAML from "yaml";
 import { OUTDOOR_POI, PLANET_POI } from "./poi-config.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 const CACHE_DIR = resolve(ROOT, ".cache");
 const STYLE_FILE = resolve(ROOT, "style.json");
-const SCHEMA_FILE = resolve(ROOT, "pois", "pois-schema.yml");
 
 const SPRITE_URL = "https://www.ogis.org/basemap/sprite.json";
 const SPRITE_CACHE = resolve(CACHE_DIR, "basemap-sprite.json");
@@ -542,42 +538,9 @@ if (poiSortKey === undefined) {
 }
 console.log();
 
-console.log("[3] Schema sync — pois-schema.yml kind set vs OUTDOOR_POI.kinds");
-const schemaDoc = YAML.parse(readFileSync(SCHEMA_FILE, "utf8"));
-const poiFeatures =
-  schemaDoc.layers.find((l) => l.id === "outdoor_pois")?.features ?? [];
-const schemaKinds = new Set(
-  poiFeatures
-    .map((f) => f.attributes?.find((a) => a.key === "kind")?.value)
-    .filter(Boolean),
-);
-const configKinds = new Set(OUTDOOR_POI.kinds.map((k) => k.kind));
-const missingFromSchema = [...configKinds].filter((k) => !schemaKinds.has(k));
-const extraInSchema = [...schemaKinds].filter((k) => !configKinds.has(k));
-console.log(`  schema kinds: ${[...schemaKinds].join(", ")}`);
-if (missingFromSchema.length === 0 && extraInSchema.length === 0) {
-  console.log("  kind sets match");
-} else {
-  if (missingFromSchema.length > 0) {
-    console.log(
-      `  FAIL kinds missing from schema: ${missingFromSchema.join(", ")}`,
-    );
-    for (const k of missingFromSchema)
-      failures.push(`kind "${k}" missing from pois-schema.yml`);
-  }
-  if (extraInSchema.length > 0) {
-    console.log(
-      `  FAIL kinds in schema but not config: ${extraInSchema.join(", ")}`,
-    );
-    for (const k of extraInSchema)
-      failures.push(`kind "${k}" in pois-schema.yml but not OUTDOOR_POI.kinds`);
-  }
-}
-console.log();
+// ---- [3] Planet layer -----------------------------------------------------
 
-// ---- [4] Planet layer -----------------------------------------------------
-
-console.log("[4] Planet layer — outdoor-amenities vs PLANET_POI config");
+console.log("[3] Planet layer — outdoor-amenities vs PLANET_POI config");
 const planetLayer = style.layers.find((l) => l.id === PLANET_POI.layerId);
 if (!planetLayer) {
   failures.push(`${PLANET_POI.layerId} layer missing from style.json`);
@@ -678,7 +641,7 @@ console.log();
 
 if (failures.length === 0) {
   console.log(
-    "✓ all checks pass — sprite icons present, all kinds covered, schema in sync, planet layer ok",
+    "✓ all checks pass — sprite icons present, all kinds covered, planet layer ok",
   );
   process.exitCode = 0;
 } else {

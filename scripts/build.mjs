@@ -10,10 +10,10 @@
  * project's outdoor palette (terrain, water and park colour overrides only
  * — no layers added or removed); slice 3 adds the Mapterhorn raster-dem
  * source, the hillshade layer and the 3D terrain config; slice 4 adds the
- * hosted contour vector source, the contour line layer and the contour
+ * contour vector source, the contour line layer and the contour
  * elevation labels; slice 5 adds the outdoor path family and the low-zoom
  * paths overlay; slice 6 replaces the Liberty POI tiers with the single
- * config-driven outdoor-POI overlay; slice 7 adds the hosted waymarked-route
+ * config-driven outdoor-POI overlay; slice 7 adds the waymarked-route
  * source, its nine network-tiered line layers and the ref/name badge symbol
  * layers. The basemap's own sources, glyphs and
  * sprite pass through untouched, since the published basemap is already
@@ -363,7 +363,7 @@ const RENDER_STACK = [
     id: "terrain",
     title: "Terrain & contours",
     summary:
-      "Adds the Mapterhorn DEM source with its hillshade and 3D terrain, plus the hosted contour lines and elevation labels.",
+      "Adds the Mapterhorn DEM source with its hillshade and 3D terrain, plus the contour lines and elevation labels.",
     palette: ["COLOURS.CONTOURS"],
     satellite:
       "Unaffected by the raster; the finishing pass recedes the contour opacities over the imagery.",
@@ -506,7 +506,7 @@ const RENDER_STACK = [
     id: "routes",
     title: "Waymarked routes",
     summary:
-      "Adds the hosted waymarked-route linework and marked-network ref/name badges for the hiking and cycling activities, green where the two share a way.",
+      "Adds the waymarked-route linework and marked-network ref/name badges for the hiking and cycling activities, green where the two share a way.",
     palette: ["COLOURS.ROUTES"],
     satellite:
       "Unaffected by the ground raster; the ivory casing keeps route linework legible over imagery.",
@@ -778,13 +778,9 @@ const HILLSHADE_EXAGGERATION = [
   0.2,
 ];
 
-// CONTOURS — hosted PBF contour vector source, line layer & elevation labels.
-// Values ported from the pre-refactor build. The ogis.app hosted contour
-// service (contour-mvt-server) serves standard Mapbox Vector Tiles rendered
-// server-side from the Mapterhorn DEM — the same tiles.mapterhorn.com
-// endpoint used by DEM_SOURCE_URL, so the client and the tile server fetch
-// the same Mapterhorn tile; the CDN sees it twice and serves the second
-// request from cache.
+// CONTOURS — contour PBF vector source, line layer & elevation labels.
+// Values ported from the pre-refactor build; contour tiles come from
+// CONTOUR_TILE_URL over the z9–14 source range.
 const CONTOUR_SOURCE_ID = "contour-source";
 const CONTOUR_TILE_URL = "https://tile.ogis.app/contours/{z}/{x}/{y}.pbf";
 const CONTOUR_SOURCE_LAYER = "contours";
@@ -1009,7 +1005,7 @@ const ROAD_UNPAVED_COND = ["==", ["get", "surface"], "unpaved"];
 // raceway 6, minor 5, service 4, links/ramps 5.5, the bare Link/Street bridge
 // & tunnel family 4 (see ROAD_WIDTH_OVERRIDES), and the outdoor-paths-track
 // overlay 3.5. "Pedestrian road outline" is exempt and keeps its basemap width.
-const ROAD_TRACK_WIDTH_METRES = 3.5; // hosted low-zoom track overlay
+const ROAD_TRACK_WIDTH_METRES = 3.5; // low-zoom track overlay
 const ROAD_WIDTH_KEYWORDS = [
   ["outdoor-paths-track", ROAD_TRACK_WIDTH_METRES],
   ["service", 4], // before "link": a service-road link stays a service road
@@ -1233,10 +1229,10 @@ const PATH_WIDTH_LOW_ZOOM = [
 ]; // overlay width z9–13; z13 ≈ PATH_WIDTH at z14 for a seamless handoff
 const PATH_BASE_MINZOOM = 14; // the basemap path layers render from here; the overlay owns z9–13
 
-// Hosted low-zoom paths overlay — vector tiles with path/footway/track
-// geometry from OSM, filling the z9–13 gap where the OpenMapTiles base
-// tiles carry no path data (route-gated below z12, all paths at z12).
-// Source-layer: 'outdoor_paths'. Self-hosted Planetiler tiles (z9–13).
+// Low-zoom paths overlay — vector tiles with path/footway/track geometry
+// from OSM, filling the z9–13 gap where the OpenMapTiles base tiles carry
+// no path data (route-gated below z12, all paths at z12). Source-layer:
+// 'outdoor_paths'. Source range z9–13.
 const PATHS_SOURCE_ID = "outdoor-paths";
 const PATHS_SOURCE_LAYER = "outdoor_paths";
 const PATHS_TILE_URL = "https://tile.ogis.app/paths/{z}/{x}/{y}.pbf";
@@ -1256,13 +1252,13 @@ const PATHS_TRACK_MINZOOM = 12; // below z12 nothing renders, matching the basem
 // Track fill & casing widths come from the road width engine (3.5 m, local
 // floor) so the overlay tracks match the basemap's local-road rendering.
 
-// WAYMARKED ROUTES — hosted vector tiles carrying the member ways of both
+// WAYMARKED ROUTES — vector tiles carrying the member ways of both
 // waymarked-route activities. Each way carries an `activity` property
 // ("hiking" or "cycling"), an `activities` property listing every activity the
 // way belongs to, and a `network` property in the activity's own vocabulary,
 // or none at all; the tiers below draw every way once, from lowest to highest
 // network, so higher networks win shared segments. Both activities share one
-// archive and one source-layer: 'outdoor_routes'.
+// source-layer: 'outdoor_routes'.
 //
 // The overlay's source and paint plumbing lives here once; the activity
 // descriptors below only add their identity, colour, toggle and tier table.
@@ -1469,7 +1465,7 @@ const ROUTE_BADGE_TEXT_FILTER = [
 ];
 
 // Route activities — one descriptor per activity, in draw order bottom to top.
-// Each names its toggle, colour, badge icon and tier table; the hosted source
+// Each names its toggle, colour, badge icon and tier table; the shared source
 // and paint plumbing come from ROUTE_OVERLAY. Layer prefixes are derived from
 // the source id and activity id (`outdoor-routes-<activity>`). Cycling is
 // listed first so it draws beneath the hiking arteries; on a way shared by
@@ -1491,8 +1487,8 @@ const ROUTE_ACTIVITIES = [
   },
 ];
 
-// Transitional fallback: the current profile emits activity ("hiking" or
-// "cycling") and activities ("hiking;cycling"). Older hosted archives may emit
+// Transitional fallback: the current tiles emit activity ("hiking" or
+// "cycling") and activities ("hiking;cycling"). Older tiles may emit
 // neither, carrying only the network vocabulary, so the marked networks derived
 // from ROUTE_ACTIVITIES' tier tables are the practical legacy signal. A legacy
 // route_type of "bicycle" remains a secondary compatibility signal, and anything
@@ -1754,7 +1750,7 @@ const POI_TEXT_EXPR = [
 ];
 
 // PLANET_POI — amenities rendered from the basemap's OpenMapTiles `poi`
-// source-layer (planet tiles, no hosted extract). Like the outdoor-poi
+// source-layer (planet tiles, no custom extract). Like the outdoor-poi
 // overlay, the filter, icon match and title expression are derived from
 // PLANET_POI.kinds so they can never drift from the config. Icons live in
 // the basemap's "default" sprite; the "dot" fallback (outdoors sheet) is
@@ -2315,7 +2311,7 @@ function applyDemTerrain(style) {
 }
 
 /**
- * Add the hosted contour vector source and the contour line layer.
+ * Add the contour vector source and the contour line layer.
  * Gated by CONTOURS. The single line layer merges the minor + index contours
  * into one layer — v5 filter syntax can't express ["%", …] expressions, so
  * tiering is done with expression-based paint. The layer is inserted after
@@ -2537,7 +2533,7 @@ function applyRoadSurfaceAware(style) {
 }
 
 /**
- * Hosted low-zoom paths overlay — adds the outdoor-paths vector source and
+ * Low-zoom paths overlay — adds the outdoor-paths vector source and
  * three line layers covering the z9–13 gap where the OpenMapTiles base
  * tiles carry no path data. Path & footway ways render from z9; track-class
  * ways (only partially present below z14) are re-drawn at z12–13 styled as
@@ -2687,7 +2683,7 @@ function routeCasingWidth(width, scale) {
   );
 }
 
-// Register the shared hosted source once. Kept idempotent so every activity
+// Register the shared source once. Kept idempotent so every activity
 // may register it without overwriting it.
 function registerRouteSource(style, overlay) {
   if (style.sources[overlay.sourceId]) return;
@@ -2874,9 +2870,9 @@ function insertRouteLayers(style, layers) {
 /**
  * Add the waymarked-route overlay — its own render section above all
  * transportation linework and boundaries, but below every label. Both
- * activities share one hosted archive; the `activity`/`activities` attributes
- * identify a way's memberships (with a transitional `route_type` fallback for
- * the hosted archive), and each activity is gated by its own feature toggle.
+ * activities share one source-layer; the `activity`/`activities` attributes
+ * identify a way's memberships (with a transitional `route_type` fallback),
+ * and each activity is gated by its own feature toggle.
  * Activities are assembled in registry order, cycling first, so hiking draws
  * above. Every tier draws once, lowest first; higher networks draw last so
  * they win shared segments. Marked routes use the activity's colour with
@@ -2987,7 +2983,7 @@ function applyBasemapPoiIcons(style, spriteKeys = []) {
 /**
  * Outdoor POI overlay — one config-driven symbol layer (see
  * poi-config.mjs) replacing the old Liberty tier layers. Renders the 9
- * outdoor kinds from the hosted outdoor_pois tiles below their per-kind
+ * outdoor kinds from the outdoor_pois tiles below their per-kind
  * handoff zooms, handing off to the basemap's own POI layers (Attraction
  * z15, Campsite z16, Accommodation z17, Waste z18) at/above them. Layout
  * and paint mirror the basemap's own POI symbol layers (see "Campsite"):

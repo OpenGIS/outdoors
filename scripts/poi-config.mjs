@@ -3,12 +3,11 @@
 /**
  * Shared config for the outdoor-POI overlay (v2.0 refactor).
  *
- * The single source of truth for the hosted outdoor_pois tiles: which kinds
+ * The single source of truth for the outdoor_pois tiles: which kinds
  * the overlay renders, which basemap sprite icon each uses, and at which
- * zoom the basemap's own POI layers take over. Imported by both
- * scripts/build.mjs (which builds the `outdoor-poi` symbol layer) and
- * scripts/generate-poi-schema.mjs (which regenerates pois/pois-schema.yml
- * for the planetiler profile), so the two can never drift.
+ * zoom the basemap's own POI layers take over. Imported by
+ * scripts/build.mjs, which builds the `outdoor-poi` symbol layer, so the
+ * layer can never drift from the config.
  */
 
 export const OUTDOOR_POI = {
@@ -159,7 +158,7 @@ export const OUTDOOR_POI = {
 };
 
 // Planet-tile POIs rendered from the OpenMapTiles `poi` source-layer
-// (planet tiles, no hosted extract). Icons come from the basemap's "default"
+// (planet tiles, no custom extract). Icons come from the basemap's "default"
 // sprite unless they live in the outdoors sheet (the "dot" fallback).
 export const PLANET_POI = {
   sourceId: "openmaptiles", // the basemap's existing vector source
