@@ -31,7 +31,7 @@
 - [OpenFreeMap](https://openfreemap.org/) — OSM vector tiles of the entire planet.
 - [© Mapterhorn](https://mapterhorn.com/) — DEM source for 3D terrain and hillshading.
 - [© Esri World Imagery](https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer) — Satellite ground raster blended over the natural-earth vectors (used when the `SATELLITE_GROUND` feature is enabled).
-- [Open GIS](https://tile.ogis.app/) — outdoor POI, waymarked-route, low-zoom path and contour tiles.
+- [Open GIS Tile Server](https://tile.ogis.app/) — core outdoor data dependency: the outdoor POI, waymarked-route, low-zoom path and contour vector tiles that the style layers over the basemap. Its source code and operations documentation live in the public [OpenGIS/tiles](https://github.com/OpenGIS/tiles) repository, and the live [source inventory](https://tile.ogis.app/sources) publishes each source's name, zoom range, build id and TileJSON link.
   - [Style Assets](https://www.ogis.org/basemap/) - Basemap style glyphs & sprites.
 
 ### Core
