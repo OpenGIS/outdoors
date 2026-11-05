@@ -1,6 +1,6 @@
 # Outdoors
 
-> A Free and Open-Source map style for the Great Outdoors.
+> A Free and Open-Source 3D rendering of your surroundings.
 
 🌎🌍🌏 **[[DEMO]](https://www.ogis.app/)** 🌎🌍🌏
 
