@@ -11,8 +11,12 @@ To best understand this project:
 
 ```bash
 npm run build        # builds style.json from build.mjs feature flags
-npm run demo:build   # builds the Vue compare app to demo/ via Vite
+npm run demo:build   # builds the Vue compare app to dist/ via Vite
 ```
+
+`style.json`, the sprite sheets in `dev/public/` and `sprite.lock.json` are committed; `build/` and `dist/` are generated.
+
+After editing [`palette.json`](palette.json) or the icon sources in [`icons/`](icons/), run `npm run sprite:build` (it renders the icons first and rewrites the committed `sprite.lock.json`), then `npm run build`; `npm run palette:check` validates the palette and sources and verifies the lock without a render or `spreet`. Do not hand-edit the lock — regenerate it with `npm run sprite:build`.
 
 ## Documentation
 

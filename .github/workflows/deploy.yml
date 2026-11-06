@@ -39,21 +39,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build style and demo
+      - name: Build style and production bundle
         run: |
           npm run build
           npm run demo:build
 
       - name: Verify generated outputs are current
         run: |
-          if [ -n "$(git status --porcelain -- style.json demo/)" ]; then
-            git status --short -- style.json demo/
-            echo "Generated files are out of date. Run npm run build && npm run demo:build and commit the result."
+          if [ -n "$(git status --porcelain -- style.json)" ]; then
+            git status --short -- style.json
+            echo "Generated files are out of date. Run npm run build and commit the result."
             exit 1
           fi
 
       - name: Validate style
         run: npm run validate:style
+
+      - name: Check icon palette
+        run: npm run palette:check
 
       - name: Check POI coverage
         run: npm run check:pois
@@ -67,8 +70,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload the built demo
-          path: "./demo"
+          # Upload the production build
+          path: "./dist"
 
       - name: Deploy to GitHub Pages
         id: deployment

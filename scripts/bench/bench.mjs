@@ -24,7 +24,7 @@
  * Flags:
  *   --mode       <move|load>  benchmark mode; default move
  *   --serve      <dev|demo>   serve the Vite dev app or the production
- *                             `demo/` bundle (via `vite preview`); load mode
+ *                             `dist/` bundle (via `vite preview`); load mode
  *                             only; default dev
  *   --shot       <id|all>     shot (scenario) to run; default all
  *   --variants   <csv|all>    move mode: variants to run; default all
@@ -299,7 +299,7 @@ function usage() {
     "Usage: npm run bench [-- options]",
     "",
     "  --mode     <move|load>  benchmark mode (default move)",
-    "  --serve    <dev|demo>   serve the Vite dev app or the production demo/",
+    "  --serve    <dev|demo>   serve the Vite dev app or the production dist/",
     "                          bundle via vite preview (load mode only; default dev)",
     "  --shot     <id|all>     shot to run (default all; load mode defaults to",
     `                          ${LOAD_SHOT_IDS.join(", ")})`,
@@ -477,7 +477,7 @@ function startVite(port) {
 }
 
 /**
- * Serve the production `demo/` bundle (the deployable output of
+ * Serve the production `dist/` bundle (the deployable output of
  * `npm run demo:build`) on the given port via `vite preview`. The compare app
  * exposes `window.__outdoorsMaps` in every build, so load mode can reach the
  * maps even though the production Vue build strips `__vueParentComponent`.
@@ -2075,7 +2075,9 @@ async function runLoad(options, shots) {
   const port = await findFreePort();
   const baseUrl = `http://${HOST}:${port}`;
   const serverLabel =
-    options.serve === "demo" ? "demo bundle (vite preview)" : "Vite dev server";
+    options.serve === "demo"
+      ? "production bundle (vite preview)"
+      : "Vite dev server";
   console.log(`Starting ${serverLabel} on ${baseUrl}`);
   if (options.serve === "demo") startPreview(port);
   else startVite(port);

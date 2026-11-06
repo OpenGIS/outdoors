@@ -100,7 +100,7 @@ export const OUTDOOR_POI = {
     },
     {
       kind: "information",
-      icon: "office",
+      icon: "board",
       handoffZoom: 16,
       showEle: false,
       priority: 50,

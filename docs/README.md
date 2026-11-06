@@ -1,6 +1,6 @@
 ---
-git_hash: "08b7257d7bfce2ae9d1e3dce28f5fd91a48b4574"
-modified: "2026-11-01"
+git_hash: "2d0d3a76f06d30267dea006faa6855640dde7dae"
+modified: "2026-11-06"
 ---
 
 # Project Documentation
@@ -8,11 +8,11 @@ modified: "2026-11-01"
 > [!IMPORTANT]
 > **Proof of Concept.** Expect inaccuracies, mistakes and oversights.
 
-0. [Terminology](0.terminology.md) — the key terms used across these docs: basemap, OpenMapTiles, OpenFreeMap, POI, OpenStreetMap
-1. [Build Script](1.build.md) — how the OpenGIS Basemap style is fetched, cached and mutated into `style.json`, and the toggles and constants that control the result
-2. [Style Structure](2.style.md) — how the style builds on the OpenGIS Basemap: the basemap's sources and the outdoor modifications applied on top
+0. [Terminology](0.terminology.md) — the key terms used across these docs: palette, basemap, OpenMapTiles, OpenFreeMap, POI, OpenStreetMap
+1. [Build Script](1.build.md) — how the OpenGIS Basemap style is fetched, cached and mutated into `style.json`, and the palette and sprite-lock workflow, toggles and constants that control the result
+2. [Style Structure](2.style.md) — how the style builds on the OpenGIS Basemap: palette-driven colours and icons, the basemap's sources, and the outdoor modifications applied on top
 3. [Paths](3.paths.md) — the outdoor path family on the basemap path layers, and the low-zoom paths overlay that fills the z9–13 gap in the base data
-4. [Outdoor POIs](4.pois.md) — the two-tier POI system: the shared config and the coverage checker
+4. [Outdoor POIs](4.pois.md) — the two-tier POI system: the shared config, the icon palette and the coverage checker
 5. [Elevation & Terrain](5.dem.md) — the Mapterhorn DEM — hillshade, 3D terrain, and the contour overlay
 6. [Client-side rendering](6.client.md) — how the style is rendered by client mapping libraries: renderer compatibility, metric/imperial unit switching, and the compare app
 7. [Activities](7.activities.md) — the waymarked hiking- and cycling-route overlays in the style, the MTB scale reference implementation, and the design rationale

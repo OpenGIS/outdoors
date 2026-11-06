@@ -52,21 +52,25 @@ npm install                           # Install dependencies
 npm run build                         # Build `style.json` from `scripts/build.mjs` (also validates)
 ```
 
+Map and icon colours live in [`palette.json`](palette.json), which also registers the icon set. After editing the palette or the authored icon sources in `icons/`, regenerate the derived files in order: `npm run palette:build` (optional; `npm run sprite:build` renders first) → `npm run sprite:build` → `npm run build` → `npm run demo:build`. `npm run sprite:build` also rewrites the committed `sprite.lock.json`, which records sha256 digests of the sources and sheets so CI can verify sprite freshness without `spreet`. `style.json`, the sprite sheets in `dev/public/` and the lock are committed; the rendered icons in `build/icons/` and the app bundle in `dist/` are generated.
+
 ### Other
 
 ```bash
 # Validate
 npm run validate:style                # Validate `style.json` (MapLibre style spec)
 
-# Sprites
-npm run sprite:build                  # Build the outdoors sprite sheet from `icons/` into `dev/public/`
+# Palette & sprites
+npm run palette:build                 # Render `icons/` through `palette.json` into gitignored `build/icons/`
+npm run palette:check                 # Validate `palette.json` + `icons/` and verify `sprite.lock.json` (no render)
+npm run sprite:build                  # Render icons, build the sprite sheets and rewrite `sprite.lock.json`
 
 # POIs
 npm run check:pois                    # Sprite icons, orphan icons, token templates, kind coverage and sort priorities
 
 # Demo
-npm run demo:build                    # Build demo (`demo/`)
-npm run demo:preview                  # Preview demo
+npm run demo:build                    # Build the compare app to `dist/`
+npm run demo:preview                  # Preview the `dist/` build
 
 # Screenshots
 npx playwright install chromium
@@ -78,7 +82,7 @@ npm run screenshots:check -- --stale  # Also fail on images older than their inp
 # Benchmark
 npm run bench                         # Draw-performance benchmark of the compare app
 npm run bench -- --shot bolzano-3d --variants full   # Focus a shot / variant
-npm run bench -- --mode load --serve demo            # Load-benchmark the demo bundle
+npm run bench -- --mode load --serve demo            # Load-benchmark the `dist/` build
 ```
 
 Screenshot runs exit non-zero on a capture failure, including a filtered `--name` run.
@@ -94,8 +98,8 @@ npm run dev                           # Start Vite dev server + auto-build watch
 
 ## CI & releases
 
-- **Deploy** — [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `master`: it installs dependencies, rebuilds the style and demo, and fails if either `style.json` or `demo/` differs from the committed output. It then validates the style, checks POI coverage and screenshots, and deploys `demo/` to GitHub Pages.
-- **Release** — [`.github/workflows/release.yml`](.github/workflows/release.yml) runs when `package.json` changes on `master`, or on manual dispatch. If the matching `v<version>` release does not exist, it runs the same checks and creates the GitHub Release and tag with generated notes; if the release already exists it skips, so reruns are safe.
+- **Deploy** — [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `master`: it installs dependencies, rebuilds the style and app, and fails if `style.json` differs from the committed output (the app bundle in `dist/` is generated, not committed). It then validates the style, runs `npm run palette:check` (which verifies the committed `sprite.lock.json` because CI has no `spreet`), checks POI coverage and screenshots, and uploads the generated `dist/` build to GitHub Pages.
+- **Release** — [`.github/workflows/release.yml`](.github/workflows/release.yml) runs when `package.json` changes on `master`, or on manual dispatch. If the matching `v<version>` release does not exist, it runs the same build and checks (including the `style.json` freshness check and the sprite lock) and creates the GitHub Release and tag with generated notes; if the release already exists it skips, so reruns are safe.
 
 ---
 

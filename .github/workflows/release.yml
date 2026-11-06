@@ -54,7 +54,7 @@ jobs:
         if: steps.release.outputs.exists == 'false'
         run: npm ci
 
-      - name: Build style and demo
+      - name: Build style and production bundle
         if: steps.release.outputs.exists == 'false'
         run: |
           npm run build
@@ -63,15 +63,19 @@ jobs:
       - name: Verify generated outputs are current
         if: steps.release.outputs.exists == 'false'
         run: |
-          if [ -n "$(git status --porcelain -- style.json demo/)" ]; then
-            git status --short -- style.json demo/
-            echo "Generated files are out of date. Run npm run build && npm run demo:build and commit the result."
+          if [ -n "$(git status --porcelain -- style.json)" ]; then
+            git status --short -- style.json
+            echo "Generated files are out of date. Run npm run build and commit the result."
             exit 1
           fi
 
       - name: Validate style
         if: steps.release.outputs.exists == 'false'
         run: npm run validate:style
+
+      - name: Check icon palette
+        if: steps.release.outputs.exists == 'false'
+        run: npm run palette:check
 
       - name: Check POI coverage
         if: steps.release.outputs.exists == 'false'

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "algorithm": "sha256",
+  "sources": {
+    "palette": "28617a36a346d3cd1d5bdf37b47cdf1d7d239fd9b34eec16d9727c6ee346537b",
+    "icons": "33bc4beb9fc0b2722741f5379d18f646e0979b972a1d8cdd2dd096d82af3701b"
+  },
+  "sprites": {
+    "sprite.json": "9bb3713d2ec40539584895444454dfd03b6f9ff508073a4369f1a5ad49110746",
+    "sprite.png": "937bb935e578d24ebb135c03a784f4a8162deb3a1697deff8d58670dbb399cfc",
+    "sprite@2x.json": "cc2c8d507a2035a0ca6c6c638e38680dbace47af2eb1d405af43c149e986c483",
+    "sprite@2x.png": "b4ec14ec1c0471ee29a4169711e87fbf4210dc43c8e9ce0de3b5791cbbce00e1"
+  }
+}

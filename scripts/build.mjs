@@ -152,94 +152,10 @@ ATTRIBUTION.LINE = [
   ...(FEATURES.SATELLITE_GROUND ? [ATTRIBUTION.ESRI] : []),
 ].join(" ");
 
-// Every colour literal used by the modifications, nested by feature. Values are
-// ported from the pre-refactor build (the project's established outdoor
-// look), adapted where the new basemap's layer structure differs.
-const COLOURS = {
-  // Terrain fills (TERRAIN_PALETTE)
-  TERRAIN: {
-    BACKGROUND: "hsl(18, 12%, 45%)", // earthy reddish-grey core canvas tone
-    GRASS: "hsl(84, 42%, 61%)", // muted yellow-green — grass, meadow, wetland, garden
-    WOOD: "hsl(112, 22%, 32%)", // muted green — wood, forest, mangrove; distinctly darker than grass
-    ICE: "hsl(47, 22%, 94%)", // warm pale — glacier
-    RESIDENTIAL: "hsl(45, 10%, 74%)", // warm pale — residential
-    SAND: "hsl(35, 62%, 66%)", // warm, saturated sand for the vector ground — sand, dune, beach
-  },
-
-  // Landcover accents (TERRAIN_PALETTE)
-  LANDCOVER: {
-    ROCK: "hsl(35, 10%, 61%)", // muted taupe — rock, scree, bare rock
-    FARMLAND: "hsl(82, 38%, 60%)", // muted yellow-green — farmland, farm, orchard
-    HEATH: "hsl(58, 28%, 59%)", // muted yellow — heath, scrub
-  },
-
-  // Landuse accents (TERRAIN_PALETTE)
-  LANDUSE: {
-    MILITARY: "hsl(0, 55%, 90%)", // muted red tint (old value was an rgba wash)
-    QUARRY: "hsl(30, 18%, 74%)", // muted brown tint (old value was an rgba wash)
-  },
-
-  // Water (WATER_PALETTE)
-  WATER: {
-    WATER: "hsl(205, 56%, 73%)", // muted blue — fills & lines
-    GLACIER_OUTLINE: "hsl(205, 45%, 78%)", // soft ice blue — glacier outline
-  },
-
-  // Parks (PARK_DIFFERENTIATION)
-  PARK: {
-    NATIONAL_PARK: "rgb(170, 210, 140)", // darker green — national park boundaries
-    DEFAULT: "rgb(210, 225, 175)", // lighter green — park fill
-    LABEL_TEXT: "#3d5c28", // dark green — park labels
-  },
-
-  // Roads (ROAD_SURFACE_AWARE) — a strict greyscale network: near-black
-  // asphalt fills ascending in lightness by tier, casings that are lighter
-  // than their fills, and light-grey unpaved variants with a slightly darker
-  // edge.
-  ROADS: {
-    MAJOR: "rgb(26, 26, 26)", // asphalt — motorway/trunk/primary (+ links)
-    MEDIUM: "rgb(36, 36, 36)", // asphalt — secondary/tertiary/links
-    LOCAL: "rgb(48, 48, 48)", // asphalt — minor/service/track/raceway
-    CASING_MAJOR: "rgb(94, 94, 94)", // casing — lighter than the major fill
-    CASING_MEDIUM: "rgb(106, 106, 106)", // casing — lighter than the medium fill
-    CASING_LOCAL: "rgb(120, 120, 120)", // casing — lighter than the local fill
-    CASING_UNPAVED: "rgb(118, 118, 118)", // casing — darker edge for light-grey unpaved fills
-    TRACK_CASING: "rgb(92, 92, 92)", // neutral grey — low-zoom track outline
-    TRACK_FILL: "rgb(112, 112, 112)", // muted core inside the track casing; decoupled from LOCAL
-    UNPAVED_MAJOR: "rgb(150, 150, 150)", // unpaved motorway/trunk/primary
-    UNPAVED_MEDIUM: "rgb(153, 153, 153)", // unpaved secondary/tertiary
-    UNPAVED_LOCAL: "rgb(156, 156, 156)", // unpaved minor/service/track
-  },
-
-  // Paths (PATH_STYLING & LOW_ZOOM_PATHS) — the outdoor trail colour shared
-  // by the low-zoom overlay and the basemap path layers.
-  PATHS: { PATH: "#c05a2a" },
-
-  // Waymarked routes (WAYMARKED_HIKING_ROUTES & WAYMARKED_CYCLING_ROUTES) —
-  // one muted hue per activity: hiking oxblood reads as arteries, cycling
-  // indigo as veins; hierarchy comes from line width, not hue. A way shared by
-  // both activities turns deep green so the overlap is legible without extra
-  // layers. The indigo sits darker and more violet than the pale water blue,
-  // and stays distinct from the orange path family and the azure basemap
-  // chips. The neutral unmarked tier is a deliberate dark warm grey so it
-  // reads on both light and dark ground. The warm ivory casing lifts the line
-  // clear of the darker basemap and the burnt-orange path network beneath it.
-  ROUTES: {
-    HIKING: "#8e3b3b",
-    CYCLING: "#46589f",
-    MIXED: "#3f7a4f",
-    UNMARKED: "#6f6862",
-    CASING: "#fff8f0",
-  },
-
-  // Contours (CONTOURS)
-  CONTOURS: {
-    MINOR: "rgb(198, 170, 138)", // soft sand-brown — minor contour lines
-    INDEX: "rgb(164, 130, 94)", // medium topo brown — index contour lines
-    LABEL: "#5c4634", // dark umber — elevation labels
-    HALO: "rgba(255, 255, 255, 0.5)", // semi-transparent white — label halo
-  },
-};
+// palette.json at the repository root is the single source of truth for every
+// map and icon colour.
+const palette = JSON.parse(readFileSync(resolve(ROOT, "palette.json"), "utf8"));
+const COLOURS = palette.map;
 
 // ═════════════════════════════════════════════════════════════════════════
 // RENDER STACK — the ordered source of truth for the render stack
@@ -1551,48 +1467,18 @@ const POI_FILTER = [
 
 // Sprite sheet wiring — the outdoors-owned sheet (built by
 // scripts/build-sprite.mjs) loads as its own sprite id ("outdoors"), so its
-// icons are referenced with an "outdoors:" prefix. This list MUST contain
-// every icon in the outdoors sheet: MapLibre keys images from a non-default
-// sheet as "<id>:<name>", while bare names only resolve against the default
-// sheet — style.getImage() is a direct lookup with no fallback. An icon in
-// the outdoors sheet referenced bare would never render (styleimagemissing).
-// Every other POI icon comes from the basemap's "default" sheet and stays
-// unprefixed. See the style.sprite array in build().
+// icons are referenced with an "outdoors:" prefix. The owned icon set is the
+// key set of palette.json's "icons" map — the single registry shared with the
+// palette renderer and the sprite build. MapLibre keys images from a
+// non-default sheet as "<id>:<name>", while bare names only resolve against
+// the default sheet — style.getImage() is a direct lookup with no fallback.
+// An icon in the outdoors sheet referenced bare would never render
+// (styleimagemissing). Every other POI icon comes from the basemap's
+// "default" sheet and stays unprefixed. See the style.sprite array in build().
 const OUTDOOR_SPRITE_ID = "outdoors";
-const OUTDOOR_SPRITE_ICONS = [
-  // Outdoor-POI overlay (poi-config.mjs).
-  "trailhead",
-  "pass",
-  "dot",
-  "park",
-  "skiing",
-  // Curated basemap-POI glyphs — see BASEMAP_POI_ICON_REMAP below. Every entry
-  // MUST exist as an SVG in icons/ and in EXPECTED_ICONS in
-  // scripts/build-sprite.mjs, and be referenced somewhere below, or the
-  // coverage check's orphan assertion fails.
-  "soccer",
-  "basketball",
-  "tennis",
-  "volleyball",
-  "baseball",
-  "bowls",
-  "swimming_pool",
-  "running",
-  "skateboard",
-  "garden",
-  "stadium",
-  "sports_centre",
-  "route_marker",
-  "trail_blaze",
-  "ruins",
-  // Waymarked-route badge shields (referenced from build.mjs route layers);
-  // one per activity plus the mixed shield for ways shared by both.
-  "route_marked_hiking",
-  "route_marked_cycling",
-  "route_marked_mixed",
-];
+const OUTDOOR_SPRITE_ICONS = new Set(Object.keys(palette.icons));
 const outdoorIcon = (name) =>
-  OUTDOOR_SPRITE_ICONS.includes(name) ? `${OUTDOOR_SPRITE_ID}:${name}` : name;
+  OUTDOOR_SPRITE_ICONS.has(name) ? `${OUTDOOR_SPRITE_ID}:${name}` : name;
 
 // Icon match — each kind maps to its sprite icon (basemap icons unprefixed,
 // outdoors-owned icons prefixed), with a "dot" fallback for any unmatched
@@ -1657,6 +1543,15 @@ const BASEMAP_POI_ICON_REMAP = {
   route_marker: outdoorIcon("route_marker"),
   trail_blaze: outdoorIcon("trail_blaze"),
   ruins: outdoorIcon("ruins"),
+  // Handoff parity — kinds the outdoor overlay renders below its handoff zoom,
+  // so the basemap's own layers must show the same glyph above it.
+  playground: outdoorIcon("playground"),
+  drinking_water: outdoorIcon("drinking_water"),
+  toilets: outdoorIcon("toilets"),
+  castle: outdoorIcon("castle"),
+  parking: outdoorIcon("parking"),
+  alpine_hut: outdoorIcon("alpinehut"),
+  wilderness_hut: outdoorIcon("wilderness_hut"),
   // Near-miss literals that DO exist in the basemap sheet.
   fire_station: "firestation",
   wine: "alcohol",
@@ -2930,7 +2825,9 @@ function applyBasemapPoiIcons(style, spriteKeys = []) {
 
   for (const layer of style.layers) {
     const img = layer.layout?.["icon-image"];
-    const match = typeof img === "string" ? TOKEN_ICON_RE.exec(img) : null;
+    if (typeof img !== "string") continue;
+
+    const match = TOKEN_ICON_RE.exec(img);
     if (match) {
       setLayout(
         style,
@@ -2938,6 +2835,16 @@ function applyBasemapPoiIcons(style, spriteKeys = []) {
         "icon-image",
         basemapPoiIconExpression(match[1], spriteKeys),
       );
+      rewrites.push(layer.id);
+      continue;
+    }
+
+    // Literal basemap icon names (Campsite's "camping", Ferry's "ferry") are
+    // not token templates, so the rewrite above skips them. Map any that name
+    // an outdoors palette icon to its prefixed form for handoff parity; leave
+    // prefixed names and literal default-sheet names untouched.
+    if (OUTDOOR_SPRITE_ICONS.has(img)) {
+      setLayout(style, layer.id, "icon-image", outdoorIcon(img));
       rewrites.push(layer.id);
     }
   }
@@ -3261,10 +3168,10 @@ async function build() {
   // "<id>:<name>", or bare "<name>" for the "default" sheet. The basemap
   // sprite stays "default" so its own layer references are untouched; the
   // outdoors-owned sheet (built by scripts/build-sprite.mjs into dev/public,
-  // deployed to https://www.ogis.org/outdoors/) carries the five outdoor-poi
-  // icons (trailhead, pass, dot, park, skiing) referenced as
-  // "outdoors:<name>" — see OUTDOOR_SPRITE_ID above. One committed location
-  // serves dev, the screenshot harness and GitHub Pages.
+  // deployed to https://www.ogis.org/outdoors/) carries the project-owned
+  // icon set generated from palette.json, referenced as "outdoors:<name>" —
+  // see OUTDOOR_SPRITE_ID above. One committed location serves dev, the
+  // screenshot harness and GitHub Pages.
   // This must always apply — it is not feature-gated.
   style.sprite = [
     { id: "default", url: "https://www.ogis.org/basemap/sprite" },

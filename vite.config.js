@@ -22,7 +22,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: resolve(__dirname, "demo"),
+    outDir: resolve(__dirname, "dist"),
     emptyOutDir: true,
   },
   optimizeDeps: {
