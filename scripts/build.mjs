@@ -416,13 +416,15 @@ const RENDER_STACK = [
       "Secondary road outline",
       "Tertiary road outline",
       "Secondary road link outline",
+      "Tertiary road link outline",
       "Secondary tunnel outline",
       "Tertiary tunnel outline",
       "Secondary bridge outline",
       "Tertiary bridge outline",
       "Minor road outline",
       "Pedestrian road outline",
-      "Service road link outline",
+      "Service road outline",
+      "Track road outline",
       "Service tunnel outline",
       "Street tunnel outline",
       "Link tunnel outline",
@@ -521,8 +523,8 @@ const RENDER_STACK = [
       "outdoor-routes-cycling-ncn",
       "outdoor-routes-cycling-icn-casing",
       "outdoor-routes-cycling-icn",
-      "outdoor-routes-cycling-badges-major",
       "outdoor-routes-cycling-badges-local",
+      "outdoor-routes-cycling-badges-major",
       "outdoor-routes-hiking-unmarked-casing",
       "outdoor-routes-hiking-unmarked",
       "outdoor-routes-hiking-lwn-casing",
@@ -533,8 +535,8 @@ const RENDER_STACK = [
       "outdoor-routes-hiking-nwn",
       "outdoor-routes-hiking-iwn-casing",
       "outdoor-routes-hiking-iwn",
-      "outdoor-routes-hiking-badges-major",
       "outdoor-routes-hiking-badges-local",
+      "outdoor-routes-hiking-badges-major",
     ],
     steps: [
       {
@@ -857,12 +859,17 @@ const ROAD_TIERS = {
     unpaved: COLOURS.ROADS.UNPAVED_MAJOR,
   },
   medium: {
-    layers: ["Secondary road", "Tertiary road"],
+    layers: [
+      "Secondary road",
+      "Tertiary road",
+      "Secondary road link",
+      "Tertiary road link",
+    ],
     paved: COLOURS.ROADS.MEDIUM,
     unpaved: COLOURS.ROADS.UNPAVED_MEDIUM,
   },
   local: {
-    layers: ["Minor road", "Service road", "Raceway road"],
+    layers: ["Minor road", "Service road", "Track road", "Raceway road"],
     paved: COLOURS.ROADS.LOCAL,
     unpaved: COLOURS.ROADS.UNPAVED_LOCAL,
   },
@@ -899,6 +906,7 @@ const ROAD_CASING_LAYERS = {
       "Secondary road outline",
       "Tertiary road outline",
       "Secondary road link outline",
+      "Tertiary road link outline",
       "Secondary tunnel outline",
       "Tertiary tunnel outline",
       "Secondary bridge outline",
@@ -910,7 +918,9 @@ const ROAD_CASING_LAYERS = {
     layers: [
       "Minor road outline",
       "Pedestrian road outline",
+      "Service road outline",
       "Service road link outline",
+      "Track road outline",
       "Service tunnel outline",
       "Street tunnel outline",
       "Link tunnel outline",
@@ -1008,6 +1018,7 @@ const ROAD_UNPAVED_COND = ["==", ["get", "surface"], "unpaved"];
 const ROAD_TRACK_WIDTH_METRES = 3.5; // low-zoom track overlay
 const ROAD_WIDTH_KEYWORDS = [
   ["outdoor-paths-track", ROAD_TRACK_WIDTH_METRES],
+  ["track", ROAD_TRACK_WIDTH_METRES], // basemap track roads share the overlay width
   ["service", 4], // before "link": a service-road link stays a service road
   ["link", 5.5], // ramps & link roads — before the class keywords
   ["highway", 12], // motorway
@@ -1358,11 +1369,11 @@ const ROUTE_CASING_OPACITY = {
   international: 0.4,
 };
 
-// Badge groups are keyed by rank: the international and national ranks share
-// the earlier major pass, regional and local the later one.
+// Badge groups are keyed by rank: the regional and local ranks share the
+// earlier local pass, international and national the later major one.
 const ROUTE_BADGE_GROUPS = [
-  { suffix: "major", minzoom: 10, ranks: ["national", "international"] },
   { suffix: "local", minzoom: 12, ranks: ["regional", "local"] },
+  { suffix: "major", minzoom: 10, ranks: ["national", "international"] },
 ];
 
 // Network tiers in draw order — unmarked first, international last, so a way
@@ -2314,10 +2325,9 @@ function applyDemTerrain(style) {
  * Add the contour vector source and the contour line layer.
  * Gated by CONTOURS. The single line layer merges the minor + index contours
  * into one layer — v5 filter syntax can't express ["%", …] expressions, so
- * tiering is done with expression-based paint. The layer is inserted after
- * the river bridge outline and before the first road outline layer, so
- * contours sit above the landcover/water fills but yield to the road & path
- * stack.
+ * tiering is done with expression-based paint. The layer is inserted before
+ * the first road outline layer, so contours sit above the landcover/water
+ * fills but below the road & path stack.
  */
 function applyContours(style) {
   style.sources[CONTOUR_SOURCE_ID] = {
@@ -2372,8 +2382,9 @@ function applyContours(style) {
   };
 
   const inserted =
-    insertAfter(style, contourLinesLayer, "River bridge outline") ||
-    insertBefore(style, contourLinesLayer, "Highway link bridge outline");
+    insertBefore(style, contourLinesLayer, "Service road outline") ||
+    insertBefore(style, contourLinesLayer, "Service road link outline") ||
+    insertBefore(style, contourLinesLayer, "Highway link tunnel outline");
   if (!inserted) style.layers.push(contourLinesLayer);
 }
 
@@ -2815,8 +2826,8 @@ function buildRouteActivityLayers(
     });
   }
 
-  // Major badges first, so international and national shields win placement
-  // collisions against the local tier that follows.
+  // Local badges first, so the major pass that follows ends up on top and
+  // international and national shields win placement collisions.
   for (const group of ROUTE_BADGE_GROUPS) {
     const networks = activity.tiers
       .filter((tier) => tier.network && group.ranks.includes(tier.rank))
