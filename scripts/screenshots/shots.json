@@ -63,11 +63,13 @@
       "height": 800
     },
     {
-      "id": "stratton-mountain",
-      "center": [-72.90997, 43.1083],
-      "zoom": 14.22,
-      "width": 800,
-      "height": 600
+      "id": "sunshine-coast-2",
+      "center": [-124.320538, 49.805],
+      "zoom": 14.5,
+      "width": 1200,
+      "height": 800,
+      "pitch": 60,
+      "bearing": 93
     },
     {
       "id": "long-trail",
