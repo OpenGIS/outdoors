@@ -8,6 +8,13 @@
       "height": 8192,
       "scale": 1,
       "maxCanvasSize": [8192, 8192]
+    },
+    {
+      "id": "andermatt-routes",
+      "center": [8.5931, 46.6344],
+      "zoom": 10,
+      "width": 800,
+      "height": 600
     }
   ]
 }

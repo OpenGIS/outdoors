@@ -1,5 +1,5 @@
 ---
-git_hash: "10d756a2f60fb0726d588996d622f90ce62208e2"
+git_hash: "4ee4926252a7d5b99638e5ecc4f06e24c9aa0d5f"
 modified: "2026-11-12"
 ---
 
@@ -8,11 +8,11 @@ modified: "2026-11-12"
 > [!IMPORTANT]
 > **Proof of Concept.** Expect inaccuracies, mistakes and oversights.
 
-0. [Terminology](0.terminology.md) — the key terms used across these docs, grouped by domain: core concepts, style and MapLibre, build and render order, data and providers, routes and activities, benchmarking and the compare app
-1. [Build Script](1.build.md) — how the OpenGIS Basemap style is fetched, cached and mutated into `style.json`, and the toggles and constants that control the result
-2. [Style Structure](2.style.md) — how the style builds on the OpenGIS Basemap: the basemap's sources and the outdoor modifications applied on top
+0. [Terminology](0.terminology.md) — the key terms used across these docs, grouped by domain: palette, core concepts, style and MapLibre, build and render order, data and providers, routes and activities, benchmarking and the compare app
+1. [Build Script](1.build.md) — how the OpenGIS Basemap style is fetched, cached and mutated into `style.json`, the palette and sprite-lock workflow, and the toggles and constants that control the result
+2. [Style Structure](2.style.md) — how the style builds on the OpenGIS Basemap: palette-driven colours and icons, the basemap's sources, and the outdoor modifications applied on top
 3. [Paths](3.paths.md) — the outdoor path family on the basemap path layers, and the low-zoom paths overlay that fills the z9–13 gap in the base data
-4. [Outdoor POIs](4.pois.md) — the two-tier POI system: the shared config and the coverage checker
+4. [Outdoor POIs](4.pois.md) — the two-tier POI system: the shared config, the icon palette and the coverage checker
 5. [Elevation & Terrain](5.dem.md) — the Mapterhorn DEM — hillshade, 3D terrain, and the contour overlay
 6. [Client-side rendering](6.client.md) — how the style is rendered by client mapping libraries: renderer compatibility and metric/imperial unit switching
 7. [Activities](7.activities.md) — the waymarked hiking- and cycling-route overlays in the style and the design rationale

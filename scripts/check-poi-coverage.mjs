@@ -24,8 +24,8 @@
  *       render time, so they are skipped.
  *       Plus an orphan check: every icon key in dev/public/sprite.json must be
  *       referenced somewhere in style.json with the "outdoors:" prefix, so the
- *       outdoors sheet can never silently grow an icon that OUTDOOR_SPRITE_ICONS
- *       in scripts/build.mjs forgets.
+ *       outdoors sheet can never silently grow an icon that the palette.json
+ *       icon registry forgets.
  *   [1c] Token-template scan — no symbol layer's icon-image may still contain
  *       a "{class}" / "{subclass}" token template. Those resolve at render
  *       time by substring substitution and raise styleimagemissing for names
@@ -391,11 +391,11 @@ if (orphanIcons.length === 0) {
   console.log("  every outdoors icon is referenced in style.json");
 } else {
   console.log(
-    `  FAIL orphans in outdoors sheet: ${orphanIcons.join(", ")} — add them to OUTDOOR_SPRITE_ICONS in scripts/build.mjs`,
+    `  FAIL orphans in outdoors sheet: ${orphanIcons.join(", ")} — check the palette.json icon registry and style.json references`,
   );
   for (const name of orphanIcons) {
     failures.push(
-      `outdoors sprite icon "${name}" not referenced with "${OUTDOOR_SPRITE_ID}:" prefix — OUTDOOR_SPRITE_ICONS missing it`,
+      `outdoors sprite icon "${name}" not referenced with "${OUTDOOR_SPRITE_ID}:" prefix — palette.json lists it but style.json never references it`,
     );
   }
 }

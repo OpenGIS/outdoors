@@ -1,163 +1,261 @@
 {
-  "baseball": {
+  "alpinehut": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
     "x": 0,
     "y": 0
+  },
+  "baseball": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 0,
+    "y": 14
   },
   "basketball": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
     "x": 0,
-    "y": 14
+    "y": 28
+  },
+  "board": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 0,
+    "y": 42
   },
   "bowls": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 0,
+    "x": 14,
+    "y": 0
+  },
+  "camping": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 14,
+    "y": 14
+  },
+  "castle": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 14,
     "y": 28
   },
   "dot": {
     "height": 8,
     "pixelRatio": 1,
     "width": 8,
-    "x": 0,
-    "y": 56
+    "x": 112,
+    "y": 42
+  },
+  "drinking_water": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 14,
+    "y": 42
+  },
+  "ferry": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 28,
+    "y": 0
   },
   "garden": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 0,
-    "y": 42
+    "x": 28,
+    "y": 14
+  },
+  "lighthouse": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 28,
+    "y": 28
   },
   "park": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 14,
+    "x": 28,
+    "y": 42
+  },
+  "parking": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
     "y": 0
   },
   "pass": {
     "height": 8,
     "pixelRatio": 1,
     "width": 8,
-    "x": 8,
-    "y": 56
+    "x": 120,
+    "y": 42
+  },
+  "picnic": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
+    "y": 14
+  },
+  "playground": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 42,
+    "y": 28
   },
   "route_marked_cycling": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 14,
-    "y": 14
+    "x": 42,
+    "y": 42
   },
   "route_marked_hiking": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 14,
-    "y": 28
+    "x": 56,
+    "y": 0
   },
   "route_marked_mixed": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 14,
-    "y": 42
+    "x": 56,
+    "y": 14
   },
   "route_marker": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 28,
-    "y": 0
+    "x": 56,
+    "y": 28
   },
   "ruins": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 28,
-    "y": 14
+    "x": 56,
+    "y": 42
   },
   "running": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 28,
-    "y": 28
+    "x": 70,
+    "y": 0
+  },
+  "shelter": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 84,
+    "y": 0
   },
   "skateboard": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 28,
-    "y": 42
+    "x": 98,
+    "y": 0
   },
   "skiing": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 42,
+    "x": 112,
     "y": 0
   },
   "soccer": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 42,
+    "x": 70,
     "y": 14
   },
   "sports_centre": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 42,
+    "x": 70,
     "y": 28
   },
   "stadium": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 42,
+    "x": 70,
     "y": 42
   },
   "swimming_pool": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 56,
-    "y": 0
+    "x": 84,
+    "y": 14
   },
   "tennis": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 56,
+    "x": 98,
+    "y": 14
+  },
+  "toilets": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 112,
     "y": 14
   },
   "trail_blaze": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 56,
+    "x": 84,
     "y": 28
   },
   "trailhead": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 56,
+    "x": 84,
     "y": 42
+  },
+  "viewpoint": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 98,
+    "y": 28
   },
   "volleyball": {
     "height": 14,
     "pixelRatio": 1,
     "width": 14,
-    "x": 70,
-    "y": 0
+    "x": 112,
+    "y": 28
+  },
+  "wilderness_hut": {
+    "height": 14,
+    "pixelRatio": 1,
+    "width": 14,
+    "x": 98,
+    "y": 42
   }
 }

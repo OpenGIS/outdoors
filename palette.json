@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "map": {
+    "TERRAIN": {
+      "BACKGROUND": "hsl(18, 12%, 45%)",
+      "GRASS": "hsl(84, 42%, 61%)",
+      "WOOD": "hsl(112, 22%, 32%)",
+      "ICE": "hsl(47, 22%, 94%)",
+      "RESIDENTIAL": "hsl(45, 10%, 74%)",
+      "SAND": "hsl(35, 62%, 66%)"
+    },
+    "LANDCOVER": {
+      "ROCK": "hsl(35, 10%, 61%)",
+      "FARMLAND": "hsl(82, 38%, 60%)",
+      "HEATH": "hsl(58, 28%, 59%)"
+    },
+    "LANDUSE": {
+      "MILITARY": "hsl(0, 55%, 90%)",
+      "QUARRY": "hsl(30, 18%, 74%)"
+    },
+    "WATER": {
+      "WATER": "hsl(205, 56%, 73%)",
+      "GLACIER_OUTLINE": "hsl(205, 45%, 78%)"
+    },
+    "PARK": {
+      "NATIONAL_PARK": "rgb(170, 210, 140)",
+      "DEFAULT": "rgb(210, 225, 175)",
+      "LABEL_TEXT": "#3d5c28"
+    },
+    "ROADS": {
+      "MAJOR": "rgb(26, 26, 26)",
+      "MEDIUM": "rgb(36, 36, 36)",
+      "LOCAL": "rgb(48, 48, 48)",
+      "CASING_MAJOR": "rgb(94, 94, 94)",
+      "CASING_MEDIUM": "rgb(106, 106, 106)",
+      "CASING_LOCAL": "rgb(120, 120, 120)",
+      "CASING_UNPAVED": "rgb(118, 118, 118)",
+      "TRACK_CASING": "rgb(92, 92, 92)",
+      "TRACK_FILL": "rgb(112, 112, 112)",
+      "UNPAVED_MAJOR": "rgb(150, 150, 150)",
+      "UNPAVED_MEDIUM": "rgb(153, 153, 153)",
+      "UNPAVED_LOCAL": "rgb(156, 156, 156)"
+    },
+    "PATHS": {
+      "PATH": "#c05a2a"
+    },
+    "ROUTES": {
+      "HIKING": "#8e3b3b",
+      "CYCLING": "#46589f",
+      "MIXED": "#3f7a4f",
+      "UNMARKED": "#6f6862",
+      "CASING": "#fff8f0"
+    },
+    "CONTOURS": {
+      "MINOR": "rgb(198, 170, 138)",
+      "INDEX": "rgb(164, 130, 94)",
+      "LABEL": "#5c4634",
+      "HALO": "rgba(255, 255, 255, 0.5)"
+    }
+  },
+  "iconRoles": {
+    "navigation": "#FFE55C",
+    "recreation": "#FF6FD0",
+    "nature": "#5CF05C",
+    "water": "#2E9BE0",
+    "ferry": "#1F73C8",
+    "picnic": "#35E0C0",
+    "alpinehut": "#FFC46B",
+    "wilderness-hut": "#E58A2B",
+    "shelter": "#FFE5B4",
+    "lighthouse": "#FFA033",
+    "board": "#C4A1FF",
+    "toilets": "#E8E8E8",
+    "parking": "#79C0FF",
+    "castle": "#C98B5E",
+    "ruins": "#D8D2C4",
+    "dot": "#FFF8F0",
+    "detail": "#1F2937",
+    "outline": "#1F2937",
+    "route-hiking": "@map.ROUTES.HIKING",
+    "route-cycling": "@map.ROUTES.CYCLING",
+    "route-mixed": "@map.ROUTES.MIXED"
+  },
+  "iconOutline": { "role": "outline", "width": 0.75 },
+  "icons": {
+    "alpinehut": { "primary": "alpinehut", "outline": true },
+    "baseball": { "primary": "recreation", "detail": "detail" },
+    "basketball": { "primary": "recreation", "detail": "detail" },
+    "board": { "primary": "board", "outline": true },
+    "bowls": { "primary": "recreation", "detail": "detail" },
+    "camping": { "primary": "nature" },
+    "castle": { "primary": "castle", "outline": true },
+    "dot": { "primary": "dot", "outline": true },
+    "drinking_water": { "primary": "water" },
+    "ferry": { "primary": "ferry" },
+    "garden": { "primary": "nature", "detail": "detail" },
+    "lighthouse": { "primary": "lighthouse" },
+    "park": { "primary": "nature" },
+    "parking": { "primary": "parking" },
+    "pass": { "primary": "navigation" },
+    "picnic": { "primary": "picnic" },
+    "playground": { "primary": "recreation" },
+    "route_marked_cycling": { "primary": "route-cycling" },
+    "route_marked_hiking": { "primary": "route-hiking" },
+    "route_marked_mixed": { "primary": "route-mixed" },
+    "route_marker": { "primary": "navigation", "detail": "detail" },
+    "ruins": { "primary": "ruins", "outline": true },
+    "running": { "primary": "recreation" },
+    "shelter": { "primary": "shelter", "outline": true },
+    "skateboard": { "primary": "recreation", "detail": "detail" },
+    "skiing": { "primary": "recreation" },
+    "soccer": { "primary": "recreation", "detail": "detail" },
+    "sports_centre": { "primary": "recreation", "detail": "detail" },
+    "stadium": { "primary": "recreation", "detail": "detail" },
+    "swimming_pool": { "primary": "water" },
+    "tennis": { "primary": "recreation", "detail": "detail" },
+    "toilets": { "primary": "toilets", "outline": true },
+    "trail_blaze": { "primary": "navigation", "detail": "detail" },
+    "trailhead": { "primary": "navigation", "outline": true },
+    "viewpoint": { "primary": "navigation" },
+    "volleyball": { "primary": "recreation", "detail": "detail" },
+    "wilderness_hut": { "primary": "wilderness-hut" }
+  }
+}

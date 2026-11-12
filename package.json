@@ -11,6 +11,8 @@
     "build": "node scripts/build.mjs",
     "watch:build": "node scripts/watch.mjs",
     "sprite:build": "node scripts/build-sprite.mjs",
+    "palette:build": "node scripts/palette.mjs",
+    "palette:check": "node scripts/palette.mjs --check",
     "check:pois": "node scripts/check-poi-coverage.mjs",
     "validate:style": "node scripts/validate-style.mjs",
     "demo:build": "vite build",
